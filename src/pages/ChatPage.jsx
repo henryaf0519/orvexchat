@@ -2,6 +2,11 @@ import { useEffect, useState } from 'react'
 import MessageItem from '../components/MessageItem'
 import MessageInput from '../components/MessageInput'
 import { getChats, sendMessage } from '../services/chatService'
+import {
+  initSocket,
+  subscribe,
+  unsubscribe,
+} from '../services/socketService'
 
 export default function ChatPage() {
   const [chats, setChats] = useState([])
@@ -12,7 +17,28 @@ export default function ChatPage() {
       setChats(data)
       setCurrentChat(data[0] ?? null)
     })
+    initSocket('ws://localhost:8080')
   }, [])
+
+  useEffect(() => {
+    if (!currentChat) return
+    const handler = (message) => {
+      setChats((prev) =>
+        prev.map((chat) =>
+          chat.id === currentChat.id
+            ? { ...chat, messages: [...chat.messages, message] }
+            : chat,
+        ),
+      )
+      setCurrentChat((prev) =>
+        prev
+          ? { ...prev, messages: [...prev.messages, message] }
+          : prev,
+      )
+    }
+    subscribe(currentChat.id, handler)
+    return () => unsubscribe(currentChat.id, handler)
+  }, [currentChat])
 
   const handleSend = async (text) => {
     if (!currentChat) return
