@@ -1,8 +1,27 @@
-import { useState } from 'react'
-import { chats } from './mockData'
+import { useEffect, useState } from 'react'
+import MessageItem from '../components/MessageItem'
+import MessageInput from '../components/MessageInput'
+import { getChats, sendMessage } from '../services/chatService'
 
-export default function App() {
-  const [currentChat, setCurrentChat] = useState(chats[0])
+export default function ChatPage() {
+  const [chats, setChats] = useState([])
+  const [currentChat, setCurrentChat] = useState(null)
+
+  useEffect(() => {
+    getChats().then((data) => {
+      setChats(data)
+      setCurrentChat(data[0] ?? null)
+    })
+  }, [])
+
+  const handleSend = async (text) => {
+    if (!currentChat) return
+    const updated = await sendMessage(currentChat.id, text)
+    setChats((prev) =>
+      prev.map((chat) => (chat.id === updated.id ? updated : chat)),
+    )
+    setCurrentChat(updated)
+  }
 
   return (
     <div className="h-full flex">
@@ -28,25 +47,11 @@ export default function App() {
         </header>
         <div className="flex-1 p-4 overflow-y-auto flex flex-col gap-2">
           {currentChat?.messages.map((msg) => (
-            <div
-              key={msg.id}
-              className={`max-w-xs rounded-lg p-2 ${
-                msg.from === 'user'
-                  ? 'bg-gray-200 self-start'
-                  : 'bg-green-200 self-end'
-              }`}
-            >
-              {msg.text}
-            </div>
+            <MessageItem key={msg.id} message={msg} />
           ))}
         </div>
         <footer className="p-4 border-t border-gray-300">
-          <input
-            type="text"
-            className="w-full border rounded p-2"
-            placeholder="Escribe un mensaje..."
-            disabled
-          />
+          <MessageInput onSend={handleSend} />
         </footer>
       </section>
     </div>
