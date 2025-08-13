@@ -1,0 +1,16 @@
+# Ignorar la carpeta de dependencias de Node
+node_modules/
+
+# Ignorar la carpeta de compilación
+dist/
+build/
+
+# Ignorar archivos de configuración local
+.env
+.env.local
+
+# Archivos de caché
+.cache/
+
+# Archivos de macOS
+.DS_Store
