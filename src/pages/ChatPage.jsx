@@ -12,6 +12,7 @@ export default function ChatPage() {
   const [conversations, setConversations] = useState([]);
   const [currentChatHistory, setCurrentChatHistory] = useState([]);
   const [selectedConversationId, setSelectedConversationId] = useState(null);
+  const [isSendDisabled, setIsSendDisabled] = useState(false); // Nuevo estado
 
   useEffect(() => {
     getChats().then((data) => {
@@ -23,10 +24,20 @@ export default function ChatPage() {
   useEffect(() => {
     if (!selectedConversationId) {
       setCurrentChatHistory([]);
+      setIsSendDisabled(false); // No hay chat seleccionado, habilitamos el botón
       return;
     }
     getMessages(selectedConversationId).then((messages) => {
       setCurrentChatHistory(messages);
+
+      // Lógica para verificar el último mensaje
+      if (messages.length > 0) {
+        const lastMessage = messages[messages.length - 1];
+        // Deshabilitamos el botón si el último mensaje fue del agente ('IA')
+        setIsSendDisabled(lastMessage.from === 'IA' || lastMessage.from === 'agent');
+      } else {
+        setIsSendDisabled(false); // Si no hay mensajes, el agente puede iniciar la conversación
+      }
     });
   }, [selectedConversationId]);
 
@@ -35,6 +46,8 @@ export default function ChatPage() {
 
     const handler = (message) => {
       setCurrentChatHistory((prev) => [...prev, message]);
+      // También verificamos el nuevo mensaje para deshabilitar el botón
+      setIsSendDisabled(message.from === 'IA' || message.from === 'agent');
     };
 
     subscribe(selectedConversationId, handler);
@@ -43,7 +56,7 @@ export default function ChatPage() {
   }, [selectedConversationId]);
 
   const handleSend = async (text) => {
-    if (!selectedConversationId) return;
+    if (!selectedConversationId || isSendDisabled) return; // Evitamos enviar si está deshabilitado
 
     const result = await sendMessage(selectedConversationId, text);
     const newMessage = {
@@ -56,6 +69,7 @@ export default function ChatPage() {
     };
 
     setCurrentChatHistory((prev) => [...prev, newMessage]);
+    setIsSendDisabled(true); // Deshabilitamos el botón inmediatamente después de enviar
   };
 
   return (
@@ -86,7 +100,8 @@ export default function ChatPage() {
           ))}
         </div>
         <footer className="p-4 border-t border-gray-300">
-          <MessageInput onSend={handleSend} />
+          {/* Pasamos el nuevo estado como prop */}
+          <MessageInput onSend={handleSend} isDisabled={isSendDisabled} />
         </footer>
       </section>
     </div>
