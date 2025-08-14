@@ -1,24 +1,17 @@
 import React from 'react';
 
 export default function MessageItem({ message }) {
-  // ✅ Función para reemplazar saltos de línea con etiquetas <br>
-  const formatMessageText = (text) => {
-    return text.split('\n').join('<br>');
-  };
-
   const isAgent = message.from === 'IA' || message.from === 'agent';
-  
+
   const messageClasses = isAgent
-    ? 'bg-blue-500 text-white self-end rounded-br-none'
-    : 'bg-gray-300 text-gray-800 self-start rounded-bl-none';
+    ? 'bg-indigo-600 text-white self-end rounded-br-sm rounded-2xl'
+    : 'bg-gray-200 text-gray-900 self-start rounded-bl-sm rounded-2xl';
 
   return (
-    <div className={`p-3 max-w-[80%] rounded-xl shadow-md ${messageClasses}`}>
-      {/* ✅ Usamos dangerouslySetInnerHTML para renderizar el HTML */}
-      <p 
-        className="text-sm"
-        dangerouslySetInnerHTML={{ __html: formatMessageText(message.text) }} 
-      />
+    <div className={`p-3 max-w-[75%] shadow-md ${messageClasses}`}>
+      <p className="text-sm leading-relaxed whitespace-pre-line">
+        {message.text}
+      </p>
     </div>
   );
 }
