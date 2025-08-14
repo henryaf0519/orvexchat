@@ -1,79 +1,88 @@
-import { useEffect, useState } from 'react'
-import MessageItem from '../components/MessageItem'
-import MessageInput from '../components/MessageInput'
-import { getChats, sendMessage } from '../services/chatService'
+import { useEffect, useState } from 'react';
+import MessageItem from '../components/MessageItem';
+import MessageInput from '../components/MessageInput';
+import { getChats, getMessages, sendMessage } from '../services/chatService';
 import {
   initSocket,
   subscribe,
   unsubscribe,
-} from '../services/socketService'
+} from '../services/socketService';
 
 export default function ChatPage() {
-  const [chats, setChats] = useState([])
-  const [currentChat, setCurrentChat] = useState(null)
+  const [conversations, setConversations] = useState([]);
+  const [currentChatHistory, setCurrentChatHistory] = useState([]);
+  const [selectedConversationId, setSelectedConversationId] = useState(null);
 
   useEffect(() => {
     getChats().then((data) => {
-      setChats(data)
-      setCurrentChat(data[0] ?? null)
-    })
-    initSocket('ws://localhost:8080')
-  }, [])
+      setConversations(data);
+    });
+    initSocket('ws://localhost:8080');
+  }, []);
 
   useEffect(() => {
-    if (!currentChat) return
-    const handler = (message) => {
-      setChats((prev) =>
-        prev.map((chat) =>
-          chat.id === currentChat.id
-            ? { ...chat, messages: [...chat.messages, message] }
-            : chat,
-        ),
-      )
-      setCurrentChat((prev) =>
-        prev
-          ? { ...prev, messages: [...prev.messages, message] }
-          : prev,
-      )
+    if (!selectedConversationId) {
+      setCurrentChatHistory([]);
+      return;
     }
-    subscribe(currentChat.id, handler)
-    return () => unsubscribe(currentChat.id, handler)
-  }, [currentChat])
+    getMessages(selectedConversationId).then((messages) => {
+      setCurrentChatHistory(messages);
+    });
+  }, [selectedConversationId]);
+
+  useEffect(() => {
+    if (!selectedConversationId) return;
+
+    const handler = (message) => {
+      setCurrentChatHistory((prev) => [...prev, message]);
+    };
+
+    subscribe(selectedConversationId, handler);
+
+    return () => unsubscribe(selectedConversationId, handler);
+  }, [selectedConversationId]);
 
   const handleSend = async (text) => {
-    if (!currentChat) return
-    const updated = await sendMessage(currentChat.id, text)
-    setChats((prev) =>
-      prev.map((chat) => (chat.id === updated.id ? updated : chat)),
-    )
-    setCurrentChat(updated)
-  }
+    if (!selectedConversationId) return;
+
+    const result = await sendMessage(selectedConversationId, text);
+    const newMessage = {
+      id_mensaje_wa: result.id_mensaje_wa || `temp-${Date.now()}`,
+      text: text,
+      from: 'agent',
+      estado: 'SENT',
+      type: 'text',
+      SK: `MESSAGE#${new Date().toISOString()}`,
+    };
+
+    setCurrentChatHistory((prev) => [...prev, newMessage]);
+  };
 
   return (
     <div className="h-full flex">
       <aside className="w-1/3 max-w-xs border-r border-gray-300">
         <h2 className="p-4 font-semibold border-b border-gray-300">Chats</h2>
         <ul>
-          {chats.map((chat) => (
+          {conversations.map((conv) => (
             <li
-              key={chat.id}
+              key={conv.id}
               className={`p-4 cursor-pointer hover:bg-gray-100 ${
-                currentChat?.id === chat.id ? 'bg-gray-200' : ''
+                selectedConversationId === conv.id ? 'bg-gray-200' : ''
               }`}
-              onClick={() => setCurrentChat(chat)}
+              onClick={() => setSelectedConversationId(conv.id)}
             >
-              {chat.name}
+              {conv.name}
             </li>
           ))}
         </ul>
       </aside>
       <section className="flex-1 flex flex-col">
         <header className="p-4 border-b border-gray-300">
-          {currentChat ? currentChat.name : 'Selecciona un chat'}
+          {selectedConversationId ? `Chat con ${selectedConversationId}` : 'Selecciona un chat'}
         </header>
         <div className="flex-1 p-4 overflow-y-auto flex flex-col gap-2">
-          {currentChat?.messages.map((msg) => (
-            <MessageItem key={msg.id} message={msg} />
+          {currentChatHistory.map((msg) => (
+            <MessageItem key={msg.SK} message={msg} />
           ))}
         </div>
         <footer className="p-4 border-t border-gray-300">
@@ -81,5 +90,5 @@ export default function ChatPage() {
         </footer>
       </section>
     </div>
-  )
+  );
 }
