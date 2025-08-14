@@ -18,7 +18,7 @@ export default function ChatPage() {
     getChats().then((data) => {
       setConversations(data);
     });
-    initSocket('ws://localhost:8080');
+    initSocket('http://localhost:3000');
   }, []);
 
   useEffect(() => {
