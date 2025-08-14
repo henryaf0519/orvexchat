@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react'; // ✅ Importa useRef
 import MessageItem from '../components/MessageItem';
 import MessageInput from '../components/MessageInput';
 import { getChats, getMessages, sendMessage } from '../services/chatService';
@@ -10,7 +10,11 @@ export default function ChatPage() {
   const [selectedConversationId, setSelectedConversationId] = useState(null);
   const [isSendDisabled, setIsSendDisabled] = useState(false);
   const [socket, setSocket] = useState(null);
+  
+  // ✅ 1. Crea una referencia para el contenedor de mensajes.
+  const messagesEndRef = useRef(null);
 
+  // Efecto 1: Inicializa el socket y carga los chats iniciales.
   useEffect(() => {
     const newSocket = initSocket("http://localhost:3000");
     setSocket(newSocket);
@@ -19,12 +23,12 @@ export default function ChatPage() {
     });
   }, []);
 
+  // Efecto 2: Oyente GLOBAL para NOTIFICACIONES.
   useEffect(() => {
     if (!socket) return;
     
     const handleNotification = (data) => {
-      const { conversationId, message } = data;
-      
+      const { conversationId } = data;
       setConversations(prevConversations => {
           const conversationExists = prevConversations.some(c => c.id === conversationId);
           if (conversationExists) {
@@ -49,7 +53,7 @@ export default function ChatPage() {
     };
   }, [socket, selectedConversationId]);
 
-  // ✅ Efecto 3: Lógica para el CHAT ACTIVO.
+  // Efecto 3: Lógica para el CHAT ACTIVO.
   useEffect(() => {
     if (!socket || !selectedConversationId) {
       setCurrentChatHistory([]);
@@ -59,8 +63,6 @@ export default function ChatPage() {
     subscribeToChat(selectedConversationId);
     
     const handleActiveChatUpdate = (message) => {
-        // ⚠️ CORRECCIÓN CLAVE: Simplemente agrega el mensaje al historial del chat activo.
-        // No hay necesidad de filtrar por `message.from`.
         setCurrentChatHistory(prevHistory => [...prevHistory, message]);
     };
     socket.on('newMessage', handleActiveChatUpdate);
@@ -80,6 +82,12 @@ export default function ChatPage() {
       socket.off('newMessage', handleActiveChatUpdate);
     };
   }, [socket, selectedConversationId]);
+
+  // ✅ Efecto 4: Scroll automático al final.
+  useEffect(() => {
+    // Si la referencia existe, haz scroll al elemento.
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [currentChatHistory]); // ✅ Se ejecuta cada vez que el historial de mensajes cambia
 
   const handleSend = async (text) => {
     if (!selectedConversationId || isSendDisabled) return;
@@ -136,14 +144,16 @@ export default function ChatPage() {
         </header>
         <div className="flex-1 p-4 overflow-y-auto flex flex-col gap-2">
           {currentChatHistory.length > 0 ? (
-            currentChatHistory.map((msg) => (
-              <MessageItem key={msg.SK} message={msg} />
+            currentChatHistory.map((msg,index) => (
+              <MessageItem key={msg.SK || `message-${index}`} message={msg} />
             ))
           ) : (
             <p className="text-center text-gray-500 mt-10">
               No hay mensajes en esta conversación.
             </p>
           )}
+          {/* ✅ 2. Añade un div vacío con la referencia al final */}
+          <div ref={messagesEndRef} />
         </div>
         <footer className="p-4 border-t border-gray-300">
           <MessageInput onSend={handleSend} isDisabled={isSendDisabled} />
