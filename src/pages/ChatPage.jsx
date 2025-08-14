@@ -2,74 +2,115 @@ import { useEffect, useState } from 'react';
 import MessageItem from '../components/MessageItem';
 import MessageInput from '../components/MessageInput';
 import { getChats, getMessages, sendMessage } from '../services/chatService';
-import {
-  initSocket,
-  subscribe,
-  unsubscribe,
-} from '../services/socketService';
+import { initSocket, subscribeToChat, unsubscribeFromChat } from '../services/socketService';
 
 export default function ChatPage() {
   const [conversations, setConversations] = useState([]);
   const [currentChatHistory, setCurrentChatHistory] = useState([]);
   const [selectedConversationId, setSelectedConversationId] = useState(null);
-  const [isSendDisabled, setIsSendDisabled] = useState(false); // Nuevo estado
+  const [isSendDisabled, setIsSendDisabled] = useState(false);
+  const [socket, setSocket] = useState(null);
 
+  // Efecto 1: Inicializa el socket y carga los chats iniciales.
   useEffect(() => {
+    const newSocket = initSocket("http://localhost:3000");
+    setSocket(newSocket);
     getChats().then((data) => {
-      setConversations(data);
+      setConversations(data.map((c) => ({ ...c, hasUnread: false })));
     });
-    initSocket('http://localhost:3000');
   }, []);
 
+  // ✅ Efecto 2: Oyente GLOBAL para NOTIFICACIONES.
+  //    Este efecto se ejecuta una sola vez y su único trabajo es actualizar la lista de chats.
   useEffect(() => {
-    if (!selectedConversationId) {
+    if (!socket) return;
+    
+    const handleNotification = (data) => {
+      console.log("Mensaje de notificación recibido:", data);
+      const { conversationId } = data;
+
+      // ⚠️ CORRECCIÓN CLAVE: La lógica aquí es más simple y segura.
+      setConversations(prevConversations => {
+          const conversationExists = prevConversations.some(c => c.id === conversationId);
+          if (conversationExists) {
+              return prevConversations.map(chat => 
+                  chat.id === conversationId ? { ...chat, hasUnread: true } : chat
+              );
+          } else {
+              const newChat = {
+                  id: conversationId,
+                  name: conversationId,
+                  hasUnread: true,
+              };
+              return [newChat, ...prevConversations];
+          }
+      });
+    };
+    
+    socket.on('newNotification', handleNotification);
+    
+    return () => {
+      socket.off('newNotification', handleNotification);
+    };
+  }, [socket]); // ⚠️ IMPORTANTE: No depende de 'selectedConversationId'
+
+  // ✅ Efecto 3: Lógica para el CHAT ACTIVO.
+  //    Este efecto se encarga de unirse a la sala y de actualizar el historial del chat.
+  useEffect(() => {
+    if (!socket || !selectedConversationId) {
       setCurrentChatHistory([]);
-      setIsSendDisabled(false); // No hay chat seleccionado, habilitamos el botón
+      setIsSendDisabled(false);
       return;
     }
+    subscribeToChat(selectedConversationId);
+    
+    const handleActiveChatUpdate = (message) => {
+        if (message.from === selectedConversationId) {
+            setCurrentChatHistory(prevHistory => [...prevHistory, message]);
+        }
+    };
+    socket.on('newMessage', handleActiveChatUpdate);
+    
     getMessages(selectedConversationId).then((messages) => {
       setCurrentChatHistory(messages);
-
-      // Lógica para verificar el último mensaje
       if (messages.length > 0) {
         const lastMessage = messages[messages.length - 1];
-        // Deshabilitamos el botón si el último mensaje fue del agente ('IA')
-        setIsSendDisabled(lastMessage.from === 'IA' || lastMessage.from === 'agent');
+        setIsSendDisabled(lastMessage.from === "IA" || lastMessage.from === "agent");
       } else {
-        setIsSendDisabled(false); // Si no hay mensajes, el agente puede iniciar la conversación
+        setIsSendDisabled(false);
       }
     });
-  }, [selectedConversationId]);
 
-  useEffect(() => {
-    if (!selectedConversationId) return;
-
-    const handler = (message) => {
-      setCurrentChatHistory((prev) => [...prev, message]);
-      // También verificamos el nuevo mensaje para deshabilitar el botón
-      setIsSendDisabled(message.from === 'IA' || message.from === 'agent');
+    return () => {
+      unsubscribeFromChat(selectedConversationId);
+      socket.off('newMessage', handleActiveChatUpdate);
     };
-
-    subscribe(selectedConversationId, handler);
-
-    return () => unsubscribe(selectedConversationId, handler);
-  }, [selectedConversationId]);
+  }, [socket, selectedConversationId]);
 
   const handleSend = async (text) => {
-    if (!selectedConversationId || isSendDisabled) return; // Evitamos enviar si está deshabilitado
+    if (!selectedConversationId || isSendDisabled) return;
 
     const result = await sendMessage(selectedConversationId, text);
     const newMessage = {
       id_mensaje_wa: result.id_mensaje_wa || `temp-${Date.now()}`,
       text: text,
-      from: 'agent',
-      estado: 'SENT',
-      type: 'text',
+      from: "agent",
+      estado: "SENT",
+      type: "text",
       SK: `MESSAGE#${new Date().toISOString()}`,
     };
 
     setCurrentChatHistory((prev) => [...prev, newMessage]);
-    setIsSendDisabled(true); // Deshabilitamos el botón inmediatamente después de enviar
+    setIsSendDisabled(true);
+  };
+
+  const handleChatClick = (conversationId) => {
+    setSelectedConversationId(conversationId);
+    setConversations((prevConversations) =>
+      prevConversations.map((chat) =>
+        chat.id === conversationId ? { ...chat, hasUnread: false } : chat
+      )
+    );
   };
 
   return (
@@ -80,27 +121,37 @@ export default function ChatPage() {
           {conversations.map((conv) => (
             <li
               key={conv.id}
-              className={`p-4 cursor-pointer hover:bg-gray-100 ${
-                selectedConversationId === conv.id ? 'bg-gray-200' : ''
+              className={`p-4 cursor-pointer relative hover:bg-gray-100 ${
+                selectedConversationId === conv.id ? "bg-gray-200" : ""
               }`}
-              onClick={() => setSelectedConversationId(conv.id)}
+              onClick={() => handleChatClick(conv.id)}
             >
               {conv.name}
+              {conv.hasUnread && (
+                <span className="absolute top-4 right-4 h-3 w-3 bg-red-500 rounded-full"></span>
+              )}
             </li>
           ))}
         </ul>
       </aside>
       <section className="flex-1 flex flex-col">
         <header className="p-4 border-b border-gray-300">
-          {selectedConversationId ? `Chat con ${selectedConversationId}` : 'Selecciona un chat'}
+          {selectedConversationId
+            ? `Chat con ${selectedConversationId}`
+            : "Selecciona un chat"}
         </header>
         <div className="flex-1 p-4 overflow-y-auto flex flex-col gap-2">
-          {currentChatHistory.map((msg) => (
-            <MessageItem key={msg.SK} message={msg} />
-          ))}
+          {currentChatHistory.length > 0 ? (
+            currentChatHistory.map((msg) => (
+              <MessageItem key={msg.SK} message={msg} />
+            ))
+          ) : (
+            <p className="text-center text-gray-500 mt-10">
+              No hay mensajes en esta conversación.
+            </p>
+          )}
         </div>
         <footer className="p-4 border-t border-gray-300">
-          {/* Pasamos el nuevo estado como prop */}
           <MessageInput onSend={handleSend} isDisabled={isSendDisabled} />
         </footer>
       </section>
