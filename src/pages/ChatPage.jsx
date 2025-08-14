@@ -28,6 +28,7 @@ export default function ChatPage() {
     if (!socket) return;
     
     const handleNotification = (data) => {
+      console.log('data: ', data)
       const { conversationId } = data;
       setConversations(prevConversations => {
           const conversationExists = prevConversations.some(c => c.id === conversationId);
