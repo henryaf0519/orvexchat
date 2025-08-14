@@ -11,7 +11,6 @@ export default function ChatPage() {
   const [isSendDisabled, setIsSendDisabled] = useState(false);
   const [socket, setSocket] = useState(null);
 
-  // Efecto 1: Inicializa el socket y carga los chats iniciales.
   useEffect(() => {
     const newSocket = initSocket("http://localhost:3000");
     setSocket(newSocket);
@@ -20,16 +19,12 @@ export default function ChatPage() {
     });
   }, []);
 
-  // ✅ Efecto 2: Oyente GLOBAL para NOTIFICACIONES.
-  //    Este efecto se ejecuta una sola vez y su único trabajo es actualizar la lista de chats.
   useEffect(() => {
     if (!socket) return;
     
     const handleNotification = (data) => {
-      console.log("Mensaje de notificación recibido:", data);
-      const { conversationId } = data;
-
-      // ⚠️ CORRECCIÓN CLAVE: La lógica aquí es más simple y segura.
+      const { conversationId, message } = data;
+      
       setConversations(prevConversations => {
           const conversationExists = prevConversations.some(c => c.id === conversationId);
           if (conversationExists) {
@@ -52,10 +47,9 @@ export default function ChatPage() {
     return () => {
       socket.off('newNotification', handleNotification);
     };
-  }, [socket]); // ⚠️ IMPORTANTE: No depende de 'selectedConversationId'
+  }, [socket, selectedConversationId]);
 
   // ✅ Efecto 3: Lógica para el CHAT ACTIVO.
-  //    Este efecto se encarga de unirse a la sala y de actualizar el historial del chat.
   useEffect(() => {
     if (!socket || !selectedConversationId) {
       setCurrentChatHistory([]);
@@ -65,9 +59,9 @@ export default function ChatPage() {
     subscribeToChat(selectedConversationId);
     
     const handleActiveChatUpdate = (message) => {
-        if (message.from === selectedConversationId) {
-            setCurrentChatHistory(prevHistory => [...prevHistory, message]);
-        }
+        // ⚠️ CORRECCIÓN CLAVE: Simplemente agrega el mensaje al historial del chat activo.
+        // No hay necesidad de filtrar por `message.from`.
+        setCurrentChatHistory(prevHistory => [...prevHistory, message]);
     };
     socket.on('newMessage', handleActiveChatUpdate);
     
