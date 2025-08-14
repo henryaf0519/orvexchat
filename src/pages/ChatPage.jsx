@@ -1,3 +1,5 @@
+// src/components/ChatPage.jsx
+
 import { useEffect, useState, useRef } from 'react';
 import MessageItem from '../components/MessageItem';
 import MessageInput from '../components/MessageInput';
@@ -12,7 +14,6 @@ export default function ChatPage() {
   const [socket, setSocket] = useState(null);
   const messagesEndRef = useRef(null);
 
-  // ✅ Nueva variable de estado para saber si el chat está en modo humano o IA
   const selectedChat = conversations.find(conv => conv.id === selectedConversationId);
   const isHumanControl = selectedChat?.modo === 'humano';
 
@@ -34,17 +35,17 @@ export default function ChatPage() {
       setConversations(prevConversations => {
           const conversationExists = prevConversations.some(c => c.id === conversationId);
           if (conversationExists) {
-              return prevConversations.map(chat => 
-                  chat.id === conversationId ? { ...chat, hasUnread: true } : chat
-              );
+            return prevConversations.map(chat => 
+                chat.id === conversationId ? { ...chat, hasUnread: true } : chat
+            );
           } else {
-              const newChat = {
-                  id: conversationId,
-                  name: conversationId,
-                  hasUnread: true,
-                  modo: 'IA' // ✅ Asume que el nuevo chat comienza en modo IA
-              };
-              return [newChat, ...prevConversations];
+            const newChat = {
+                id: conversationId,
+                name: conversationId,
+                hasUnread: true,
+                modo: 'IA'
+            };
+            return [newChat, ...prevConversations];
           }
       });
     };
@@ -74,7 +75,6 @@ export default function ChatPage() {
       setCurrentChatHistory(messages);
       if (messages.length > 0) {
         const lastMessage = messages[messages.length - 1];
-        // ✅ Deshabilita el input si el último mensaje es de la IA Y el chat no está en modo humano
         setIsSendDisabled(!isHumanControl && lastMessage.from === "IA");
       } else {
         setIsSendDisabled(false);
@@ -85,7 +85,7 @@ export default function ChatPage() {
       unsubscribeFromChat(selectedConversationId);
       socket.off('newMessage', handleActiveChatUpdate);
     };
-  }, [socket, selectedConversationId, isHumanControl]); // ✅ Dependencia isHumanControl
+  }, [socket, selectedConversationId, isHumanControl]);
 
   // Efecto 4: Scroll automático al final.
   useEffect(() => {
@@ -118,38 +118,35 @@ export default function ChatPage() {
     );
   };
 
-  // ✅ Función para tomar el control humano
-  const handleTomarControl = async () => {
+  // ✅ FUNCIONES ACTUALIZADAS PARA LLAMAR AL SERVICIO
+  const updateChatMode = async (newMode) => {
     if (!selectedConversationId) return;
-    
-    // Aquí es donde conectarías tu endpoint de backend.
-    // Ejemplo:
-    // await fetch(`/chats/tomar-control/${selectedConversationId}`, { method: 'POST' });
-    
-    // Simula la actualización en el frontend
-    setConversations(prevConversations =>
-      prevConversations.map(chat =>
-        chat.id === selectedConversationId ? { ...chat, modo: 'humano' } : chat
-      )
-    );
+
+    try {
+      await fetch(`http://localhost:3000/dynamo/control/${selectedConversationId}`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ newMode }),
+      });
+
+      // Actualiza el estado localmente para reflejar el cambio en la interfaz
+      setConversations(prevConversations =>
+        prevConversations.map(chat =>
+          chat.id === selectedConversationId ? { ...chat, modo: newMode } : chat
+        )
+      );
+      console.log(`Modo del chat de ${selectedConversationId} actualizado a: ${newMode}`);
+      
+    } catch (error) {
+      console.error('Error al cambiar el modo del chat:', error);
+      // Opcional: Revertir el estado del frontend si la llamada falla
+    }
   };
   
-  // ✅ Función para devolver el control a la IA
-  const handleDevolverControl = async () => {
-    if (!selectedConversationId) return;
-
-    // Aquí es donde conectarías tu endpoint de backend.
-    // Ejemplo:
-    // await fetch(`/chats/devolver-control/${selectedConversationId}`, { method: 'POST' });
-
-    // Simula la actualización en el frontend
-    setConversations(prevConversations =>
-      prevConversations.map(chat =>
-        chat.id === selectedConversationId ? { ...chat, modo: 'IA' } : chat
-      )
-    );
-  };
-
+  // ✅ El resto de tu componente permanece igual
+  
   return (
     <div className="h-full flex">
       <aside className="w-1/3 max-w-xs border-r border-gray-300">
@@ -180,7 +177,7 @@ export default function ChatPage() {
             <button
               className={`px-4 py-2 rounded-lg text-sm transition-colors duration-200 
                 ${isHumanControl ? 'bg-green-600' : 'bg-purple-600'} text-white`}
-              onClick={isHumanControl ? handleDevolverControl : handleTomarControl}
+              onClick={() => updateChatMode(isHumanControl ? 'IA' : 'humano')}
             >
               {isHumanControl ? 'Devolver a la IA' : 'Tomar Control Humano'}
             </button>
@@ -199,7 +196,7 @@ export default function ChatPage() {
           <div ref={messagesEndRef} />
         </div>
         <footer className="p-4 border-t border-gray-300">
-          {/* ✅ Prop isDisabled ahora controlada por la lógica isHumanControl */}
+          {/* ✅ Lógica corregida para el isDisabled del input */}
           <MessageInput onSend={handleSend} isDisabled={isSendDisabled && !isHumanControl} />
         </footer>
       </section>
