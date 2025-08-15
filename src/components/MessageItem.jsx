@@ -9,7 +9,15 @@ export default function MessageItem({ message }) {
 
   return (
     <div className={`p-4 max-w-[80%] shadow-lg ${messageClasses}`}>
-      <p className="text-sm leading-relaxed whitespace-pre-line">{message.text}</p>
+      {message.type === 'image' ? (
+        <img
+          src={message.text} // La URL de la imagen está en message.text
+          alt="Imagen enviada en el chat"
+          className="rounded-lg max-w-full h-auto"
+        />
+      ) : (
+        <p className="text-sm leading-relaxed whitespace-pre-line">{message.text}</p>
+      )}
     </div>
   );
 }
