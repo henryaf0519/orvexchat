@@ -1,10 +1,30 @@
-import React from 'react'
-import { createBrowserRouter } from 'react-router-dom'
-import ChatPage from '../pages/ChatPage'
+import React from 'react';
+import { createBrowserRouter, Navigate } from 'react-router-dom';
+import ChatPage from '../pages/ChatPage';
+import LoginPage from '../pages/LoginPage';
+import RegisterPage from '../pages/RegisterPage';
+import ProtectedRoute from '../components/ProtectedRoute';
 
 export const router = createBrowserRouter([
   {
     path: '/',
-    element: <ChatPage />,
+    element: <Navigate to="/login" />,
   },
-])
+  {
+    path: '/login',
+    element: <LoginPage />, 
+  },
+  {
+    path: '/register',
+    element: <RegisterPage />, 
+  },
+  {
+    path: '/chat',
+    element: (
+      <ProtectedRoute>
+        <ChatPage />
+      </ProtectedRoute>
+    ),
+  },
+]);
+
