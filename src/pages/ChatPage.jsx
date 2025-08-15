@@ -90,13 +90,15 @@ export default function ChatPage() {
   const handleSend = async (text) => {
     if (!selectedConversationId || isSendDisabled) return;
 
+    // TODO: Need to add logic here to determine if the message is an image or text
+    // For now, we will assume it is always text
     const result = await sendMessage(selectedConversationId, text);
     const newMessage = {
       id_mensaje_wa: result.id_mensaje_wa || `temp-${Date.now()}`,
       text: text,
       from: "agent",
       estado: "SENT",
-      type: "text",
+      type: "text", // We are assuming it's text for now
       SK: `MESSAGE#${new Date().toISOString()}`,
     };
 
