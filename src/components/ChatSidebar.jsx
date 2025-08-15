@@ -2,7 +2,9 @@ import React from 'react';
 
 export default function ChatSidebar({ conversations, selectedId, onSelect }) {
   return (
-    <aside className="w-80 bg-white shadow-lg rounded-lg overflow-hidden border border-gray-200 flex flex-col">
+    // Asegúrate de que la clase flex-col está en el aside
+    // y que el aside tiene una altura definida (por ejemplo, a través de flexbox)
+    <aside className="w-80 bg-white shadow-lg rounded-lg overflow-hidden border border-gray-200 flex flex-col h-full">
       <h2 className="p-5 text-xl font-semibold text-gray-900 border-b border-gray-200 bg-gray-50">
         Chats
       </h2>
