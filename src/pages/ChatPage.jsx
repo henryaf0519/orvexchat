@@ -22,7 +22,6 @@ export default function ChatPage() {
   );
   const isHumanControl = selectedChat?.modo === "humano";
 
-  // Efecto 1: Inicializa el socket y carga los chats iniciales.
   useEffect(() => {
     const newSocket = initSocket("http://localhost:3000");
     setSocket(newSocket);
@@ -33,7 +32,6 @@ export default function ChatPage() {
     });
   }, []);
 
-  // Efecto 2: Oyente GLOBAL para NOTIFICACIONES.
   useEffect(() => {
     if (!socket) return;
 
@@ -66,7 +64,6 @@ export default function ChatPage() {
     };
   }, [socket, selectedConversationId]);
 
-  // Efecto 3: Lógica para el CHAT ACTIVO.
   useEffect(() => {
     if (!socket || !selectedConversationId) {
       setCurrentChatHistory([]);
@@ -99,8 +96,6 @@ export default function ChatPage() {
   const handleSend = async (text) => {
     if (!selectedConversationId || isSendDisabled) return;
 
-    // TODO: Need to add logic here to determine if the message is an image or text
-    // For now, we will assume it is always text
     const result = await sendMessage(selectedConversationId, text);
     const newMessage = {
       id_mensaje_wa: result.id_mensaje_wa || `temp-${Date.now()}`,
