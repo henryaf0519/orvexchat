@@ -4,15 +4,15 @@ export default function ChatSidebar({ conversations, selectedId, onSelect }) {
   return (
     // Asegúrate de que la clase flex-col está en el aside
     // y que el aside tiene una altura definida (por ejemplo, a través de flexbox)
-    <aside className="w-80 bg-white shadow-lg rounded-lg overflow-hidden border border-gray-200 flex flex-col h-full">
-      <h2 className="p-5 text-xl font-semibold text-gray-900 border-b border-gray-200 bg-gray-50">
+    <aside className="w-80 bg-white shadow-lg border border-red-100 flex flex-col h-full">
+      <h2 className="p-5 text-xl font-semibold text-white border-b border-red-200 bg-[#2D0303]">
         Chats
       </h2>
-      <ul className="flex-1 overflow-y-auto divide-y divide-gray-200">
+      <ul className="flex-1 overflow-y-auto divide-y divide-red-100">
         {conversations.map((conv) => (
           <li
             key={conv.id}
-            className={`relative p-4 cursor-pointer transition-colors hover:bg-gray-50 ${selectedId === conv.id ? 'bg-gray-100' : ''} rounded-md focus:outline-none`}
+            className={`relative p-4 cursor-pointer transition-colors hover:bg-red-50 ${selectedId === conv.id ? 'bg-red-100': ''} rounded-md focus:outline-none`}
             onClick={() => onSelect(conv.id)}
           >
             <div className="flex justify-between items-center">
