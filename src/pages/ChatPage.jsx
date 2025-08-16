@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import ChatSidebar from "../components/ChatSidebar";
 import ChatWindow from "../components/ChatWindow";
-import ChatHeader from "../components/ChatHeader";
+import MainSidebar from "../components/MainSidebar";
+import MainHeader from "../components/MainHeader";
 import { getChats, getMessages, sendMessage } from "../services/chatService";
 import {
   initSocket,
@@ -171,22 +172,33 @@ export default function ChatPage() {
   };
 
   return (
-    <div className="h-screen flex flex-col bg-gradient-to-br from-red-50 to-red-100">
-      <ChatHeader />
-      <div className="flex flex-1 overflow-hidden">
-        <ChatSidebar
-          conversations={conversations}
-          selectedId={selectedConversationId}
-          onSelect={handleChatClick}
-        />
-        <ChatWindow
-          chatId={selectedConversationId}
-          messages={currentChatHistory}
-          isHumanControl={isHumanControl}
-          isSendDisabled={isSendDisabled}
-          onSend={handleSend}
-          onToggleMode={updateChatMode}
-        />
+    <div className="h-screen flex bg-gray-100">
+      {/* 1. Main Sidebar (barra azul de la izquierda) */}
+      <MainSidebar />
+
+      {/* 2. Contenedor principal del chat (el resto de la interfaz) */}
+      <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Main Header (con buscador y perfil) */}
+        <MainHeader />
+
+        {/* 3. Contenedor de la lista de chats y la ventana de chat */}
+        <div className="flex flex-1 overflow-hidden">
+          {/* Chat Sidebar (la lista de conversaciones) */}
+          <ChatSidebar
+            conversations={conversations}
+            selectedId={selectedConversationId}
+            onSelect={handleChatClick}
+          />
+          {/* Chat Window (la ventana de conversación) */}
+          <ChatWindow
+            chatId={selectedConversationId}
+            messages={currentChatHistory}
+            isHumanControl={isHumanControl}
+            isSendDisabled={isSendDisabled}
+            onSend={handleSend}
+            onToggleMode={updateChatMode}
+          />
+        </div>
       </div>
     </div>
   );
