@@ -46,20 +46,20 @@ export default function LoginPage() {
               <img
                 src={logo}
                 alt="Orvex Chat Logo"
-                className="w-32 h-32 mb-6 mx-auto rounded-full border-4 border-white opacity-90 object-cover"
+                className="w-48 h-auto mb-6 mx-auto"
               />
               <h1 className="text-5xl font-extrabold text-white text-shadow-lg leading-tight">
-                Login into
+                Accede a
                 <br />
-                your account
+                tu cuenta
               </h1>
               <p className="mt-4 text-xl text-red-100 opacity-90">
-                Let us make the circle bigger!
+                Conecta al instante. Comunica con impacto
               </p>
             </div>
           </div>
           <p className="text-sm text-gray-400 mt-auto text-left relative z-10">
-            © 2023 Orvex Chat. All Rights Reserved.
+            © 2025 Orvex Chat. All Rights Reserved.
           </p>
         </div>
 
