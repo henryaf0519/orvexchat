@@ -1,13 +1,17 @@
 import { useEffect, useState } from "react";
-import { useNavigate, Link } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { login } from "../services/authService";
 import logo from "../assets/logo.png";
+import { HiEye, HiEyeOff } from "react-icons/hi"; // Iconos de mostrar/ocultar
 
 export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
+  const [showPassword, setShowPassword] = useState(false); // Para mostrar/ocultar la contraseña
+  const [emailError, setEmailError] = useState(""); // Error de email
+  const [passwordError, setPasswordError] = useState(""); // Error de contraseña
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -19,15 +23,39 @@ export default function LoginPage() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+    setEmailError("");
+    setPasswordError("");
     setLoading(true);
+
+    // Validación de los campos
+    let isValid = true;
+
+    // Si el email está vacío
+    if (!email) {
+      setEmailError("El correo es obligatorio.");
+      isValid = false;
+    }
+
+    // Si la contraseña está vacía
+    if (!password) {
+      setPasswordError("La contraseña es obligatoria.");
+      isValid = false;
+    }
+
+    if (!isValid) {
+      setLoading(false);
+      return;
+    }
+
     try {
       const { token } = await login(email, password);
+      console.log("token: ", token);
       localStorage.setItem("authToken", token);
       navigate("/chat");
     } catch (err) {
       setError("Credenciales inválidas");
     } finally {
-      setLoading(false); // Detener carga
+      setLoading(false);
     }
   };
 
@@ -90,10 +118,14 @@ export default function LoginPage() {
                 placeholder="name@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                required
+                
                 disabled={loading}
               />
+              {emailError && (
+                <p className="text-sm text-red-600 mt-2">{emailError}</p>
+              )}
             </div>
+
             <div>
               <label
                 htmlFor="password-input"
@@ -101,31 +133,36 @@ export default function LoginPage() {
               >
                 Contraseña
               </label>
-              <input
-                id="password-input"
-                type="password"
-                className="w-full border border-gray-300 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all duration-200"
-                placeholder="Your password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                required
-                disabled={loading}
-              />
+              <div className="relative">
+                <input
+                  id="password-input"
+                  type={showPassword ? "text" : "password"}
+                  className="w-full border border-gray-300 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all duration-200"
+                  placeholder="Your password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  
+                  disabled={loading}
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 transform -translate-y-1/2"
+                >
+                  {showPassword ? (
+                    <HiEyeOff className="h-5 w-5 text-gray-600" />
+                  ) : (
+                    <HiEye className="h-5 w-5 text-gray-600" />
+                  )}
+                </button>
+              </div>
+              {passwordError && (
+                <p className="text-sm text-red-600 mt-2">{passwordError}</p>
+              )}
             </div>
 
             {/* Acciones/enlaces combinados similares a la imagen */}
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-4 sm:space-y-0 mt-6">
-             {/* <p className="text-sm text-gray-600">
-                ¿No tienes cuenta?{" "}
-                <Link
-                  to="/register"
-                  className="font-semibold text-red-600 hover:text-red-800 hover:underline transition-colors duration-200"
-                >
-                  Regístrate
-                </Link>
-              
-              </p>
-                */}
               <button
                 type="submit"
                 className="w-full sm:w-auto bg-red-600 text-white py-3 px-8 rounded-lg font-semibold text-lg hover:bg-red-700 transition-all duration-300 transform hover:scale-105 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
