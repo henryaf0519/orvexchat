@@ -1,82 +1,163 @@
-import { useEffect, useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
-import { login } from '../services/authService';
-import logo from '../assets/orvex-logo.svg';
+import { useEffect, useState } from "react";
+import { useNavigate, Link } from "react-router-dom";
+import { login } from "../services/authService";
+import logo from "../assets/logo.png";
 
 export default function LoginPage() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (localStorage.getItem('authToken')) {
-      navigate('/chat');
+    if (localStorage.getItem("authToken")) {
+      navigate("/chat");
     }
   }, [navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError('');
+    setError("");
+    setLoading(true);
     try {
       const { token } = await login(email, password);
-      localStorage.setItem('authToken', token);
-      navigate('/chat');
+      localStorage.setItem("authToken", token);
+      navigate("/chat");
     } catch (err) {
-      setError('Credenciales inválidas');
+      setError("Credenciales inválidas");
+    } finally {
+      setLoading(false); // Detener carga
     }
   };
 
   return (
-    <div className="min-h-screen flex">
-      {/* Left branding section */}
-      <div className="hidden md:flex w-1/2 bg-gradient-to-b from-red-600 to-red-800 text-white flex-col items-center justify-center p-8">
-        <img src={logo} alt="Orvex Chat" className="w-40 h-40 mb-4" />
-        <h1 className="text-4xl font-bold">Orvex Chat</h1>
-        <p className="mt-2 text-lg text-red-100">Conecta y conversa al instante</p>
-      </div>
-      {/* Right login form */}
-      <div className="w-full md:w-1/2 flex items-center justify-center bg-gradient-to-br from-blue-50 to-indigo-100 p-4">
-        <div className="w-full max-w-md bg-white shadow-xl rounded-lg p-8">
-          <h2 className="text-2xl font-bold mb-6 text-center text-gray-800">Iniciar sesión</h2>
-          {error && <p className="text-red-500 mb-4 text-sm">{error}</p>}
-          <form onSubmit={handleSubmit} className="space-y-4">
+    <div className="min-h-screen flex items-center justify-center bg-gray-100 p-4 font-sans text-[#1A1C20] sm:p-0">
+      <div className="flex w-full max-w-5xl bg-white shadow-2xl rounded-3xl overflow-hidden min-h-[600px] transform transition-all duration-300 hover:scale-[1.005]">
+        {/* Sección de branding izquierda (similar a la imagen) */}
+        <div className="hidden md:flex w-1/2 bg-[#2D0303] text-white flex-col justify-between p-12 relative overflow-hidden rounded-l-3xl">
+          {/* Formas abstractas circulares */}
+          <div className="absolute top-[-10%] left-[-10%] w-72 h-72 bg-red-800 rounded-full opacity-10 transform rotate-45"></div>
+          <div className="absolute bottom-[-10%] right-[-10%] w-96 h-96 bg-red-800 rounded-full opacity-10 transform -rotate-45"></div>
+          <div className="absolute inset-0 flex items-center justify-center">
+            {/* Logo y Nombre de Marca */}
+            <div className="relative z-10 text-center">
+              {/* Usando el placeholder de URL para el logo */}
+              <img
+                src={logo}
+                alt="Orvex Chat Logo"
+                className="w-32 h-32 mb-6 mx-auto rounded-full border-4 border-white opacity-90 object-cover"
+              />
+              <h1 className="text-5xl font-extrabold text-white text-shadow-lg leading-tight">
+                Login into
+                <br />
+                your account
+              </h1>
+              <p className="mt-4 text-xl text-red-100 opacity-90">
+                Let us make the circle bigger!
+              </p>
+            </div>
+          </div>
+          <p className="text-sm text-gray-400 mt-auto text-left relative z-10">
+            © 2023 Orvex Chat. All Rights Reserved.
+          </p>
+        </div>
+
+        {/* Sección de formulario de login derecha */}
+        <div className="w-full md:w-1/2 flex flex-col justify-center p-8 sm:p-12 bg-white">
+          <h2 className="text-4xl font-extrabold mb-8 text-center text-[#1A1C20]">
+            Iniciar sesión
+          </h2>
+
+          {error && (
+            <p className="bg-red-100 text-red-700 p-3 rounded-lg text-sm mb-6 text-center animate-fade-in">
+              {error}
+            </p>
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-6">
             <div>
-              <label className="block text-sm font-medium text-gray-700">Email</label>
+              <label
+                htmlFor="email-input"
+                className="block text-sm font-semibold text-gray-700 mb-2"
+              >
+                Email
+              </label>
               <input
+                id="email-input"
                 type="email"
-                className="mt-1 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full border border-gray-300 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all duration-200"
+                placeholder="name@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
+                disabled={loading}
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-700">Contraseña</label>
+              <label
+                htmlFor="password-input"
+                className="block text-sm font-semibold text-gray-700 mb-2"
+              >
+                Contraseña
+              </label>
               <input
+                id="password-input"
                 type="password"
-                className="mt-1 w-full border border-gray-300 rounded-md p-2 focus:outline-none focus:ring-2 focus:ring-indigo-500"
+                className="w-full border border-gray-300 rounded-lg p-3 focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent transition-all duration-200"
+                placeholder="Your password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
+                disabled={loading}
               />
             </div>
-            <button
-              type="submit"
-              className="w-full bg-indigo-600 text-white py-2 rounded-md hover:bg-indigo-700 transition-colors"
-            >
-              Entrar
-            </button>
+
+            {/* Acciones/enlaces combinados similares a la imagen */}
+            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-4 sm:space-y-0 mt-6">
+              <p className="text-sm text-gray-600">
+                ¿No tienes cuenta?{" "}
+                <Link
+                  to="/register"
+                  className="font-semibold text-red-600 hover:text-red-800 hover:underline transition-colors duration-200"
+                >
+                  Regístrate
+                </Link>
+              </p>
+              <button
+                type="submit"
+                className="w-full sm:w-auto bg-red-600 text-white py-3 px-8 rounded-lg font-semibold text-lg hover:bg-red-700 transition-all duration-300 transform hover:scale-105 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
+                disabled={loading}
+              >
+                {loading ? (
+                  <svg
+                    className="animate-spin h-5 w-5 text-white mr-3"
+                    xmlns="http://www.w3.org/2000/svg"
+                    fill="none"
+                    viewBox="0 0 24 24"
+                  >
+                    <circle
+                      className="opacity-25"
+                      cx="12"
+                      cy="12"
+                      r="10"
+                      stroke="currentColor"
+                      strokeWidth="4"
+                    ></circle>
+                    <path
+                      className="opacity-75"
+                      fill="currentColor"
+                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                    ></path>
+                  </svg>
+                ) : (
+                  "Entrar"
+                )}
+              </button>
+            </div>
           </form>
-          <p className="text-center text-sm text-gray-600 mt-4">
-            ¿No tienes cuenta?{' '}
-            <Link to="/register" className="text-indigo-600 hover:underline">
-              Regístrate
-            </Link>
-          </p>
         </div>
       </div>
     </div>
   );
 }
-
