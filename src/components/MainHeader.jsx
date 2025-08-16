@@ -22,8 +22,7 @@ export default function MainHeader() {
         />
       </div>
 
-      {/* Perfil de usuario a la derecha */}
-      <div className="flex items-center gap-3">
+      {/*       <div className="flex items-center gap-3">
         <div className="flex flex-col items-end">
           <span className="text-lg font-semibold text-gray-700">
             Cedar Botsford
@@ -35,7 +34,8 @@ export default function MainHeader() {
           alt="User Avatar"
           className="h-10 w-10 rounded-full border-2 border-green-500"
         />
-      </div>
+      </div>*/}
+
     </header>
   );
 }
