@@ -1,30 +1,39 @@
-import React, { useState } from "react";
+import React, { useState } from 'react';
 
 export default function MessageItem({ message }) {
+  // Determina si el mensaje es de la agencia (nosotros) o del cliente.
   const isAgent = message.from === "IA" || message.from === "agent";
   const [isModalOpen, setIsModalOpen] = useState(false);
 
+  // Clases CSS para los mensajes.
+  // Los mensajes de la agencia (nuestros) serán de color índigo, alineados a la derecha.
+  // Los mensajes del cliente serán de color gris claro, alineados a la izquierda.
   const messageClasses = isAgent
-    ? "bg-indigo-600 text-white self-end rounded-br-xl rounded-2xl"
-    : "bg-gray-200 text-gray-900 self-start rounded-bl-xl rounded-2xl";
+    ? "bg-indigo-600 text-white rounded-br-xl rounded-2xl" // Color índigo para mensajes de la agencia
+    : "bg-gray-200 text-gray-900 rounded-bl-xl rounded-2xl";
 
   return (
     <>
-      <div className={`p-4 max-w-[80%] shadow-lg ${messageClasses}`}>
-        {message.type === "image" ? (
-          <img
-            src={message.text}
-            alt="Imagen enviada en el chat"
-            className="rounded-lg w-48 h-auto cursor-pointer"
-            onClick={() => setIsModalOpen(true)}
-          />
-        ) : (
-          <p className="text-sm leading-relaxed whitespace-pre-line">
-            {message.text}
-          </p>
-        )}
+      {/* Contenedor principal del mensaje para alineación */}
+      <div className={`flex ${isAgent ? 'justify-end' : 'justify-start'}`}>
+        {/* Burbuja del mensaje */}
+        <div className={`p-4 max-w-[70%] shadow-lg ${messageClasses}`}>
+          {message.type === "image" ? (
+            <img
+              src={message.text}
+              alt="Imagen enviada en el chat"
+              className="rounded-lg w-48 h-auto cursor-pointer"
+              onClick={() => setIsModalOpen(true)}
+            />
+          ) : (
+            <p className="text-sm leading-relaxed whitespace-pre-line">
+              {message.text}
+            </p>
+          )}
+        </div>
       </div>
 
+      {/* Modal para previsualización de imagen */}
       {isModalOpen && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-90 p-4"

@@ -34,7 +34,7 @@ export default function ChatWindow({
           {chatId ? (
             <div className="flex items-center space-x-3">
               {/* Avatar del chat/cliente en el header */}
-              
+            
               <div>
                 <h2 className="text-lg font-semibold text-gray-800">{chatId}</h2>
               </div>
