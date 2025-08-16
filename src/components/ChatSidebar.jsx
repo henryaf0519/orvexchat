@@ -34,7 +34,7 @@ export default function ChatSidebar({ conversations, selectedId, onSelect }) {
             <div className="flex items-center space-x-4">
               {/* Avatar o Iniciales */}
               <div className={`flex items-center justify-center h-12 w-12 rounded-full text-white font-bold text-xl uppercase ${getRandomColor(conv.id)}`}>
-                {conv.name ? conv.name.charAt(0) : '?'}
+                
               </div>
               
               <div className="flex-grow">
