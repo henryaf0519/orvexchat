@@ -115,7 +115,7 @@ export default function LoginPage() {
 
             {/* Acciones/enlaces combinados similares a la imagen */}
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-4 sm:space-y-0 mt-6">
-              <p className="text-sm text-gray-600">
+             {/* <p className="text-sm text-gray-600">
                 ¿No tienes cuenta?{" "}
                 <Link
                   to="/register"
@@ -123,7 +123,9 @@ export default function LoginPage() {
                 >
                   Regístrate
                 </Link>
+              
               </p>
+                */}
               <button
                 type="submit"
                 className="w-full sm:w-auto bg-red-600 text-white py-3 px-8 rounded-lg font-semibold text-lg hover:bg-red-700 transition-all duration-300 transform hover:scale-105 shadow-md hover:shadow-lg disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center"
