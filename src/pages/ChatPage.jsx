@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import ChatSidebar from "../components/ChatSidebar";
 import ChatWindow from "../components/ChatWindow";
+import ChatHeader from "../components/ChatHeader";
 import { getChats, getMessages, sendMessage } from "../services/chatService";
 import {
   initSocket,
@@ -153,21 +154,23 @@ export default function ChatPage() {
   // ✅ El resto de tu componente permanece igual
 
   return (
-    // CAMBIO AQUÍ: min-h-screen a h-screen
-    <div className="h-screen bg-gradient-to-br from-gray-50 to-gray-100 flex">
-      <ChatSidebar
-        conversations={conversations}
-        selectedId={selectedConversationId}
-        onSelect={handleChatClick}
-      />
-      <ChatWindow
-        chatId={selectedConversationId}
-        messages={currentChatHistory}
-        isHumanControl={isHumanControl}
-        isSendDisabled={isSendDisabled}
-        onSend={handleSend}
-        onToggleMode={updateChatMode}
-      />
+    <div className="h-screen flex flex-col bg-gradient-to-br from-red-50 to-red-100">
+      <ChatHeader />
+      <div className="flex flex-1 overflow-hidden">
+        <ChatSidebar
+          conversations={conversations}
+          selectedId={selectedConversationId}
+          onSelect={handleChatClick}
+        />
+        <ChatWindow
+          chatId={selectedConversationId}
+          messages={currentChatHistory}
+          isHumanControl={isHumanControl}
+          isSendDisabled={isSendDisabled}
+          onSend={handleSend}
+          onToggleMode={updateChatMode}
+        />
+      </div>
     </div>
   );
 }
