@@ -71,20 +71,39 @@ export default function ChatPage() {
       setIsSendDisabled(false);
       return;
     }
+
     subscribeToChat(selectedConversationId);
 
     const handleActiveChatUpdate = (message) => {
-      setCurrentChatHistory((prevHistory) => [...prevHistory, message]);
+      setCurrentChatHistory((prevHistory) => {
+        const updatedHistory = [...prevHistory, message];
+        // ✅ Lógica de habilitación/deshabilitación del botón
+        if (isHumanControl) {
+          // Si estamos en modo humano, el botón se habilita si el mensaje es del cliente,
+          // y se deshabilita si es nuestro (el agente)
+          setIsSendDisabled(message.from === "agent");
+        } else {
+          // Si estamos en modo IA, el botón SIEMPRE está deshabilitado
+          setIsSendDisabled(true);
+        }
+        return updatedHistory;
+      });
     };
     socket.on("newMessage", handleActiveChatUpdate);
 
     getMessages(selectedConversationId).then((messages) => {
       setCurrentChatHistory(messages);
-      if (messages.length > 0) {
-        const lastMessage = messages[messages.length - 1];
-        setIsSendDisabled(!isHumanControl && lastMessage.from === "IA");
+      if (isHumanControl) {
+        // En modo humano, revisamos el último mensaje para determinar el estado inicial
+        if (messages.length > 0) {
+          const lastMessage = messages[messages.length - 1];
+          setIsSendDisabled(lastMessage.from === "agent");
+        } else {
+          setIsSendDisabled(false); // Habilitar si la conversación está vacía en modo humano
+        }
       } else {
-        setIsSendDisabled(false);
+        // En modo IA, el botón está siempre deshabilitado
+        setIsSendDisabled(true);
       }
     });
 
@@ -103,12 +122,15 @@ export default function ChatPage() {
       text: text,
       from: "agent",
       estado: "SENT",
-      type: "text", // We are assuming it's text for now
+      type: "text",
       SK: `MESSAGE#${new Date().toISOString()}`,
     };
 
     setCurrentChatHistory((prev) => [...prev, newMessage]);
-    setIsSendDisabled(true);
+    // ✅ Deshabilitamos el botón inmediatamente si estamos en modo humano para esperar la respuesta del cliente
+    if (isHumanControl) {
+      setIsSendDisabled(true);
+    }
   };
 
   const handleChatClick = (conversationId) => {
@@ -120,7 +142,6 @@ export default function ChatPage() {
     );
   };
 
-  // ✅ FUNCIONES ACTUALIZADAS PARA LLAMAR AL SERVICIO
   const updateChatMode = async (newMode) => {
     if (!selectedConversationId) return;
 
@@ -136,7 +157,6 @@ export default function ChatPage() {
         }
       );
 
-      // Actualiza el estado localmente para reflejar el cambio en la interfaz
       setConversations((prevConversations) =>
         prevConversations.map((chat) =>
           chat.id === selectedConversationId ? { ...chat, modo: newMode } : chat
@@ -147,11 +167,8 @@ export default function ChatPage() {
       );
     } catch (error) {
       console.error("Error al cambiar el modo del chat:", error);
-      // Opcional: Revertir el estado del frontend si la llamada falla
     }
   };
-
-  // ✅ El resto de tu componente permanece igual
 
   return (
     <div className="h-screen flex flex-col bg-gradient-to-br from-red-50 to-red-100">
