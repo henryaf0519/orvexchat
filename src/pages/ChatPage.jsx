@@ -13,6 +13,7 @@ import {
 } from "../services/socketService";
 
 export default function ChatPage() {
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
   const [conversations, setConversations] = useState([]);
   const [currentChatHistory, setCurrentChatHistory] = useState([]);
   const [selectedConversationId, setSelectedConversationId] = useState(null);
@@ -248,7 +249,7 @@ export default function ChatPage() {
 
     try {
       await fetch(
-        `http://localhost:3000/dynamo/control/${selectedConversationId}`,
+        `${API_BASE_URL}/dynamo/control/${selectedConversationId}`,
         {
           method: "POST",
           headers: {
