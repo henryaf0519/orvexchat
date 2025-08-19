@@ -1,8 +1,8 @@
-const API_URL = 'http://localhost:3000/dynamo';
+const API_URL = import.meta.env.VITE_API_BASE_URL;
 
 export async function getChats() {
   try {
-    const response = await fetch(`${API_URL}/conversations`);
+    const response = await fetch(`${API_URL}/dynamo/conversations`);
     if (!response.ok) {
       throw new Error('Error al obtener la lista de conversaciones.');
     }
@@ -47,7 +47,7 @@ export async function sendMessage(chatId, text) {
 
 export async function getMessages(chatId) {
   try {
-    const response = await fetch(`${API_URL}/messages/${chatId}`);
+    const response = await fetch(`${API_URL}/dynamo/messages/${chatId}`);
     if (!response.ok) {
       throw new Error('Error al obtener los mensajes de la conversación.');
     }

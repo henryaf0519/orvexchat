@@ -29,7 +29,7 @@ export default function ChatPage() {
 
   useEffect(() => {
     // Inicializar el socket
-    const newSocket = initSocket("http://localhost:3000");
+    const newSocket = initSocket();
     setSocket(newSocket);
 
     // Cargar los chats iniciales

@@ -3,11 +3,12 @@
 import { io } from 'socket.io-client';
 
 let socket;
+const Socket_URL = import.meta.env.VITE_API_BASE_URL;;
 
-export function initSocket(url) {
+export function initSocket() {
   if (socket) return socket;
 
-  socket = io(url, {
+  socket = io(Socket_URL, {
     path: '/socket',
   });
 
