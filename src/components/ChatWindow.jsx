@@ -15,8 +15,10 @@ export default function ChatWindow({
 
   // Desplazarse al último mensaje cuando cambian los mensajes
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+    if (messagesEndRef.current) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'auto' }); // <--- CAMBIO AQUÍ
+    }
+  }, [messages, chatId]);
 
   // Función para obtener la primera letra del ID del chat para el avatar del header
   const getChatAvatarInitial = (id) => {
