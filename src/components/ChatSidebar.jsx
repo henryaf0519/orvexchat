@@ -30,9 +30,9 @@ export default function ChatSidebar({ conversations, selectedId, onSelect }) {
             }`}
             onClick={() => onSelect(conv.id)}
           >
-            <div className="flex items-center space-x-4">
-              <div className={`flex items-center justify-center h-12 w-12 rounded-full text-white font-bold text-xl uppercase ${getRandomColor(conv.id)}`}>
-                {conv.name.charAt(0)}
+            <div className="flex items-center space-x-3">
+            <div className={`flex-shrink-0 h-5 w-5 rounded-full ${getRandomColor(conv.id)}`}>
+                {/* Vacío por dentro */}
               </div>
               
               <div className="flex-grow min-w-0">

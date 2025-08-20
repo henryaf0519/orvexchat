@@ -56,21 +56,48 @@ export default function ChatPage() {
 
     fetchConversationsDetails();
 
+    // src/pages/ChatPage.jsx
+
+    // Cargar Tone.js y configurar el sintetizador
+// src/pages/ChatPage.jsx
+
+    // Cargar Tone.js y configurar el sintetizador
     const loadToneJs = async () => {
-        try {
-          await import('https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.min.js');
-          const Tone = window.Tone;
-          if (!Tone || !Tone.MembraneSynth) { throw new Error("Tone.js no cargado."); }
-          const synth = new Tone.MembraneSynth().toDestination();
-          synthRef.current = synth;
-          const startAudioContext = () => {
-            if (Tone.context.state !== 'running') Tone.start().then(() => setAudioContextReady(true));
-            else setAudioContextReady(true);
-          };
-          document.documentElement.addEventListener('click', startAudioContext, { once: true });
-          if (document.readyState === 'complete') startAudioContext();
-        } catch (error) { console.error("Error al cargar Tone.js:", error); }
+      try {
+        await import('https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.min.js');
+        const Tone = window.Tone;
+
+        if (!Tone || !Tone.Synth) {
+          throw new Error("Tone.js o Tone.Synth no se cargaron correctamente.");
+        }
+
+        const synth = new Tone.Synth({
+          oscillator: { type: 'sine' },
+          envelope: { attack: 0.005, decay: 0.1, sustain: 0, release: 0.1 },
+          volume: -10
+        }).toDestination();
+        
+        synthRef.current = synth;
+
+        const startAudioContext = () => {
+          if (Tone.context.state !== 'running') {
+            // ✅ CORRECCIÓN: Eliminada la 'D' extra del nombre de la función
+            Tone.start().then(() => setAudioContextReady(true));
+          } else {
+            setAudioContextReady(true);
+          }
+        };
+
+        document.documentElement.addEventListener('click', startAudioContext, { once: true });
+        if (document.readyState === 'complete' || document.readyState === 'interactive') {
+          startAudioContext();
+        }
+
+      } catch (error) {
+        console.error("Error al cargar Tone.js o configurar el sintetizador:", error);
+      }
     };
+
     loadToneJs();
 
     return () => {
