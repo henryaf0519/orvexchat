@@ -21,6 +21,8 @@ export default function ChatPage() {
   const [socket, setSocket] = useState(null);
   const synthRef = useRef(null);
   const [audioContextReady, setAudioContextReady] = useState(false);
+  
+  // ✅ REINTRODUCIMOS LA REFERENCIA PARA EL COOLDOWN
   const canPlaySoundRef = useRef(true);
 
   const selectedChat = conversations.find(
@@ -28,59 +30,47 @@ export default function ChatPage() {
   );
   const isHumanControl = selectedChat?.modo === "humano";
 
-  // ... (El primer useEffect para inicializar todo se mantiene igual)
+  // Efecto 1: Carga inicial de conversaciones
   useEffect(() => {
-    // Inicializar el socket
     const newSocket = initSocket();
     setSocket(newSocket);
 
-    // Cargar los chats iniciales
-    getChats().then((data) => {
-      setConversations(
-        data.map((c) => ({ ...c, hasUnread: false, modo: "IA" }))
+    const fetchConversationsDetails = async () => {
+      const chatList = await getChats();
+      const conversationsWithDetails = await Promise.all(
+        chatList.map(async (chat) => {
+          const messages = await getMessages(chat.id);
+          const lastMessage = messages[messages.length - 1] || null;
+          return { ...chat, hasUnread: false, modo: "IA", lastMessage: lastMessage };
+        })
       );
-    });
-
-    // Cargar Tone.js y configurar el sintetizador
-    const loadToneJs = async () => {
-      try {
-        await import('https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.min.js');
-        const Tone = window.Tone;
-
-        if (!Tone || !Tone.MembraneSynth) {
-          throw new Error("Tone.js o Tone.MembraneSynth no se cargaron correctamente.");
-        }
-
-        const synth = new Tone.MembraneSynth({
-          pitchDecay: 0.008,
-          octaves: 1,
-          envelope: { attack: 0.001, decay: 0.05, sustain: 0, release: 0.005 },
-          oscillator: { type: "sine" }
-        }).toDestination();
-        
-        synthRef.current = synth;
-
-        const startAudioContext = () => {
-          if (Tone.context.state !== 'running') {
-            Tone.start().then(() => setAudioContextReady(true));
-          } else {
-            setAudioContextReady(true);
-          }
-        };
-
-        document.documentElement.addEventListener('mousedown', startAudioContext, { once: true });
-        document.documentElement.addEventListener('keydown', startAudioContext, { once: true });
-        document.documentElement.addEventListener('touchstart', startAudioContext, { once: true });
-
-        if (document.readyState === 'complete' || document.readyState === 'interactive') {
-          startAudioContext();
-        }
-
-      } catch (error) {
-        console.error("Error al cargar Tone.js:", error);
-      }
+      
+      conversationsWithDetails.sort((a, b) => {
+        if (!a.lastMessage?.SK) return 1;
+        if (!b.lastMessage?.SK) return -1;
+        return new Date(b.lastMessage.SK.split('#')[1]) - new Date(a.lastMessage.SK.split('#')[1]);
+      });
+      
+      setConversations(conversationsWithDetails);
     };
 
+    fetchConversationsDetails();
+
+    const loadToneJs = async () => {
+        try {
+          await import('https://cdnjs.cloudflare.com/ajax/libs/tone/14.8.49/Tone.min.js');
+          const Tone = window.Tone;
+          if (!Tone || !Tone.MembraneSynth) { throw new Error("Tone.js no cargado."); }
+          const synth = new Tone.MembraneSynth().toDestination();
+          synthRef.current = synth;
+          const startAudioContext = () => {
+            if (Tone.context.state !== 'running') Tone.start().then(() => setAudioContextReady(true));
+            else setAudioContextReady(true);
+          };
+          document.documentElement.addEventListener('click', startAudioContext, { once: true });
+          if (document.readyState === 'complete') startAudioContext();
+        } catch (error) { console.error("Error al cargar Tone.js:", error); }
+    };
     loadToneJs();
 
     return () => {
@@ -89,38 +79,46 @@ export default function ChatPage() {
     };
   }, []);
 
-
-  // ... (El useEffect para las notificaciones se mantiene igual)
+  // Efecto 2: Manejo de notificaciones
   useEffect(() => {
     if (!socket) return;
 
     const handleNotification = (data) => {
-      const { conversationId } = data;
+      const { conversationId, message } = data;
+      
       setConversations((prevConversations) => {
-        const existingConversationIndex = prevConversations.findIndex(
-          (c) => c.id === conversationId
-        );
-        let updatedConversations;
-        if (existingConversationIndex !== -1) {
-          const conversationToMove = {
-            ...prevConversations[existingConversationIndex],
-            hasUnread: true,
-          };
-          updatedConversations = [...prevConversations];
-          updatedConversations.splice(existingConversationIndex, 1);
-          updatedConversations.unshift(conversationToMove);
-        } else {
-          const newChat = {
-            id: conversationId, name: conversationId, hasUnread: true, modo: "IA",
-          };
-          updatedConversations = [newChat, ...prevConversations];
-        }
+        let conversationExists = false;
+        let updatedConversations = prevConversations.map((conv) => {
+          if (conv.id === conversationId) {
+            conversationExists = true;
+            return { ...conv, hasUnread: true, lastMessage: message };
+          }
+          return conv;
+        });
 
-        if (synthRef.current && audioContextReady && canPlaySoundRef.current) {
-          synthRef.current.triggerAttackRelease("C6", "32n");
-          canPlaySoundRef.current = false;
-          setTimeout(() => { canPlaySoundRef.current = true; }, 200);
+        if (!conversationExists) {
+          updatedConversations.push({
+            id: conversationId, name: conversationId, hasUnread: true, modo: "IA", lastMessage: message,
+          });
         }
+        
+        updatedConversations.sort((a, b) => {
+            if (!a.lastMessage?.SK) return 1;
+            if (!b.lastMessage?.SK) return -1;
+            return new Date(b.lastMessage.SK.split('#')[1]) - new Date(a.lastMessage.SK.split('#')[1]);
+        });
+        
+        // ✅ LÓGICA DE SONIDO CORREGIDA CON COOLDOWN
+        if (synthRef.current && audioContextReady && canPlaySoundRef.current) {
+            // Reproducimos el sonido
+            synthRef.current.triggerAttackRelease("C6", "32n");
+            // Bloqueamos la reproducción por 200ms
+            canPlaySoundRef.current = false;
+            setTimeout(() => {
+              canPlaySoundRef.current = true;
+            }, 200);
+        }
+        
         return updatedConversations;
       });
     };
@@ -129,64 +127,50 @@ export default function ChatPage() {
     return () => socket.off("newNotification", handleNotification);
   }, [socket, audioContextReady]);
 
-
-  // ✅ AQUÍ ESTÁ EL CAMBIO
+  // ... (El resto del archivo se mantiene igual)
   useEffect(() => {
     if (!socket || !selectedConversationId) {
       setCurrentChatHistory([]);
       setIsSendDisabled(false);
       return;
     }
-
     subscribeToChat(selectedConversationId);
-
     const handleActiveChatUpdate = (message) => {
-      const messageWithTimestamp = {
+      const formattedMessage = {
         ...message,
-        SK: message.SK || `MESSAGE#${new Date().toISOString()}`,
+        SK: message.SK || (message.timestamp ? `MESSAGE#${message.timestamp}` : `MESSAGE#${new Date().toISOString()}`),
       };
-
-      setCurrentChatHistory((prevHistory) => [...prevHistory, messageWithTimestamp]);
+      setCurrentChatHistory((prevHistory) => [...prevHistory, formattedMessage]);
     };
-    
     socket.on("newMessage", handleActiveChatUpdate);
-
     getMessages(selectedConversationId).then((messages) => {
       setCurrentChatHistory(messages);
       const lastMessage = messages[messages.length - 1];
       if (isHumanControl) {
         setIsSendDisabled(lastMessage ? lastMessage.from === "agent" : false);
       } else {
-        setIsSendDisabled(true); // En modo IA, siempre deshabilitado hasta que responda
+        setIsSendDisabled(true);
       }
     });
-
     return () => {
       unsubscribeFromChat(selectedConversationId);
       socket.off("newMessage", handleActiveChatUpdate);
     };
   }, [socket, selectedConversationId, isHumanControl]);
-
-
+  
   const handleSend = async (text) => {
     if (!selectedConversationId || isSendDisabled) return;
-
     const result = await sendMessage(selectedConversationId, text);
     const newMessage = {
       id_mensaje_wa: result.id_mensaje_wa || `temp-${Date.now()}`,
-      text: text,
-      from: "agent",
-      estado: "SENT",
-      type: "text",
+      text: text, from: "agent", estado: "SENT", type: "text",
       SK: `MESSAGE#${new Date().toISOString()}`,
     };
-
     setCurrentChatHistory((prev) => [...prev, newMessage]);
     if (isHumanControl) {
       setIsSendDisabled(true);
     }
   };
-
   const handleChatClick = (conversationId) => {
     setSelectedConversationId(conversationId);
     setConversations((prevConversations) =>
@@ -195,17 +179,12 @@ export default function ChatPage() {
       )
     );
   };
-
   const updateChatMode = async (newMode) => {
     if (!selectedConversationId) return;
     try {
       await fetch(
         `${API_BASE_URL}/dynamo/control/${selectedConversationId}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ newMode }),
-        }
+        { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ newMode }) }
       );
       setConversations((prevConversations) =>
         prevConversations.map((chat) =>
@@ -224,17 +203,12 @@ export default function ChatPage() {
         <MainHeader />
         <div className="flex flex-1 overflow-hidden">
           <ChatSidebar
-            conversations={conversations}
-            selectedId={selectedConversationId}
-            onSelect={handleChatClick}
+            conversations={conversations} selectedId={selectedConversationId} onSelect={handleChatClick}
           />
           <ChatWindow
-            chatId={selectedConversationId}
-            messages={currentChatHistory}
-            isHumanControl={isHumanControl}
-            isSendDisabled={isSendDisabled}
-            onSend={handleSend}
-            onToggleMode={updateChatMode}
+            chatId={selectedConversationId} messages={currentChatHistory}
+            isHumanControl={isHumanControl} isSendDisabled={isSendDisabled}
+            onSend={handleSend} onToggleMode={updateChatMode}
           />
         </div>
       </div>
