@@ -6,11 +6,28 @@ export default function MessageItem({ message }) {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
   // Clases CSS para los mensajes.
-  // Los mensajes de la agencia (nuestros) serán de color índigo, alineados a la derecha.
-  // Los mensajes del cliente serán de color gris claro, alineados a la izquierda.
   const messageClasses = isAgent
-    ? "bg-indigo-600 text-white rounded-br-xl rounded-2xl" // Color índigo para mensajes de la agencia
+    ? "bg-indigo-600 text-white rounded-br-xl rounded-2xl"
     : "bg-gray-200 text-gray-900 rounded-bl-xl rounded-2xl";
+
+  // Función para formatear la fecha y hora del mensaje
+  const formatTimestamp = (isoString) => {
+    if (!isoString || !isoString.includes('#')) {
+      return '';
+    }
+    
+    const dateString = isoString.split('#')[1];
+    const date = new Date(dateString);
+    
+    // ✅ CAMBIO CLAVE AQUÍ: Especificamos la zona horaria de Bogotá
+    const options = {
+      hour: '2-digit',
+      minute: '2-digit',
+      timeZone: 'America/Bogota'
+    };
+    
+    return date.toLocaleTimeString([], options);
+  };
 
   return (
     <>
@@ -30,10 +47,15 @@ export default function MessageItem({ message }) {
               {message.text}
             </p>
           )}
+
+          {/* El timestamp ahora se mostrará en la hora correcta */}
+          <p className={`text-xs mt-2 text-right ${isAgent ? 'text-indigo-200' : 'text-gray-500'}`}>
+            {formatTimestamp(message.SK)}
+          </p>
         </div>
       </div>
 
-      {/* Modal para previsualización de imagen */}
+      {/* Modal para previsualización de imagen (esto no cambia) */}
       {isModalOpen && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-90 p-4"
