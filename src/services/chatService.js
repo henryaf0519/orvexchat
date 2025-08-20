@@ -20,7 +20,7 @@ export async function getChats() {
 
 export async function sendMessage(chatId, text) {
   try {
-    const response = await fetch(`${API_URL}/message`, {
+    const response = await fetch(`${API_URL}/dynamo/message`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -56,5 +56,22 @@ export async function getMessages(chatId) {
   } catch (error) {
     console.error('Fallo en getMessages:', error);
     return [];
+  }
+}
+
+export async function updateChatMode(chatId, newMode) {
+  try {
+    const response = await fetch(`${API_URL}/dynamo/control/${chatId}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ newMode }),
+    });
+    if (!response.ok) {
+      throw new Error("Error al actualizar el modo del chat.");
+    }
+    return await response.json();
+  } catch (error) {
+    console.error("Fallo en updateChatMode:", error);
+    return null;
   }
 }
