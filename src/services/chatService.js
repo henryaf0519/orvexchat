@@ -1,8 +1,13 @@
-const API_URL = import.meta.env.VITE_API_BASE_URL;
+// src/services/chatService.js
 
+import { apiFetch } from './api'; // Importa nuestro interceptor centralizado
+
+/**
+ * Obtiene la lista de todas las conversaciones.
+ */
 export async function getChats() {
   try {
-    const response = await fetch(`${API_URL}/dynamo/conversations`);
+    const response = await apiFetch('/dynamo/conversations'); 
     if (!response.ok) {
       throw new Error('Error al obtener la lista de conversaciones.');
     }
@@ -18,13 +23,13 @@ export async function getChats() {
   }
 }
 
+/**
+ * Envía un mensaje a una conversación específica.
+ */
 export async function sendMessage(chatId, text) {
   try {
-    const response = await fetch(`${API_URL}/dynamo/message`, {
+    const response = await apiFetch('/dynamo/message', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
       body: JSON.stringify({
         conversationId: chatId,
         from: 'agent',
@@ -37,41 +42,44 @@ export async function sendMessage(chatId, text) {
     if (!response.ok) {
       throw new Error('Error al enviar el mensaje.');
     }
-    const result = await response.json();
-    return result;
+    return await response.json();
   } catch (error) {
     console.error('Fallo en sendMessage:', error);
     return null;
   }
 }
 
+/**
+ * Obtiene todos los mensajes de una conversación.
+ */
 export async function getMessages(chatId) {
   try {
-    const response = await fetch(`${API_URL}/dynamo/messages/${chatId}`);
+    const response = await apiFetch(`/dynamo/messages/${chatId}`);
     if (!response.ok) {
       throw new Error('Error al obtener los mensajes de la conversación.');
     }
-    const messages = await response.json();
-    return messages;
+    return await response.json();
   } catch (error) {
     console.error('Fallo en getMessages:', error);
     return [];
   }
 }
 
+/**
+ * Actualiza el modo de control de un chat (IA o humano).
+ */
 export async function updateChatMode(chatId, newMode) {
   try {
-    const response = await fetch(`${API_URL}/dynamo/control/${chatId}`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
+    const response = await apiFetch(`/dynamo/control/${chatId}`, {
+      method: 'POST',
       body: JSON.stringify({ newMode }),
     });
     if (!response.ok) {
-      throw new Error("Error al actualizar el modo del chat.");
+      throw new Error('Error al actualizar el modo del chat.');
     }
     return await response.json();
   } catch (error) {
-    console.error("Fallo en updateChatMode:", error);
+    console.error('Fallo en updateChatMode:', error);
     return null;
   }
 }

@@ -1,26 +1,16 @@
-// Define la URL base de tu API de NestJS.
+// src/services/authService.js
 
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL;
+import { apiFetch } from "./api"; // Importa nuestro interceptor centralizado
 
 /**
  * Función para iniciar sesión (login) de un usuario.
- *
- * @param {string} email - El correo electrónico del usuario.
- * @param {string} password - La contraseña del usuario (en texto plano).
- * @returns {Promise<Object>} Un objeto con el access_token si el login es exitoso.
- * @throws {Error} Si las credenciales son inválidas o hay un error.
  */
 export async function login(email, password) {
-  const LOGIN_URL = `${API_BASE_URL}/auth/login`;
-
   try {
-    const response = await fetch(LOGIN_URL, {
+    // ✅ Usa apiFetch con solo el endpoint y las opciones necesarias
+    const response = await apiFetch("/auth/login", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
       body: JSON.stringify({ email, password }),
-      credentials: "include",
     });
 
     if (!response.ok) {
@@ -38,47 +28,37 @@ export async function login(email, password) {
   }
 }
 
+/**
+ * Función para verificar si ya existe una sesión activa al cargar la página.
+ */
 export async function verifySession() {
-  const PROFILE_URL = `${API_BASE_URL}/auth/profile`;
-
   try {
-    const response = await fetch(PROFILE_URL, {
-      method: "GET",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      credentials: "include",
-    });
+    // ✅ Usa apiFetch solo con el endpoint. El método GET es el predeterminado.
+    const response = await apiFetch("/auth/profile");
 
     if (!response.ok) {
       throw new Error("No hay sesión activa");
     }
 
-    return response.json();
+    return response.json(); // Devuelve los datos del usuario
   } catch (error) {
-    console.log("Verificación de sesión fallida:", error.message);
+    // Este log es opcional, ya que es normal que falle si no hay sesión
+    console.log("Verificación de sesión fallida. Redirigiendo a login.");
     throw error;
   }
 }
 
 /**
  * Función para registrar un nuevo usuario.
- *
- * @param {string} email - El correo electrónico del nuevo usuario.
- * @param {string} password - La contraseña del nuevo usuario (en texto plano).
- * @returns {Promise<Object>} Un objeto con el mensaje de éxito y el email del usuario registrado.
- * @throws {Error} Si no se pudo registrar el usuario.
+ * Nota: Tu endpoint en el backend es '/auth/register', pero aquí usas '/user/register'.
+ * Asegúrate de que coincidan. Lo corregiré a '/auth/register'.
  */
-export async function register(email, password) {
-  const REGISTER_URL = `${API_BASE_URL}/user/register`;
-
+export async function register(email, password, waba_id, whatsapp_token) {
   try {
-    const response = await fetch(REGISTER_URL, {
+    const response = await apiFetch("/auth/register", {
+      // ✅ Corregido a /auth/register y usando apiFetch
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify({ email, password, waba_id, whatsapp_token }), // ✅ Añadidos los nuevos campos
     });
 
     if (!response.ok) {
@@ -92,5 +72,18 @@ export async function register(email, password) {
   } catch (error) {
     console.error("Error al registrar usuario:", error);
     throw error;
+  }
+}
+
+/**
+ * Función para cerrar la sesión del usuario.
+ */
+export async function logout() {
+  try {
+    // No nos importa la respuesta, solo que se ejecute.
+    await apiFetch("/auth/logout", { method: "POST" });
+  } catch (error) {
+    // No es crítico si esto falla, ya que la sesión del frontend se limpiará de todas formas.
+    console.error("Error al cerrar sesión en el servidor:", error);
   }
 }
