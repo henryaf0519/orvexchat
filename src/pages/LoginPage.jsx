@@ -14,13 +14,8 @@ export default function LoginPage() {
   const [emailError, setEmailError] = useState(""); // Error de email
   const [passwordError, setPasswordError] = useState(""); // Error de contraseña
   const setTemplates = useChatStore((state) => state.setTemplates);
+  const setUserData = useChatStore((state) => state.setUserData);
   const navigate = useNavigate();
-
-  useEffect(() => {
-    if (localStorage.getItem("authToken")) {
-      navigate("/chat");
-    }
-  }, [navigate]);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -50,10 +45,11 @@ export default function LoginPage() {
     }
 
     try {
-      const { token, templates } = await login(email, password);
-      console.log("token: ", token);
-      localStorage.setItem("authToken", token);
+       const { userData, templates } = await login(email, password);
+        debugger
       setTemplates(templates || []); 
+      setUserData(userData);
+     
       navigate("/chat");
     } catch (err) {
       setError("Credenciales inválidas");

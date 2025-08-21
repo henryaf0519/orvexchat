@@ -15,22 +15,48 @@ export async function login(email, password) {
 
   try {
     const response = await fetch(LOGIN_URL, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({ email, password }),
+      credentials: "include",
     });
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ message: 'Error desconocido en el login' }));
-      throw new Error(errorData.message || 'Credenciales inválidas');
+      const errorData = await response
+        .json()
+        .catch(() => ({ message: "Error desconocido en el login" }));
+      throw new Error(errorData.message || "Credenciales inválidas");
     }
 
     const data = await response.json();
-    return { token: data.access_token, templates: data.templates };
+    return { templates: data.templates, userData: data.userData };
   } catch (error) {
-    console.error('Error al iniciar sesión:', error);
+    console.error("Error al iniciar sesión:", error);
+    throw error;
+  }
+}
+
+export async function verifySession() {
+  const PROFILE_URL = `${API_BASE_URL}/auth/profile`; // <-- Necesitarás crear este endpoint en tu backend
+
+  try {
+    const response = await fetch(PROFILE_URL, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      credentials: "include", // <-- ¡CLAVE! Esto envía la cookie HttpOnly
+    });
+
+    if (!response.ok) {
+      throw new Error("No hay sesión activa");
+    }
+
+    return response.json(); // Devuelve los datos del usuario
+  } catch (error) {
+    console.log("Verificación de sesión fallida:", error.message);
     throw error;
   }
 }
@@ -48,21 +74,23 @@ export async function register(email, password) {
 
   try {
     const response = await fetch(REGISTER_URL, {
-      method: 'POST',
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
+        "Content-Type": "application/json",
       },
       body: JSON.stringify({ email, password }),
     });
 
     if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ message: 'Error desconocido en el registro' }));
-      throw new Error(errorData.message || 'No se pudo registrar el usuario');
+      const errorData = await response
+        .json()
+        .catch(() => ({ message: "Error desconocido en el registro" }));
+      throw new Error(errorData.message || "No se pudo registrar el usuario");
     }
 
     return response.json();
   } catch (error) {
-    console.error('Error al registrar usuario:', error);
+    console.error("Error al registrar usuario:", error);
     throw error;
   }
 }

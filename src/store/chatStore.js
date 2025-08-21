@@ -23,17 +23,20 @@ const sortConversations = (conversations) => {
 export const useChatStore = create(
   persist(
     (set, get) => ({
-      // ✅ ESTADO NUEVO PARA LAS PLANTILLAS
-      templates: new Map(), // Usaremos un Map para búsquedas rápidas por nombre
-
-      // --- El resto de tus estados existentes ---
+      userData: null,
+      isAuthenticated: false,
+      templates: new Map(), 
       conversations: [],
       currentChatHistory: [],
       selectedConversationId: null,
       loadingMessages: false,
       isSendDisabled: false,
 
-      // ✅ ACCIÓN NUEVA PARA GUARDAR LAS PLANTILLAS
+
+      setUserData: (data) => {
+        set({ userData: data, isAuthenticated: !!data });
+      },
+
       setTemplates: (templatesArray) => {
         const templatesMap = new Map(templatesArray.map((t) => [t.name, t]));
         set({ templates: templatesMap });
