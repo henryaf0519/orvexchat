@@ -45,12 +45,12 @@ export default function LoginPage() {
     }
 
     try {
-       const { userData, templates } = await login(email, password);
-        debugger
+      const { userData, templates } = await login(email, password);
+
       setTemplates(templates || []); 
       setUserData(userData);
-     
       navigate("/chat");
+      
     } catch (err) {
       setError("Credenciales inválidas");
     } finally {

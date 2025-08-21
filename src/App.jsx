@@ -13,9 +13,9 @@ function App() {
     const checkSession = async () => {
       try {
         const userData = await verifySession();
-        setUserData(userData); // Restaura la sesión si la cookie es válida
+        setUserData(userData);
       } catch (error) {
-        setUserData(null); // Asegura que no haya sesión si la cookie no es válida
+        setUserData(null);
       } finally {
         setLoading(false);
       }

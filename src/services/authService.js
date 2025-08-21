@@ -39,7 +39,7 @@ export async function login(email, password) {
 }
 
 export async function verifySession() {
-  const PROFILE_URL = `${API_BASE_URL}/auth/profile`; // <-- Necesitarás crear este endpoint en tu backend
+  const PROFILE_URL = `${API_BASE_URL}/auth/profile`;
 
   try {
     const response = await fetch(PROFILE_URL, {
@@ -47,14 +47,14 @@ export async function verifySession() {
       headers: {
         "Content-Type": "application/json",
       },
-      credentials: "include", // <-- ¡CLAVE! Esto envía la cookie HttpOnly
+      credentials: "include",
     });
 
     if (!response.ok) {
       throw new Error("No hay sesión activa");
     }
 
-    return response.json(); // Devuelve los datos del usuario
+    return response.json();
   } catch (error) {
     console.log("Verificación de sesión fallida:", error.message);
     throw error;
