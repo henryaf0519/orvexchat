@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { login } from "../services/authService";
 import logo from "../assets/logo.png";
 import { HiEye, HiEyeOff } from "react-icons/hi"; // Iconos de mostrar/ocultar
+import { useChatStore } from '../store/chatStore'; 
 
 export default function LoginPage() {
   const [loading, setLoading] = useState(false);
@@ -12,6 +13,7 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false); // Para mostrar/ocultar la contraseña
   const [emailError, setEmailError] = useState(""); // Error de email
   const [passwordError, setPasswordError] = useState(""); // Error de contraseña
+  const setTemplates = useChatStore((state) => state.setTemplates);
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -48,9 +50,10 @@ export default function LoginPage() {
     }
 
     try {
-      const { token } = await login(email, password);
+      const { token, templates } = await login(email, password);
       console.log("token: ", token);
       localStorage.setItem("authToken", token);
+      setTemplates(templates || []); 
       navigate("/chat");
     } catch (err) {
       setError("Credenciales inválidas");
@@ -118,7 +121,6 @@ export default function LoginPage() {
                 placeholder="name@example.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                
                 disabled={loading}
               />
               {emailError && (
@@ -141,7 +143,6 @@ export default function LoginPage() {
                   placeholder="Your password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  
                   disabled={loading}
                 />
                 <button

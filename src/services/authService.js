@@ -28,8 +28,7 @@ export async function login(email, password) {
     }
 
     const data = await response.json();
-    console.log('Respuesta de la API:', data.access_token);
-    return {token: data.access_token};
+    return { token: data.access_token, templates: data.templates };
   } catch (error) {
     console.error('Error al iniciar sesión:', error);
     throw error;
