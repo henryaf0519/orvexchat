@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { useChatStore } from '../store/chatStore';      // ✅ 1. Importa el store de Zustand
-import TemplateMessage from './TemplateMessage';    // ✅ 2. Importa el nuevo componente de plantilla
+import { useChatStore } from '../store/chatStore';
+import TemplateMessage from './TemplateMessage';
+import AudioPlayer from './AudioPlayer';
 
 export default function MessageItem({ message }) {
   const isAgent = message.from === "IA" || message.from === "agent";
@@ -24,10 +25,11 @@ export default function MessageItem({ message }) {
   };
 
   const renderContent = () => {
+    console.log('message: ', message)
     switch (message.type) {
-      
+      case 'audio':
+        return <AudioPlayer src={message.url} isAgent={isAgent} />;
       case 'plantilla': {
-        console.log('message: ', message)
         const templateData = templates.get(message.text);
         if (templateData) {
           return <TemplateMessage template={templateData} />;
@@ -46,7 +48,7 @@ export default function MessageItem({ message }) {
           />
         );
 
-      default: // Esto manejará 'text' y cualquier otro tipo como texto plano
+      default:
         return (
           <p className="text-sm leading-relaxed whitespace-pre-line px-2">
             {message.text}
@@ -58,7 +60,6 @@ export default function MessageItem({ message }) {
   return (
     <>
       <div className={`flex ${isAgent ? 'justify-end' : 'justify-start'}`}>
-        {/* ✅ 5. Ajustamos el padding (p-2) para que las plantillas se vean bien integradas */}
         <div className={`p-2 max-w-[70%] shadow-lg rounded-2xl ${messageBubbleClasses}`}>
           
           {renderContent()}
@@ -69,7 +70,6 @@ export default function MessageItem({ message }) {
         </div>
       </div>
 
-      {/* Modal para previsualización de imagen (esto no cambia) */}
       {isModalOpen && (
         <div
           className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-90 p-4"
