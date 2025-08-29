@@ -1,20 +1,23 @@
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { login } from "../services/authService";
 import logo from "../assets/logo.png";
-import { HiEye, HiEyeOff } from "react-icons/hi"; // Iconos de mostrar/ocultar
-import { useChatStore } from '../store/chatStore'; 
+import { HiEye, HiEyeOff } from "react-icons/hi";
+import { useChatStore } from '../store/chatStore';
 
 export default function LoginPage() {
   const [loading, setLoading] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
-  const [showPassword, setShowPassword] = useState(false); // Para mostrar/ocultar la contraseña
-  const [emailError, setEmailError] = useState(""); // Error de email
-  const [passwordError, setPasswordError] = useState(""); // Error de contraseña
+  const [showPassword, setShowPassword] = useState(false);
+  const [emailError, setEmailError] = useState("");
+  const [passwordError, setPasswordError] = useState("");
+  
+  // ✅ 1. Importar las acciones correctas desde el store
   const setTemplates = useChatStore((state) => state.setTemplates);
-  const setUserData = useChatStore((state) => state.setUserData);
+  const setAuthData = useChatStore((state) => state.setAuthData); // <- La acción que faltaba
+
   const navigate = useNavigate();
 
   const handleSubmit = async (e) => {
@@ -26,33 +29,37 @@ export default function LoginPage() {
 
     // Validación de los campos
     let isValid = true;
-
-    // Si el email está vacío
     if (!email) {
       setEmailError("El correo es obligatorio.");
       isValid = false;
     }
-
-    // Si la contraseña está vacía
     if (!password) {
       setPasswordError("La contraseña es obligatoria.");
       isValid = false;
     }
-
     if (!isValid) {
       setLoading(false);
       return;
     }
 
     try {
-      const { userData, templates } = await login(email, password);
+      // La respuesta del login es correcta y contiene { accessToken, templates, userData }
+      const loginData = await login(email, password);
 
-      setTemplates(templates || []); 
-      setUserData(userData);
+      // ✅ 2. Usar la acción 'setAuthData' para guardar la sesión
+      setAuthData({
+        userData: loginData.userData,
+        accessToken: loginData.accessToken
+      });
+
+      // ✅ 3. Usar la variable correcta 'loginData.templates'
+      setTemplates(loginData.templates || []);
+      
       navigate("/chat");
       
     } catch (err) {
-      setError("Credenciales inválidas");
+      // Ahora este error solo se mostrará si las credenciales son realmente inválidas
+      setError(err.message || "Credenciales inválidas");
     } finally {
       setLoading(false);
     }
@@ -61,15 +68,12 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-100 p-4 font-sans text-[#1A1C20] sm:p-0">
       <div className="flex w-full max-w-5xl bg-white shadow-2xl rounded-3xl overflow-hidden min-h-[600px] transform transition-all duration-300 hover:scale-[1.005]">
-        {/* Sección de branding izquierda (similar a la imagen) */}
+        {/* Sección de branding izquierda */}
         <div className="hidden md:flex w-1/2 bg-[#2D0303] text-white flex-col justify-between p-12 relative overflow-hidden rounded-l-3xl">
-          {/* Formas abstractas circulares */}
           <div className="absolute top-[-10%] left-[-10%] w-72 h-72 bg-red-800 rounded-full opacity-10 transform rotate-45"></div>
           <div className="absolute bottom-[-10%] right-[-10%] w-96 h-96 bg-red-800 rounded-full opacity-10 transform -rotate-45"></div>
           <div className="absolute inset-0 flex items-center justify-center">
-            {/* Logo y Nombre de Marca */}
             <div className="relative z-10 text-center">
-              {/* Usando el placeholder de URL para el logo */}
               <img
                 src={logo}
                 alt="Orvex Chat Logo"
@@ -158,7 +162,6 @@ export default function LoginPage() {
               )}
             </div>
 
-            {/* Acciones/enlaces combinados similares a la imagen */}
             <div className="flex flex-col sm:flex-row sm:justify-between sm:items-center space-y-4 sm:space-y-0 mt-6">
               <button
                 type="submit"

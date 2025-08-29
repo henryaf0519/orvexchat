@@ -1,6 +1,7 @@
 // src/services/authService.js
 
 import { apiFetch } from "./api"; // Importa nuestro interceptor centralizado
+import { useChatStore } from '../store/chatStore';
 
 /**
  * Función para iniciar sesión (login) de un usuario.
@@ -20,8 +21,7 @@ export async function login(email, password) {
       throw new Error(errorData.message || "Credenciales inválidas");
     }
 
-    const data = await response.json();
-    return { templates: data.templates, userData: data.userData };
+     return await response.json(); 
   } catch (error) {
     console.error("Error al iniciar sesión:", error);
     throw error;

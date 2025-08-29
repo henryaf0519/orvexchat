@@ -25,6 +25,7 @@ export const useChatStore = create(
     (set, get) => ({
       userData: null,
       isAuthenticated: false,
+      accessToken: null,
       templates: new Map(), 
       conversations: [],
       currentChatHistory: [],
@@ -33,8 +34,12 @@ export const useChatStore = create(
       isSendDisabled: false,
 
 
-      setUserData: (data) => {
-        set({ userData: data, isAuthenticated: !!data });
+      setAuthData: (data) => {
+        set({
+          userData: data.userData,
+          accessToken: data.accessToken,
+          isAuthenticated: !!data.accessToken,
+        });
       },
 
       setTemplates: (templatesArray) => {
@@ -163,6 +168,9 @@ export const useChatStore = create(
       name: "orvex-chat-storage",
       storage: createJSONStorage(() => localStorage),
       partialize: (state) => ({
+        isAuthenticated: state.isAuthenticated,
+        userData: state.userData,
+        accessToken: state.accessToken,
         templates: Array.from(state.templates.entries()),
       }),
       onRehydrateStorage: () => (state) => {
