@@ -1,26 +1,22 @@
-// src/components/RemindersList.jsx
+// src/components/RemindersList.jsx (Versión Definitiva)
 import { useEffect } from 'react';
 import { useChatStore } from '../store/chatStore';
 import { FaTrash } from 'react-icons/fa';
-import { shallow } from 'zustand/shallow';
 
 export default function RemindersList() {
-  const { schedules, loadingSchedules, fetchSchedules, deleteSchedule } = useChatStore(
-    (state) => ({
-      schedules: state.schedules,
-      loadingSchedules: state.loadingSchedules,
-      fetchSchedules: state.fetchSchedules,
-      deleteSchedule: state.deleteSchedule,
-    }),
-    shallow
-  );
+  // ✅ SOLUCIÓN: Selecciona cada pieza del estado individualmente.
+  // Esto garantiza que el componente solo se re-renderice cuando estas piezas específicas cambien.
+  const schedules = useChatStore((state) => state.schedules);
+  const loadingSchedules = useChatStore((state) => state.loadingSchedules);
+  const fetchSchedules = useChatStore((state) => state.fetchSchedules);
+  const deleteSchedule = useChatStore((state) => state.deleteSchedule);
 
-  // ----> INICIO DE LA CORRECCIÓN <----
   useEffect(() => {
-    // Esta función se llamará solo una vez cuando el componente se monte por primera vez.
+    // Este console.log ahora solo debería mostrarse dos veces en el montaje inicial (por StrictMode)
+    // y no debería repetirse en un bucle.
+    console.log("Fetching schedules... (should only see this once per mount)");
     fetchSchedules();
-  }, []); // El arreglo de dependencias vacío [] es la clave.
-  // ----> FIN DE LA CORRECCIÓN <----
+  }, [fetchSchedules]); // Es una buena práctica incluir la función del store en las dependencias.
 
   const handleDelete = async (scheduleId) => {
     if (window.confirm('¿Estás seguro de que quieres eliminar este recordatorio?')) {
@@ -33,29 +29,30 @@ export default function RemindersList() {
     }
   };
 
-  const formatScheduleTime = (schedule) => {
-    if (schedule.scheduleType === 'once' && schedule.sendAt) {
-      return new Date(schedule.sendAt).toLocaleString('es-CO', {
-        year: 'numeric', month: 'long', day: 'numeric',
-        hour: '2-digit', minute: '2-digit'
-      });
-    }
-    if (schedule.scheduleType === 'recurring' && schedule.cronExpression) {
-      return `Recurrente (${schedule.cronExpression})`;
-    }
-    return 'No especificado';
-  };
+  // src/components/RemindersList.jsx
 
-  if (loadingSchedules && !schedules?.length) {
+const formatScheduleTime = (schedule) => {
+  if (schedule.scheduleType === 'once' && schedule.sendAt) {
+    const localDateString = schedule.sendAt.slice(0, -1);
+    return new Date(localDateString).toLocaleString('es-CO', {
+      year: 'numeric', month: 'long', day: 'numeric',
+      hour: '2-digit', minute: '2-digit'
+    });
+  }
+  if (schedule.scheduleType === 'recurring' && schedule.cronExpression) {
+    return `Recurrente (${schedule.cronExpression})`;
+  }
+  return 'No especificado';
+};
+
+  if (loadingSchedules && schedules.length === 0) {
     return <p className="text-center text-gray-500">Cargando recordatorios...</p>;
   }
-
-  const safeSchedules = schedules || [];
 
   return (
     <div className="bg-white p-6 rounded-lg shadow-md">
       <h3 className="text-xl font-semibold mb-4 text-gray-800">Recordatorios Programados</h3>
-      {safeSchedules.length === 0 ? (
+      {schedules.length === 0 ? (
         <p className="text-center text-gray-500">No hay recordatorios programados.</p>
       ) : (
         <div className="overflow-x-auto">
@@ -69,7 +66,7 @@ export default function RemindersList() {
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
-              {safeSchedules.map((schedule) => (
+              {schedules.map((schedule) => (
                 <tr key={schedule.scheduleId}>
                   <td className="px-6 py-4 whitespace-nowrap">
                     <div className="text-sm font-medium text-gray-900">{schedule.name}</div>

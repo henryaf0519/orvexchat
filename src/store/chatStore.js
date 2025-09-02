@@ -173,8 +173,15 @@ export const useChatStore = create(
       },
       fetchSchedules: async () => {
         set({ loadingSchedules: true });
-        const schedulesFromApi = await getSchedules();
-        set({ schedules: schedulesFromApi, loadingSchedules: false });
+        try {
+          const schedulesFromApi = await getSchedules();
+          // Actualiza los datos y el estado de carga en UNA SOLA LLAMADA
+          set({ schedules: schedulesFromApi, loadingSchedules: false });
+        } catch (error) {
+          console.error("Error fetching schedules:", error);
+          // Asegúrate de desactivar la carga incluso si hay un error
+          set({ loadingSchedules: false });
+        }
       },
       createSchedule: async (scheduleData) => {
         const newSchedule = await createSchedule(scheduleData);
