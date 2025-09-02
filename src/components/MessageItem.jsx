@@ -25,7 +25,6 @@ export default function MessageItem({ message }) {
   };
 
   const renderContent = () => {
-    console.log('message: ', message)
     switch (message.type) {
       case 'audio':
         return <AudioPlayer src={message.url} isAgent={isAgent} />;

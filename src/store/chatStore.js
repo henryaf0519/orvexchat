@@ -8,6 +8,12 @@ import {
   updateChatMode as updateChatModeAPI,
 } from "../services/chatService";
 
+import {
+  getSchedules,
+  createSchedule,
+  deleteSchedule,
+} from "../services/reminderService";
+
 const sortConversations = (conversations) => {
   return conversations.sort((a, b) => {
     if (!a.lastMessage?.SK) return 1;
@@ -32,6 +38,8 @@ export const useChatStore = create(
       selectedConversationId: null,
       loadingMessages: false,
       isSendDisabled: false,
+      schedules: [],
+      loadingSchedules: false,
 
 
       setAuthData: (data) => {
@@ -162,6 +170,23 @@ export const useChatStore = create(
         if (selectedChat?.modo === "humano" && message.from !== "agent") {
           set({ isSendDisabled: false });
         }
+      },
+      fetchSchedules: async () => {
+        set({ loadingSchedules: true });
+        const schedulesFromApi = await getSchedules();
+        set({ schedules: schedulesFromApi, loadingSchedules: false });
+      },
+      createSchedule: async (scheduleData) => {
+        const newSchedule = await createSchedule(scheduleData);
+        set((state) => ({
+          schedules: [...state.schedules, newSchedule],
+        }));
+      },
+      deleteSchedule: async (scheduleId) => {
+        await deleteSchedule(scheduleId);
+        set((state) => ({
+          schedules: state.schedules.filter((s) => s.scheduleId !== scheduleId),
+        }));
       },
     }),
     {
