@@ -27,7 +27,7 @@ export const apiFetch = async (endpoint, options = {}) => {
     console.log('Sesión expirada, redirigiendo al login...');
     useChatStore.getState().setAuthData({ userData: null, accessToken: null });
     if (window.location.pathname !== '/login') {
-      window.location.href = '/login';
+      //window.location.href = '/login';
     }
     throw new Error('Sesión expirada o inválida.');
   }

@@ -3,12 +3,11 @@ import { useChatStore } from "../store/chatStore";
 import {
   FaPaperPlane,
   FaSpinner,
-  FaCheckCircle,
-  FaExclamationTriangle,
   FaChevronDown,
   FaImage,
 } from "react-icons/fa";
 import NotificationModal from './NotificationModal';
+import { getContacts } from "../services/reminderService";
 
 const WhatsAppPreview = ({ text, image }) => (
   <div className="w-full max-w-[320px] mx-auto bg-[#E1F7CB] p-2 rounded-lg shadow-md border border-gray-200">
@@ -33,12 +32,7 @@ const WhatsAppPreview = ({ text, image }) => (
   </div>
 );
 
-const mockContactList = [
-  { id: "1", name: "Cliente Principal", number: "573196372542" },
-  { id: "2", name: "Proveedor A", number: "573001112233" },
-  { id: "3", name: "Socio Comercial", number: "573214445566" },
-  { id: "4", name: "Equipo de Ventas", number: "573157778899" },
-];
+
 
 export default function CreateReminderForm() {
   const createSchedule = useChatStore((state) => state.createSchedule);
@@ -57,13 +51,12 @@ export default function CreateReminderForm() {
   const [imageFile, setImageFile] = useState(null);
   const [imagePreview, setImagePreview] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
-   const [notification, setNotification] = useState({
-    show: false,
-    message: '',
-    type: 'success', // 'success' o 'error'
-  });
+  const [contactList, setContactList] = useState([])
+  const [notification, setNotification] = useState({
+  show: false,
+  message: '',
+  type: 'success',
+});
 
   useEffect(() => {
     // Limpia la URL del objeto cuando el componente se desmonta para evitar memory leaks
@@ -73,6 +66,19 @@ export default function CreateReminderForm() {
       }
     };
   }, [imagePreview]);
+
+  useEffect(() => {
+    const fetchContacts = async () => {
+      try {
+        const contacts = await getContacts();
+        setContactList(contacts);
+      } catch (error) {
+        console.error("No se pudieron cargar los contactos", error);
+      }
+    };
+
+    fetchContacts();
+  }, []);
 
   const handleImageChange = (e) => {
     const file = e.target.files[0];
@@ -100,7 +106,7 @@ export default function CreateReminderForm() {
   };
 
   const handleSelectAll = () => {
-    const allNumbers = mockContactList.map((c) => c.number);
+    const allNumbers = contactList.map((c) => c.number); 
     setFormData((prev) => ({ ...prev, phoneNumbers: allNumbers }));
   };
 
@@ -229,7 +235,7 @@ export default function CreateReminderForm() {
                 {isDropdownOpen && (
                     <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-xl">
                         <ul className="max-h-60 overflow-y-auto p-2">
-                            {mockContactList.map((contact) => (
+                            {contactList.map((contact) => (
                                 <li key={contact.id} className="p-2 hover:bg-gray-100 rounded-md cursor-pointer" onClick={() => handlePhoneNumberChange(contact.number)}>
                                     <div className="flex items-center">
                                         <input type="checkbox" checked={formData.phoneNumbers.includes(contact.number)} readOnly className="h-4 w-4 text-red-600 border-gray-300 rounded focus:ring-red-500" />

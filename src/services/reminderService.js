@@ -58,3 +58,23 @@ export async function deleteSchedule(scheduleId) {
     throw error;
   }
 }
+
+
+export async function getContacts() {
+  try {
+    const response = await apiFetch('/dynamo/contacts'); // Llama al nuevo endpoint
+    if (!response.ok) {
+      throw new Error('Error al obtener la lista de contactos.');
+    }
+    const contacts = await response.json();
+    // Transformamos los datos para que el componente los pueda usar fácilmente
+    return contacts.map((contact) => ({
+      id: contact.conversationId,
+      name: contact.name || contact.conversationId, // Usamos el nombre del contacto
+      number: contact.conversationId,
+    }));
+  } catch (error) {
+    console.error('Fallo en getContacts:', error);
+    return []; // Devuelve un array vacío en caso de error
+  }
+}
