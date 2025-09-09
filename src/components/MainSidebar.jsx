@@ -3,7 +3,8 @@
 import { useNavigate } from "react-router-dom";
 import {
   FaComments,
-  FaClock, // 1. Importa el nuevo ícono
+  FaClock,
+  FaUser,
   FaSignOutAlt,
 } from "react-icons/fa";
 import logo from "../assets/logoOnly.png";
@@ -46,6 +47,16 @@ export default function MainSidebar() {
           >
             <FaClock size={24} />
           </button>
+          <button
+            onClick={() => navigate('/contacts')}
+            title="Contactos"
+            className={`p-3 rounded-xl transition-transform transform hover:scale-110 ${
+              currentPath === '/contacts' ? 'bg-red-600 text-white' : 'hover:bg-red-600 hover:text-white'
+            }`}
+          >
+            <FaUser size={24} />
+          </button>
+
         </nav>
       </div>
       <div className="pb-4">

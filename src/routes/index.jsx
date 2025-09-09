@@ -4,6 +4,7 @@ import ChatPage from '../pages/ChatPage';
 import LoginPage from '../pages/LoginPage';
 import RegisterPage from '../pages/RegisterPage';
 import RemindersPage from '../pages/RemindersPage';
+import ContactsPage from '../pages/ContactsPage';
 import ProtectedRoute from '../components/ProtectedRoute';
 import App from '../app';
 
@@ -37,6 +38,14 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute>
             <RemindersPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'contacts',
+        element: (
+          <ProtectedRoute>
+            <ContactsPage />
           </ProtectedRoute>
         ),
       },
