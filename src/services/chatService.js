@@ -1,5 +1,6 @@
 // src/services/chatService.js
 
+import { CgOpenCollective } from 'react-icons/cg';
 import { apiFetch } from './api'; // Importa nuestro interceptor centralizado
 
 /**
@@ -27,11 +28,12 @@ export async function getChats() {
  * Envía un mensaje a una conversación específica.
  */
 export async function sendMessage(chatId, text) {
+   const [businessId, conversationId] = chatId.split('#');
   try {
     const response = await apiFetch('/dynamo/message', {
       method: 'POST',
       body: JSON.stringify({
-        conversationId: chatId,
+        conversationId: conversationId,
         from: 'agent',
         text: text,
         messageId: `sent-${Date.now()}`,
@@ -53,8 +55,9 @@ export async function sendMessage(chatId, text) {
  * Obtiene todos los mensajes de una conversación.
  */
 export async function getMessages(chatId) {
+  const [businessId, conversationId] = chatId.split('#');
   try {
-    const response = await apiFetch(`/dynamo/messages/${chatId}`);
+    const response = await apiFetch(`/dynamo/messages/${conversationId}`);
     if (!response.ok) {
       throw new Error('Error al obtener los mensajes de la conversación.');
     }

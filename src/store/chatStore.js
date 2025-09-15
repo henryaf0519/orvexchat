@@ -12,6 +12,7 @@ import {
   getSchedules,
   createSchedule,
   deleteSchedule,
+  getContacts
 } from "../services/reminderService";
 
 const sortConversations = (conversations) => {
@@ -32,7 +33,7 @@ export const useChatStore = create(
       userData: null,
       isAuthenticated: false,
       accessToken: null,
-      templates: new Map(), 
+      templates: new Map(),
       conversations: [],
       currentChatHistory: [],
       selectedConversationId: null,
@@ -40,13 +41,14 @@ export const useChatStore = create(
       isSendDisabled: false,
       schedules: [],
       loadingSchedules: false,
-
+      companyId: null,
 
       setAuthData: (data) => {
         set({
           userData: data.userData,
           accessToken: data.accessToken,
           isAuthenticated: !!data.accessToken,
+          companyId: data.userData?.number_id,
         });
       },
 
@@ -57,12 +59,22 @@ export const useChatStore = create(
 
       // --- El resto de tus acciones no necesitan cambios ---
       fetchConversations: async () => {
-        const chatList = await getChats();
+        const companyId = get().companyId;
+        if (!companyId) return;
+
+        const contactList = await getContacts();
         const conversationsWithDetails = await Promise.all(
-          chatList.map(async (chat) => {
-            const messages = await getMessages(chat.id);
+          contactList.map(async (contact) => {
+            const compositeId = `${companyId}#${contact.id}`;
+            const messages = await getMessages(compositeId);
             const lastMessage = messages[messages.length - 1] || null;
-            return { ...chat, hasUnread: false, modo: "IA", lastMessage };
+            return {
+              ...contact,
+              id: compositeId,
+              hasUnread: false,
+              modo: "IA",
+              lastMessage,
+            };
           })
         );
         const sortedConversations = sortConversations(conversationsWithDetails);
@@ -99,20 +111,22 @@ export const useChatStore = create(
 
       handleNewNotification: (data) => {
         const { conversationId, message } = data;
+        const companyId = get().companyId;
+        const compositeId = `${companyId}#${conversationId}`;
+
         set((state) => {
           let conversationExists = false;
           let updatedConversations = state.conversations.map((conv) => {
-            if (conv.id === conversationId) {
+            if (conv.id === compositeId) {
               conversationExists = true;
-              const isSelected =
-                state.selectedConversationId === conversationId;
+              const isSelected = state.selectedConversationId === compositeId;
               return { ...conv, hasUnread: !isSelected, lastMessage: message };
             }
             return conv;
           });
           if (!conversationExists) {
             updatedConversations.push({
-              id: conversationId,
+              id: compositeId,
               name: conversationId,
               hasUnread: true,
               modo: "IA",
@@ -132,6 +146,7 @@ export const useChatStore = create(
       sendMessage: async (text) => {
         const chatId = get().selectedConversationId;
         if (!chatId || get().isSendDisabled) return;
+
         const result = await sendMessageAPI(chatId, text);
         const newMessage = {
           id_mensaje_wa: result.id_mensaje_wa || `temp-${Date.now()}`,
@@ -204,6 +219,7 @@ export const useChatStore = create(
         userData: state.userData,
         accessToken: state.accessToken,
         templates: Array.from(state.templates.entries()),
+        companyId: state.companyId,
       }),
       onRehydrateStorage: () => (state) => {
         if (state && state.templates) {

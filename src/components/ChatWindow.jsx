@@ -32,13 +32,11 @@ export default function ChatWindow({
       {/* Encabezado de la ventana de chat */}
       <header className="p-4 border-b border-gray-200 flex items-center justify-between bg-white">
         <div className="flex items-center space-x-4">
-          <FaChevronLeft className="text-gray-500 cursor-pointer text-xl md:hidden" /> {/* Solo visible en móviles */}
+          <FaChevronLeft className="text-gray-500 cursor-pointer text-xl md:hidden" />
           {chatId ? (
-            <div className="flex items-center space-x-3">
-              {/* Avatar del chat/cliente en el header */}
-            
+            <div className="flex items-center space-x-3">          
               <div>
-                <h2 className="text-lg font-semibold text-gray-800">{chatId}</h2>
+                <h2 className="text-lg font-semibold text-gray-800">{chatId.split('#')[1]}</h2>
               </div>
             </div>
           ) : (
@@ -48,7 +46,7 @@ export default function ChatWindow({
 
         {chatId && (
           <div className="flex items-center space-x-3">
-            {/* Botón de control de modo */}
+
             <button
               className={`px-4 py-2 rounded-full text-sm font-medium transition-colors duration-200 shadow-md ${
                 isHumanControl ? 'bg-green-500 hover:bg-green-600' : 'bg-red-500 hover:bg-red-600'

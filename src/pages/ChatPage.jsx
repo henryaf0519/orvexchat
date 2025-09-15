@@ -10,6 +10,7 @@ import {
   initSocket,
   subscribeToChat,
   unsubscribeFromChat,
+  subscribeToCompany 
 } from "../services/socketService";
 
 export default function ChatPage() {
@@ -24,10 +25,11 @@ export default function ChatPage() {
     addMessageToHistory,
     sendMessage,
     updateChatMode,
-    updateSendDisabledOnNewMessage
+    updateSendDisabledOnNewMessage,
   } = useChatStore();
 
-  const [socket, setSocket] = useState(null);
+  const companyId = useChatStore((state) => state.companyId);
+  const [socket, setSocket] = useState(null); 
   const synthRef = useRef(null);
   const canPlaySoundRef = useRef(true);
   const [audioContextReady, setAudioContextReady] = useState(false);
@@ -41,6 +43,13 @@ export default function ChatPage() {
     const newSocket = initSocket();
     setSocket(newSocket);
     fetchConversations();
+    console.log("Socket initialized:", companyId);
+    newSocket.on('connect', () => {
+      if (companyId) {
+         console.log(`Suscribiendo a la sala de la empresa: ${companyId}`);
+        subscribeToCompany(companyId);
+      }
+    });
 
     const loadToneJs = async () => {
       try {
@@ -69,7 +78,7 @@ export default function ChatPage() {
       if (synthRef.current) synthRef.current.dispose();
       if (socket) socket.disconnect();
     };
-  }, [fetchConversations]);
+  }, [fetchConversations, companyId]);
 
   useEffect(() => {
     if (!socket) return;

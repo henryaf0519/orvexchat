@@ -19,16 +19,20 @@ export function initSocket() {
   return socket;
 }
 
-// ✅ Función para decirle al backend que nos suscriba a una sala.
 export function subscribeToChat(chatId) {
   if (socket && socket.connected) {
     socket.emit('subscribeToChat', chatId);
   }
 }
-
-// ✅ Función para decirle al backend que nos desuscriba de una sala.
+  
 export function unsubscribeFromChat(chatId) {
   if (socket && socket.connected) {
     socket.emit('unsubscribeFromChat', chatId);
+  }
+}
+
+export function subscribeToCompany(companyId) {
+  if (socket && socket.connected) {
+    socket.emit('subscribeToCompany', companyId);
   }
 }
