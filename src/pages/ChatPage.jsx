@@ -99,7 +99,8 @@ export default function ChatPage() {
 
   useEffect(() => {
     if (!socket || !selectedConversationId) return;
-    
+    console.log(`[FRONTEND] Intentando suscribir al chat ID: ${selectedConversationId}`);
+   
     subscribeToChat(selectedConversationId);
     
     const activeChatUpdateHandler = (message) => {
