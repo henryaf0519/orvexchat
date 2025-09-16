@@ -108,6 +108,13 @@ export const useChatStore = create(
           set({ isSendDisabled: true });
         }
       },
+      setSelectedChat: (chat) => {
+        set({
+          selectedConversationId: chat.id,
+        });
+      },
+
+
 
       handleNewNotification: (data) => {
         const { conversationId, message } = data;
