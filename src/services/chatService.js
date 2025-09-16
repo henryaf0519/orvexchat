@@ -72,8 +72,9 @@ export async function getMessages(chatId) {
  * Actualiza el modo de control de un chat (IA o humano).
  */
 export async function updateChatMode(chatId, newMode) {
+   const [businessId, conversationId] = chatId.split('#');
   try {
-    const response = await apiFetch(`/dynamo/control/${chatId}`, {
+    const response = await apiFetch(`/dynamo/control/${conversationId}`, {
       method: 'POST',
       body: JSON.stringify({ newMode }),
     });

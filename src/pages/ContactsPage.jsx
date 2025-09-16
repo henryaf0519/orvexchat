@@ -1,36 +1,19 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import MainSidebar from '../components/MainSidebar';
-import ContactsList from '../components/ContactsList';
-import { getContacts } from '../services/reminderService';
+import KanbanBoard from '../components/KanbanBoard';
 
 export default function ContactsPage() {
-  const [contacts, setContacts] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
-
-  useEffect(() => {
-    const fetchContacts = async () => {
-      try {
-        const contactsData = await getContacts();
-        setContacts(contactsData);
-      } catch (error) {
-        console.error("Error al cargar los contactos:", error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    fetchContacts();
-  }, []);
-
   return (
     <div className="h-screen flex bg-gray-100">
       <MainSidebar />
+      {/* ↓↓↓ CAMBIO AQUÍ: Eliminamos p-6 y overflow-y-auto del contenedor principal ↓↓↓ */}
       <div className="flex-1 flex flex-col overflow-hidden">
-        <main className="flex-1 overflow-y-auto p-6">
-          <h1 className="text-3xl font-bold text-gray-800 mb-6">
+        <main className="flex-1 flex flex-col overflow-hidden p-6">
+          <h1 className="text-3xl font-bold text-gray-800 mb-6 flex-shrink-0">
             Gestor de Contactos (CRM)
           </h1>
-          <ContactsList contacts={contacts} isLoading={isLoading} />
+          {/* El KanbanBoard ahora controlará su propio scroll */}
+          <KanbanBoard />
         </main>
       </div>
     </div>
