@@ -129,7 +129,7 @@ export default function KanbanBoard() {
                   <div
                     {...provided.droppableProps}
                     ref={provided.innerRef}
-                    className={`p-3 flex-grow min-h-[50vh] transition-colors duration-300 ${
+                    className={`p-3 flex-grow min-h-[75vh] transition-colors duration-300 ${
                       snapshot.isDraggingOver ? "bg-gray-200" : "bg-transparent"
                     }`}
                   >
