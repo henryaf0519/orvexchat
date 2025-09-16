@@ -69,8 +69,9 @@ export async function getContacts() {
     const contacts = await response.json();
     // Transformamos los datos para que el componente los pueda usar fácilmente
     return contacts.map((contact) => ({
+      ...contact,
       id: contact.conversationId,
-      name: contact.name || contact.conversationId, // Usamos el nombre del contacto
+      name: contact.name || contact.conversationId,
       number: contact.conversationId,
     }));
   } catch (error) {
