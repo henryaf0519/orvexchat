@@ -6,6 +6,7 @@ import RegisterPage from '../pages/RegisterPage';
 import RemindersPage from '../pages/RemindersPage';
 import ContactsPage from '../pages/ContactsPage';
 import ProtectedRoute from '../components/ProtectedRoute';
+import ButtonsPage from '../pages/ButtonsPage';
 import App from '../app';
 
 export const router = createBrowserRouter([
@@ -46,6 +47,14 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute>
             <ContactsPage />
+          </ProtectedRoute>
+        ),
+      },
+      {
+        path: 'buttons',
+        element: (
+          <ProtectedRoute>
+            <ButtonsPage />
           </ProtectedRoute>
         ),
       },

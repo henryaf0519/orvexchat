@@ -79,3 +79,33 @@ export async function getContacts() {
     return []; // Devuelve un array vacío en caso de error
   }
 }
+
+export async function createInteractiveButton(buttonData) {
+  try {
+    const response = await apiFetch('/dynamo/interactive-buttons', {
+      method: 'POST',
+      body: JSON.stringify(buttonData),
+    });
+    if (!response.ok) {
+      const errorBody = await response.json();
+      throw new Error(errorBody.message || 'Error al crear el botón.');
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Fallo en createInteractiveButton:', error);
+    throw error;
+  }
+}
+
+export async function getInteractiveButtons() {
+  try {
+    const response = await apiFetch('/dynamo/interactive-buttons');
+    if (!response.ok) {
+      throw new Error('Error al obtener los botones interactivos.');
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Fallo en getInteractiveButtons:', error);
+    return [];
+  }
+}

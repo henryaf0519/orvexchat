@@ -6,6 +6,7 @@ import {
   FaClock,
   FaUser,
   FaSignOutAlt,
+  FaThLarge
 } from "react-icons/fa";
 import logo from "../assets/logoOnly.png";
 
@@ -46,6 +47,15 @@ export default function MainSidebar() {
             }`}
           >
             <FaClock size={24} />
+          </button>
+          <button
+            onClick={() => navigate('/buttons')}
+            title="Botones"
+            className={`p-3 rounded-xl transition-transform transform hover:scale-110 ${
+              currentPath === '/buttons' ? 'bg-red-600 text-white' : 'hover:bg-red-600 hover:text-white'
+            }`}
+          >
+            <FaThLarge size={24} />
           </button>
           <button
             onClick={() => navigate('/contacts')}
