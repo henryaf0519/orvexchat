@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useChatStore } from '../store/chatStore';
 import { FaPlus, FaTrash, FaSave, FaSpinner, FaPaperPlane } from 'react-icons/fa';
 import NotificationModal from './NotificationModal';
@@ -14,41 +14,45 @@ export default function CreateButtonForm({ onButtonCreated }) {
     const [bodyText, setBodyText] = useState("Hola, ¡bienvenido a Afiliamos! 👋 \nEstamos aquí para ayudarte.");
     const [headerText, setHeaderText] = useState("Nuestros Servicios");
     const [listButtonText, setListButtonText] = useState("Ver Servicios");
-    const [options, setOptions] = useState([
-        { id: "opcion_1", title: "Seguridad Social" },
-        { id: "opcion_2", title: "Pólizas Incapacidad" },
-    ]);
     
+    const [options, setOptions] = useState([]);
+    
+    const nextOptionIndex = useRef(1);
     const [existingIDs, setExistingIDs] = useState(new Set());
+    const [isInitialLoad, setIsInitialLoad] = useState(true);
     const [errors, setErrors] = useState({});
     const [loading, setLoading] = useState(false);
     const [notification, setNotification] = useState({ show: false, message: '', type: 'success' });
 
-    // Obtener las plantillas existentes desde el store de Zustand
     const templates = useChatStore((state) => state.templates);
 
-    // useEffect para cargar todos los IDs existentes y evitar duplicados
+    // Se ejecuta una sola vez para cargar datos y establecer el estado inicial
     useEffect(() => {
-        const fetchExistingIDs = async () => {
+        const fetchExistingDataAndSetInitial = async () => {
             const allIDs = new Set();
-            
-            // 1. IDs de plantillas de botones existentes
-            templates.forEach(template => {
-                if (template.buttons) {
-                    template.buttons.forEach(btn => allIDs.add(btn.id));
-                }
-            });
+            let maxOptionNum = 0;
 
-            // 2. IDs de botones/listas interactivas ya creadas desde la API
+            const processId = (id) => {
+                if (id) {
+                    allIDs.add(id);
+                    if (id.startsWith('opcion_')) {
+                        const num = parseInt(id.split('_')[1], 10);
+                        if (!isNaN(num) && num > maxOptionNum) {
+                            maxOptionNum = num;
+                        }
+                    }
+                }
+            };
+            
             try {
                 const interactiveButtons = await getInteractiveButtons();
                 interactiveButtons.forEach(button => {
                     if (button.interactive?.action?.buttons) {
-                        button.interactive.action.buttons.forEach(btn => allIDs.add(btn.reply.id));
+                        button.interactive.action.buttons.forEach(btn => processId(btn.reply.id));
                     }
                     if (button.interactive?.action?.sections) {
                         button.interactive.action.sections.forEach(section => {
-                            section.rows.forEach(row => allIDs.add(row.id));
+                            section.rows.forEach(row => processId(row.id));
                         });
                     }
                 });
@@ -57,30 +61,48 @@ export default function CreateButtonForm({ onButtonCreated }) {
             }
             
             setExistingIDs(allIDs);
+            
+            let currentIndex = maxOptionNum + 1;
+            nextOptionIndex.current = currentIndex; // Guarda el primer ID seguro para usar si el form está vacío
+            
+            const initialOptions = [
+                { title: "Seguridad Social" },
+                { title: "Pólizas Incapacidad" },
+            ].map(opt => {
+                const newId = `opcion_${currentIndex}`;
+                currentIndex++;
+                return { ...opt, id: newId };
+            });
+
+            setOptions(initialOptions);
+            setIsInitialLoad(false);
         };
 
-        fetchExistingIDs();
-    }, [templates]);
+        fetchExistingDataAndSetInitial();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
 
-    // Función de validación mejorada
+
     const validate = () => {
         const newErrors = {};
         if (!name.trim()) newErrors.name = 'El nombre de la plantilla es obligatorio.';
 
+        const currentIdsInForm = new Set();
         options.forEach((opt, index) => {
             const title = opt.title.trim();
-            const id = opt.id.trim();
+            const id = opt.id ? opt.id.trim() : "";
 
-            if (!title) {
-                newErrors[`title_${index}`] = 'El título de la opción es obligatorio.';
-            } else if (title.length > MAX_TITLE_LENGTH) {
-                newErrors[`title_${index}`] = `El título no puede exceder los ${MAX_TITLE_LENGTH} caracteres.`;
+            if (!title) newErrors[`title_${index}`] = 'El título es obligatorio.';
+            if (title.length > MAX_TITLE_LENGTH) newErrors[`title_${index}`] = `Máximo ${MAX_TITLE_LENGTH} caracteres.`;
+            if (!id) newErrors[`id_${index}`] = 'El ID es obligatorio.';
+            
+            if (currentIdsInForm.has(id)) {
+                 newErrors[`id_${index}`] = `El ID '${id}' está duplicado en el formulario.`;
             }
+            currentIdsInForm.add(id);
 
-            if (!id) {
-                newErrors[`id_${index}`] = 'El ID es obligatorio y se genera a partir del título.';
-            } else if (existingIDs.has(id)) {
-                newErrors[`id_${index}`] = `El ID '${id}' ya existe. Elige un título diferente.`;
+            if (existingIDs.has(id)) {
+                newErrors[`id_${index}`] = `El ID '${id}' ya existe en otra plantilla.`;
             }
         });
         
@@ -89,18 +111,38 @@ export default function CreateButtonForm({ onButtonCreated }) {
     };
 
 
-    const handleOptionChange = (index, value) => {
+    const handleOptionChange = (index, newTitle) => {
         const newOptions = [...options];
-        const newTitle = value;
-        const newId = newTitle.toLowerCase().replace(/\s+/g, '_').replace(/[^a-z0-9_]/g, '');
-        
-        newOptions[index] = { id: newId, title: newTitle };
+        newOptions[index].title = newTitle;
         setOptions(newOptions);
     };
 
     const addOption = () => {
         if (options.length < 10) {
-            setOptions([...options, { id: '', title: '' }]);
+            let maxInForm = 0;
+            options.forEach(opt => {
+                if (opt.id && opt.id.startsWith('opcion_')) {
+                    const num = parseInt(opt.id.split('_')[1], 10);
+                    if (!isNaN(num) && num > maxInForm) {
+                        maxInForm = num;
+                    }
+                }
+            });
+
+            // Si el formulario no está vacío, el siguiente número es el máximo + 1.
+            // Si está vacío, usamos el contador global que sabe cuál es el siguiente ID seguro.
+            const nextBaseNum = options.length > 0 ? maxInForm + 1 : nextOptionIndex.current;
+            
+            let nextNum = nextBaseNum;
+            let newId = `opcion_${nextNum}`;
+            
+            // Bucle de seguridad para saltar IDs ya existentes (en DB o en el form)
+            while (existingIDs.has(newId) || options.some(opt => opt.id === newId)) {
+                nextNum++;
+                newId = `opcion_${nextNum}`;
+            }
+            
+            setOptions([...options, { id: newId, title: '' }]);
         }
     };
 
@@ -118,7 +160,6 @@ export default function CreateButtonForm({ onButtonCreated }) {
         let interactivePayload;
 
         if (options.length <= 3) {
-            // Crear payload para botones
             interactivePayload = {
                 type: 'button',
                 body: { text: bodyText },
@@ -130,7 +171,6 @@ export default function CreateButtonForm({ onButtonCreated }) {
                 }
             };
         } else {
-            // Crear payload para lista
             interactivePayload = {
                 type: 'list',
                 header: { type: 'text', text: headerText || "Elige una opción" },
@@ -138,7 +178,7 @@ export default function CreateButtonForm({ onButtonCreated }) {
                 action: {
                     button: listButtonText,
                     sections: [{
-                        title: "Nuestros Servicios", // Este título podría ser dinámico también
+                        title: "Nuestros Servicios",
                         rows: options.map(opt => ({ id: opt.id, title: opt.title }))
                     }]
                 }
@@ -149,10 +189,8 @@ export default function CreateButtonForm({ onButtonCreated }) {
 
         try {
             await createInteractiveButton(finalPayload);
-            setNotification({ show: true, message: "Plantilla interactiva creada con éxito!", type: 'success' });
-            if (onButtonCreated) {
-                onButtonCreated();
-            }
+            setNotification({ show: true, message: "Plantilla creada con éxito!", type: 'success' });
+            if (onButtonCreated) onButtonCreated();
         } catch (error) {
             setNotification({ show: true, message: error.message || "Error al crear la plantilla.", type: 'error' });
         } finally {
@@ -196,7 +234,7 @@ export default function CreateButtonForm({ onButtonCreated }) {
                     <div>
                         <label className="block text-sm font-medium text-gray-700 mb-2">Opciones (Hasta 10)</label>
                         {options.map((opt, index) => (
-                            <div key={index} className="flex items-start gap-2 mb-3">
+                            <div key={opt.id} className="flex items-start gap-2 mb-3">
                                 <div className="flex-grow">
                                     <input 
                                       type="text" 
@@ -208,7 +246,7 @@ export default function CreateButtonForm({ onButtonCreated }) {
                                     />
                                      <div className='flex justify-between'>
                                      <span className="text-xs text-gray-400 mt-1 pl-1">ID: {opt.id || "..."}</span>
-                                     <span className={`text-xs mt-1 pr-1 ${opt.title.length > MAX_TITLE_LENGTH ? 'text-red-500' : 'text-gray-400'}`}>
+                                     <span className={`text-xs mt-1 pr-1 ${opt.title.length >= MAX_TITLE_LENGTH ? 'text-red-500' : 'text-gray-400'}`}>
                                       {opt.title.length}/{MAX_TITLE_LENGTH}
                                      </span>
                                      </div>
@@ -238,17 +276,16 @@ export default function CreateButtonForm({ onButtonCreated }) {
                         Vista Previa Interactiva
                     </h4>
                     <div className="bg-[#ECE5DD] p-4 rounded-lg min-h-[550px] flex items-center justify-center">
-                        <InteractivePreview 
+                       { !isInitialLoad && <InteractivePreview 
                             type={options.length > 3 ? 'list' : 'button'}
                             header={headerText}
                             body={bodyText} 
                             options={options}
                             listButtonText={listButtonText}
-                        />
+                        /> }
                     </div>
                 </div>
             </div>
         </div>
     );
 }
-
