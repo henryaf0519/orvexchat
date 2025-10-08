@@ -28,12 +28,12 @@ export default function MessageItem({ message }) {
     switch (message.type) {
       case 'audio':
         return <AudioPlayer src={message.url} isAgent={isAgent} />;
+
       case 'plantilla': {
         const templateData = templates.get(message.text);
         if (templateData) {
           return <TemplateMessage template={templateData} />;
         }
-        // Si no encontramos la plantilla, mostramos un mensaje de error útil
         return <p className="text-sm text-red-300 bg-red-50 p-2 rounded">Plantilla "{message.text}" no encontrada.</p>;
       }
 
@@ -44,6 +44,32 @@ export default function MessageItem({ message }) {
             alt="Imagen enviada en el chat"
             className="rounded-lg w-48 h-auto cursor-pointer"
             onClick={() => setIsModalOpen(true)}
+          />
+        );
+
+      case 'flow':
+        // Contenido del Flow para ser renderizado dentro de la burbuja
+        return (
+          <div className="p-2">
+            <p className="font-bold text-center mb-2">Flow Interactivo</p>
+            <p className="text-sm text-center opacity-90">{message.text}</p>
+            <button className="mt-4 w-full bg-white text-indigo-600 font-semibold py-2 rounded-lg hover:bg-indigo-100 transition-colors">
+              Iniciar Flow
+            </button>
+          </div>
+        );
+
+      case 'respflow':
+        const formattedRespFlow = message.text
+          .replace(/✅ \*(.*?)\*/g, '<br><strong>✅ $1</strong>')
+          .replace(/👤 \*(.*?)\*/g, '<br><strong>👤 $1</strong>')
+          .replace(/\*([^:]+):\*/g, '<strong>$1:</strong>')
+          .replace(/----------------------------------/g, '<hr class="my-2 border-t border-gray-400 opacity-50">')
+          .trim();
+        return (
+          <p
+            className="text-sm leading-relaxed whitespace-pre-line px-2"
+            dangerouslySetInnerHTML={{ __html: formattedRespFlow.split('\n').join('<br>') }}
           />
         );
 
