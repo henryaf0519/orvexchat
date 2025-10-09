@@ -1,5 +1,6 @@
+// src/store/chatStore.js
+
 import { create } from "zustand";
-// ✅ 1. Importa el middleware de persistencia de Zustand
 import { persist, createJSONStorage } from "zustand/middleware";
 import {
   getChats,
@@ -26,7 +27,6 @@ const sortConversations = (conversations) => {
   });
 };
 
-// ✅ 2. Envuelve toda la definición de tu store con la función `persist`
 export const useChatStore = create(
   persist(
     (set, get) => ({
@@ -57,7 +57,6 @@ export const useChatStore = create(
         set({ templates: templatesMap });
       },
 
-      // --- El resto de tus acciones no necesitan cambios ---
       fetchConversations: async () => {
         const companyId = get().companyId;
         if (!companyId) return;
@@ -72,7 +71,7 @@ export const useChatStore = create(
               ...contact,
               id: compositeId,
               hasUnread: false,
-              modo: "IA",
+              modo: contact.modo || "IA",
               lastMessage,
             };
           })
@@ -95,27 +94,22 @@ export const useChatStore = create(
         }));
         const messages = await getMessages(conversationId);
         set({ currentChatHistory: messages, loadingMessages: false });
+
         const selectedChat = get().conversations.find(
           (c) => c.id === conversationId
         );
         const isHumanControl = selectedChat?.modo === "humano";
+
         if (isHumanControl) {
           const lastMessage = messages[messages.length - 1];
           set({
-            isSendDisabled: lastMessage ? lastMessage.from === "agent" : false,
+            isSendDisabled: lastMessage ? (lastMessage.from === "agent" || lastMessage.from === "IA") : false,
           });
         } else {
           set({ isSendDisabled: true });
         }
       },
-      setSelectedChat: (chat) => {
-        set({
-          selectedConversationId: chat.id,
-        });
-      },
-
-
-
+      
       handleNewNotification: (data) => {
         const { conversationId, message } = data;
         const companyId = get().companyId;
@@ -164,10 +158,9 @@ export const useChatStore = create(
           SK: `MESSAGE#${new Date().toISOString()}`,
         };
         get().addMessageToHistory(newMessage);
-        const selectedChat = get().conversations.find((c) => c.id === chatId);
-        if (selectedChat?.modo === "humano") {
-          set({ isSendDisabled: true });
-        }
+        
+        // Deshabilita el input inmediatamente después de enviar
+        set({ isSendDisabled: true });
       },
 
       updateChatMode: async (newMode) => {
@@ -175,6 +168,17 @@ export const useChatStore = create(
         if (!chatId) return;
         try {
           await updateChatModeAPI(chatId, newMode);
+
+          if (newMode === 'humano') {
+            const history = get().currentChatHistory;
+            const lastMessage = history.length > 0 ? history[history.length - 1] : null;
+            // La caja de texto estará deshabilitada si el último mensaje fue de un agente.
+            const shouldBeDisabled = lastMessage ? lastMessage.from === 'agent' || lastMessage.from === 'IA' : false;
+            set({ isSendDisabled: shouldBeDisabled });
+          } else {
+            set({ isSendDisabled: true });
+          }
+
           set((state) => ({
             conversations: state.conversations.map((chat) =>
               chat.id === chatId ? { ...chat, modo: newMode } : chat
@@ -189,19 +193,20 @@ export const useChatStore = create(
         const selectedChat = get().conversations.find(
           (c) => c.id === get().selectedConversationId
         );
-        if (selectedChat?.modo === "humano" && message.from !== "agent") {
+        // Habilita el input si estamos en modo humano y el mensaje NO es de un agente o IA.
+        if (selectedChat?.modo === "humano" && message.from !== "agent" && message.from !== "IA") {
           set({ isSendDisabled: false });
         }
       },
+      
+      // ... (resto de las funciones de reminders, etc.)
       fetchSchedules: async () => {
         set({ loadingSchedules: true });
         try {
           const schedulesFromApi = await getSchedules();
-          // Actualiza los datos y el estado de carga en UNA SOLA LLAMADA
           set({ schedules: schedulesFromApi, loadingSchedules: false });
         } catch (error) {
           console.error("Error fetching schedules:", error);
-          // Asegúrate de desactivar la carga incluso si hay un error
           set({ loadingSchedules: false });
         }
       },
