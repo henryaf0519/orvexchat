@@ -33,7 +33,7 @@ export const useChatStore = create(
       userData: null,
       isAuthenticated: false,
       accessToken: null,
-      templates: new Map(),
+      templates: [],
       conversations: [],
       currentChatHistory: [],
       selectedConversationId: null,
@@ -53,8 +53,7 @@ export const useChatStore = create(
       },
 
       setTemplates: (templatesArray) => {
-        const templatesMap = new Map(templatesArray.map((t) => [t.name, t]));
-        set({ templates: templatesMap });
+        set({ templates: templatesArray || [] });
       },
 
       fetchConversations: async () => {
@@ -230,13 +229,10 @@ export const useChatStore = create(
         isAuthenticated: state.isAuthenticated,
         userData: state.userData,
         accessToken: state.accessToken,
-        templates: Array.from(state.templates.entries()),
+        templates: state.templates,
         companyId: state.companyId,
       }),
       onRehydrateStorage: () => (state) => {
-        if (state && state.templates) {
-          state.templates = new Map(state.templates);
-        }
       },
     }
   )
