@@ -1,33 +1,54 @@
-// src/components/NotificationModal.jsx
 import { useEffect } from 'react';
-import { createPortal } from 'react-dom';
-import { FaCheckCircle, FaExclamationTriangle } from 'react-icons/fa';
+import { FaCheckCircle, FaExclamationTriangle, FaInfoCircle } from 'react-icons/fa';
 
-const modalRoot = document.getElementById('modal-root');
-
-export default function NotificationModal({ message, type, onClose }) {
-  // Configura un temporizador para que el modal se cierre solo después de 4 segundos
+export default function NotificationModal({ message, type = 'success', onClose }) {
   useEffect(() => {
     const timer = setTimeout(() => {
       onClose();
-    }, 4000); 
+    }, 4000); // Cierra automáticamente después de 4 segundos
 
     return () => clearTimeout(timer);
   }, [onClose]);
 
-  const isSuccess = type === 'success';
-  const icon = isSuccess ? <FaCheckCircle /> : <FaExclamationTriangle />;
-  const bgColor = isSuccess ? 'bg-green-600' : 'bg-red-600';
+  const config = {
+    success: {
+      icon: <FaCheckCircle className="text-green-500" />,
+      barColor: 'bg-green-500',
+    },
+    error: {
+      icon: <FaExclamationTriangle className="text-red-500" />,
+      barColor: 'bg-red-500',
+    },
+    info: {
+      icon: <FaInfoCircle className="text-blue-500" />,
+      barColor: 'bg-blue-500',
+    },
+  };
 
- return createPortal(
-    <div className="fixed top-5 left-1/2 -translate-x-1/2 z-50 animate-fade-in-down">
-      <div
-        className={`flex items-center p-4 rounded-lg shadow-2xl ${bgColor} text-white min-w-[300px]`}
-      >
-        <div className="text-xl mr-3">{icon}</div>
-        <p className="font-semibold">{message}</p>
+  const { icon, barColor } = config[type] || config.info;
+
+  return (
+    <div className="fixed top-5 right-5 z-50 animate-slide-in-right">
+      <div className="bg-white rounded-lg shadow-2xl w-full max-w-sm overflow-hidden">
+        <div className="p-4 flex items-start gap-4">
+          <div className="text-2xl pt-1">{icon}</div>
+          <div className="flex-1">
+            <h4 className="font-bold text-gray-800">
+              {type === 'success' ? 'Éxito' : type === 'error' ? 'Error' : 'Información'}
+            </h4>
+            {/* --- INICIO DE LA CORRECCIÓN ---
+              En lugar de renderizar el mensaje como texto, usamos dangerouslySetInnerHTML
+              para que React interprete las etiquetas HTML que le pasamos.
+            */}
+            <div 
+              className="text-sm text-gray-600 mt-1" 
+              dangerouslySetInnerHTML={{ __html: message }} 
+            />
+            {/* --- FIN DE LA CORRECCIÓN --- */}
+          </div>
+        </div>
+        <div className={`h-1.5 ${barColor} animate-progress-bar`}></div>
       </div>
-    </div>,
-    modalRoot // 4. Especifica que se debe renderizar en nuestro div "modal-root"
+    </div>
   );
 }
