@@ -36,15 +36,10 @@ export default function NotificationModal({ message, type = 'success', onClose }
             <h4 className="font-bold text-gray-800">
               {type === 'success' ? 'Éxito' : type === 'error' ? 'Error' : 'Información'}
             </h4>
-            {/* --- INICIO DE LA CORRECCIÓN ---
-              En lugar de renderizar el mensaje como texto, usamos dangerouslySetInnerHTML
-              para que React interprete las etiquetas HTML que le pasamos.
-            */}
             <div 
               className="text-sm text-gray-600 mt-1" 
               dangerouslySetInnerHTML={{ __html: message }} 
             />
-            {/* --- FIN DE LA CORRECCIÓN --- */}
           </div>
         </div>
         <div className={`h-1.5 ${barColor} animate-progress-bar`}></div>

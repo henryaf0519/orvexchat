@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { useChatStore } from "../store/chatStore";
-import { FaPaperPlane, FaSpinner, FaChevronDown, FaExclamationCircle } from "react-icons/fa";
+import { FaPaperPlane, FaSpinner, FaChevronDown } from "react-icons/fa";
 import NotificationModal from './NotificationModal';
 import { getContacts } from "../services/reminderService";
 import TemplatePreview from './TemplatePreview';
@@ -8,6 +8,7 @@ import TemplatePreview from './TemplatePreview';
 export default function CreateReminderForm() {
   const createSchedule = useChatStore((state) => state.createSchedule);
   const templates = useChatStore((state) => state.templates);
+  const userData = useChatStore((state) => state.userData);
 
   const approvedTemplates = templates.filter(t => t.status === 'APPROVED');
 
@@ -21,9 +22,7 @@ export default function CreateReminderForm() {
     recurringTime: "09:00",
   });
   
-  // Estado para manejar los errores de validación
   const [errors, setErrors] = useState({});
-
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [contactList, setContactList] = useState([]);
@@ -42,7 +41,6 @@ export default function CreateReminderForm() {
     fetchContacts();
   }, []);
   
-  // Función para limpiar el error de un campo cuando su valor cambia
   const clearError = (fieldName) => {
     if (errors[fieldName]) {
       setErrors(prev => {
@@ -105,7 +103,8 @@ export default function CreateReminderForm() {
       newErrors.recurringDays = "Debe seleccionar al menos un día para envíos recurrentes.";
     }
     return newErrors;
-  };  
+  };
+
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -123,11 +122,15 @@ export default function CreateReminderForm() {
     }
     
     setLoading(true);
+
     const schedulePayload = {
       name: formData.name,
       templateName: selectedTemplate.name,
+      templateId: selectedTemplate.id,
       phoneNumbers: formData.phoneNumbers,
       scheduleType: formData.scheduleType,
+      waba_id: userData.waba_id,     
+      number_id: userData.number_id,
     };
   
     if (formData.scheduleType === 'once') {
@@ -172,6 +175,7 @@ export default function CreateReminderForm() {
         </p>
       </div>
       <form onSubmit={handleSubmit} noValidate>
+        {/* El JSX no necesita cambios */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
           {/* Columna Izquierda: Formulario */}
           <div className="space-y-6">
@@ -181,7 +185,6 @@ export default function CreateReminderForm() {
                 <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">Nombre de Campaña</label>
                 <input type="text" name="name" id="name" value={formData.name} onChange={handleChange}
                        className={`w-full px-4 py-2 bg-gray-50 border rounded-lg shadow-sm focus:outline-none transition ${errors.name ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-300 focus:ring-2 focus:ring-red-500'}`} />
-                {errors.name && <p className="text-red-600 text-xs mt-1 flex items-center gap-1"><FaExclamationCircle/> {errors.name}</p>}
               </div>
               <div className="relative">
                 <label className="block text-sm font-medium text-gray-700 mb-1">Destinatarios</label>
@@ -212,7 +215,6 @@ export default function CreateReminderForm() {
                         <div className="p-2 border-t"><button type="button" onClick={handleSelectAll} className="w-full text-center text-sm font-semibold text-red-600 hover:text-red-800">Seleccionar Todos</button></div>
                     </div>
                 )}
-                {errors.phoneNumbers && <p className="text-red-600 text-xs mt-1 flex items-center gap-1"><FaExclamationCircle/> {errors.phoneNumbers}</p>}
               </div>
             </div>
 
@@ -223,7 +225,6 @@ export default function CreateReminderForm() {
                 <option value="" disabled>-- Escoge una plantilla aprobada --</option>
                 {approvedTemplates.map(template => ( <option key={template.id} value={template.name}>{template.name} ({template.language})</option> ))}
               </select>
-              {errors.template && <p className="text-red-600 text-xs mt-1 flex items-center gap-1"><FaExclamationCircle/> {errors.template}</p>}
             </div>
             
             <div className="space-y-4 pt-4">
@@ -237,7 +238,6 @@ export default function CreateReminderForm() {
                   <label htmlFor="sendAt" className="block text-sm font-medium text-gray-700 mb-1">Fecha y Hora</label>
                   <input type="datetime-local" name="sendAt" id="sendAt" value={formData.sendAt} onChange={handleChange}
                          className={`w-full md:w-2/3 px-4 py-2 bg-gray-50 border rounded-lg ${errors.sendAt ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-300'}`} />
-                  {errors.sendAt && <p className="text-red-600 text-xs mt-1 flex items-center gap-1"><FaExclamationCircle/> {errors.sendAt}</p>}
                 </div>
               ) : (
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-fade-in">
@@ -246,7 +246,6 @@ export default function CreateReminderForm() {
                         <div className={`flex flex-wrap gap-2 p-2 rounded-lg ${errors.recurringDays ? 'border border-red-500 ring-1 ring-red-500' : ''}`}>
                             {daysOfWeek.map((day) => (<button type="button" key={day.value} title={day.title} onClick={() => handleDayChange(day.value)} className={`w-10 h-10 rounded-lg font-bold text-sm transition-all transform hover:scale-110 ${formData.recurringDays.includes(day.value) ? "bg-red-600 text-white shadow-md" : "bg-gray-200 text-gray-700"}`}>{day.label}</button>))}
                         </div>
-                        {errors.recurringDays && <p className="text-red-600 text-xs mt-1 flex items-center gap-1"><FaExclamationCircle/> {errors.recurringDays}</p>}
                     </div>
                     <div>
                         <label htmlFor="recurringTime" className="block text-sm font-medium text-gray-700 mb-1">Hora</label>
