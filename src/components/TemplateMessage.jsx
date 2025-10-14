@@ -14,15 +14,12 @@ export default function TemplateMessage({ template }) {
     return null;
   }
 
-  // Extraemos los diferentes componentes de la plantilla
   const headerComponent = template.components.find(c => c.type === 'HEADER');
   const bodyComponent = template.components.find(c => c.type === 'BODY');
   const buttonsComponent = template.components.find(c => c.type === 'BUTTONS');
 
   const bodyText = bodyComponent ? bodyComponent.text : '';
   const buttons = buttonsComponent ? buttonsComponent.buttons : [];
-  
-  // Extraemos la URL de la imagen del encabezado
   const imageUrl = headerComponent?.format === 'IMAGE' && headerComponent.example?.header_handle?.[0];
 
   return (
