@@ -2,38 +2,50 @@ import React from 'react';
 import { useChatStore } from '../store/chatStore';
 
 export default function TemplateMessage({ template }) {
-  // Obtenemos la función para enviar mensajes desde nuestro store
   const sendMessage = useChatStore((state) => state.sendMessage);
 
-  // Esta función se ejecuta cuando el usuario hace clic en un botón de la plantilla
   const handleButtonClick = (buttonTitle) => {
     if (buttonTitle) {
-      // Enviamos el texto del botón como si el usuario lo hubiera escrito
       sendMessage(buttonTitle);
     }
   };
 
-  // Medida de seguridad por si la plantilla no llega con el formato esperado
-  if (!template || !template.body) {
+  if (!template || !template.components) {
     return null;
   }
 
+  // Extraemos los diferentes componentes de la plantilla
+  const headerComponent = template.components.find(c => c.type === 'HEADER');
+  const bodyComponent = template.components.find(c => c.type === 'BODY');
+  const buttonsComponent = template.components.find(c => c.type === 'BUTTONS');
+
+  const bodyText = bodyComponent ? bodyComponent.text : '';
+  const buttons = buttonsComponent ? buttonsComponent.buttons : [];
+  
+  // Extraemos la URL de la imagen del encabezado
+  const imageUrl = headerComponent?.format === 'IMAGE' && headerComponent.example?.header_handle?.[0];
+
   return (
     <div className="bg-white text-gray-900 p-3 rounded-lg shadow-inner">
+      {/* Si hay una imagen en el header, la mostramos */}
+      {imageUrl && (
+        <img src={imageUrl} alt="Encabezado de la plantilla" className="rounded-md w-full h-auto object-cover mb-2" />
+      )}
+
       {/* El cuerpo principal del mensaje de la plantilla */}
       <p className="text-sm whitespace-pre-line mb-3">
-        {template.body}
+        {bodyText}
       </p>
 
       {/* Si la plantilla tiene botones, los mostramos */}
-      {template.buttons && template.buttons.length > 0 && (
+      {buttons && buttons.length > 0 && (
         <div className="flex flex-col space-y-1 border-t border-gray-200 pt-2">
-          {template.buttons.map((button) => (
+          {buttons.map((button, index) => (
             <div
-              key={button.id || button.title}
+              key={index}
               className="w-full text-center text-blue-800 bg-blue-100 border border-blue-200 font-medium py-1.5 px-3 rounded-lg text-sm"
             >
-              {button.title}
+              {button.text}
             </div>
           ))}
         </div>

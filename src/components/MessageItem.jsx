@@ -30,7 +30,10 @@ export default function MessageItem({ message }) {
         return <AudioPlayer src={message.url} isAgent={isAgent} />;
 
       case 'plantilla': {
-        const templateData = templates.get(message.text);
+        console.log('Renderizando plantilla:', message);
+        console.log('Templates disponibles:', templates);
+        const templateData = templates.find(t => t.name === message.text);
+        console.log('Datos de la plantilla encontrada:', templateData);
         if (templateData) {
           return <TemplateMessage template={templateData} />;
         }
