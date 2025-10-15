@@ -6,7 +6,8 @@ import {
   FaClock,
   FaUser,
   FaSignOutAlt,
-  FaThLarge
+  FaThLarge,
+  FaPlusSquare
 } from "react-icons/fa";
 import logo from "../assets/logoOnly.png";
 
@@ -65,6 +66,15 @@ export default function MainSidebar() {
             }`}
           >
             <FaUser size={24} />
+          </button>
+          <button
+            onClick={() => navigate('/templates')}
+            title="Plantillas"
+            className={`p-3 rounded-xl transition-transform transform hover:scale-110 ${
+              currentPath === '/templates' ? 'bg-red-600 text-white' : 'hover:bg-red-600 hover:text-white'
+            }`}
+          >
+            <FaPlusSquare size={24} />
           </button>
 
         </nav>

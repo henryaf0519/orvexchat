@@ -7,6 +7,7 @@ import RemindersPage from '../pages/RemindersPage';
 import ContactsPage from '../pages/ContactsPage';
 import ProtectedRoute from '../components/ProtectedRoute';
 import ButtonsPage from '../pages/ButtonsPage';
+import TemplatesPage from '../pages/TemplatesPage';
 import App from '../app';
 
 export const router = createBrowserRouter([
@@ -58,6 +59,14 @@ export const router = createBrowserRouter([
           </ProtectedRoute>
         ),
       },
+      {
+        path: 'templates',
+        element: (
+          <ProtectedRoute>
+            <TemplatesPage />
+          </ProtectedRoute>
+        )
+      }
     ],
   },
 ]);
