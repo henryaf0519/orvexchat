@@ -7,7 +7,7 @@ import { apiFetch } from './api';
  */
 export const createTemplate = async (templateData) => {
   try {
-    const response = await apiFetch('/whatsapp-templates', {
+    const response = await apiFetch('/templates', {
       method: 'POST',
       body: JSON.stringify(templateData),
     });
@@ -30,7 +30,7 @@ export const createTemplate = async (templateData) => {
 
 export const getTemplates = async () => {
   try {
-    const response = await apiFetch('/whatsapp-templates');
+    const response = await apiFetch('/templates');
     if (!response.ok) {
       throw new Error('Error al obtener las plantillas.');
     }
