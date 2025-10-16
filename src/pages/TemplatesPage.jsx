@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getTemplates, createTemplate, updateTemplate } from '../services/templateService';
+import { getTemplates, createTemplate, updateTemplate, deleteTemplate } from '../services/templateService';
 import MainSidebar from '../components/MainSidebar';
 import CreateTemplateForm from '../components/CreateTemplateForm';
 import TemplatesList from '../components/TemplatesList';
@@ -17,7 +17,7 @@ const fileToBase64 = (file) => new Promise((resolve, reject) => {
   reader.onerror = error => reject(error);
 });
 
-// Estado inicial para el formulario, para poder reiniciarlo fácilmente
+// Estado inicial para el formulario
 const initialFormState = {
   name: '', category: 'MARKETING', language: 'es',
   headerType: 'NONE', headerText: '', headerBase64: null, headerExample: '', headerImageUrl: null,
@@ -31,9 +31,9 @@ const transformApiToFormData = (template) => {
     return acc;
   }, {});
 
-  // Extraemos la URL de la imagen si existe
   const headerComponent = components.HEADER;
-  const imageUrl = (headerComponent?.format === 'IMAGE' && headerComponent.example?.header_handle?.[0])
+  // ✅ CAMBIO: La URL ahora es el handle de la imagen, que es lo que necesitamos reenviar.
+  const imageHandle = (headerComponent?.format === 'IMAGE' && headerComponent.example?.header_handle?.[0])
     ? headerComponent.example.header_handle[0]
     : null;
 
@@ -45,8 +45,8 @@ const transformApiToFormData = (template) => {
     headerType: headerComponent?.format || 'NONE',
     headerText: headerComponent?.text || '',
     headerExample: headerComponent?.example?.header_text?.[0] || '',
-    headerBase64: null, // Siempre nulo al inicio, el usuario debe seleccionar un archivo nuevo para cambiarlo
-    headerImageUrl: imageUrl, // <- GUARDAMOS LA URL EXISTENTE
+    headerBase64: null, 
+    headerImageUrl: imageHandle, // <- Guardamos el HANDLE existente
     bodyText: components.BODY?.text || '',
     bodyExamples: components.BODY?.example?.body_text?.[0] || [''],
     footerText: components.FOOTER?.text || '',
@@ -98,7 +98,6 @@ export default function TemplatesPage() {
   const confirmDelete = async () => {
     if (!templateToDelete) return;
     try {
-      // Asumiendo que tu API de backend puede eliminar por nombre de plantilla
       await deleteTemplate(templateToDelete.name); 
       toast.success(`Plantilla "${templateToDelete.name}" eliminada.`);
       fetchTemplates(); 
@@ -130,60 +129,76 @@ export default function TemplatesPage() {
       }
     }
     
-    const components = [];
-    if (formData.headerType !== 'NONE') {
-        const headerComponent = { type: 'HEADER', format: formData.headerType };
-        if (formData.headerType === 'TEXT') {
-            headerComponent.text = formData.headerText;
-            if (formData.headerText.includes('{{')) {
-                headerComponent.example = { header_text: [formData.headerExample] };
-            }
-        } else if (finalHeaderBase64) {
-             // ✅ LÓGICA CORRECTA Y RESTAURADA
-             // Siempre que se sube un archivo nuevo, se envía en 'header_base64'.
-             // El backend lo procesará para crear o actualizar.
-             headerComponent.example = { header_base64: finalHeaderBase64 };
-        }
-        components.push(headerComponent);
-    }
-
-    const bodyComponent = { type: 'BODY', text: formData.bodyText };
-    if (formData.bodyText.includes('{{')) {
-      const variableCount = (formData.bodyText.match(/\{\{\d+\}\}/g) || []).length;
-      const examples = formData.bodyExamples.slice(0, variableCount).filter(Boolean);
-      if(examples.length !== variableCount) {
-        toast.error('Debes proveer un ejemplo para cada variable del cuerpo.');
-        setIsSubmitting(false);
-        return;
+    // La lógica de construcción de componentes ahora es más inteligente para la actualización
+    const buildComponents = () => {
+      const components = [];
+      // HEADER
+      if (formData.headerType !== 'NONE') {
+          const headerComponent = { type: 'HEADER', format: formData.headerType };
+          if (formData.headerType === 'TEXT') {
+              headerComponent.text = formData.headerText;
+              if (formData.headerText.includes('{{')) {
+                  headerComponent.example = { header_text: [formData.headerExample] };
+              }
+          } else if (formData.headerType === 'IMAGE') {
+              if (finalHeaderBase64) {
+                  // Si se subió una imagen NUEVA, enviamos el base64
+                  headerComponent.example = { header_base64: finalHeaderBase64 };
+              } else if (formData.headerImageUrl) {
+                  // ✅ CAMBIO CLAVE: Si NO hay imagen nueva PERO SÍ había una antes,
+                  // reenviamos el "handle" que guardamos previamente.
+                  headerComponent.example = { header_handle: [formData.headerImageUrl] };
+              }
+          }
+          components.push(headerComponent);
       }
-      bodyComponent.example = { body_text: [examples] };
-    }
-    components.push(bodyComponent);
 
-    if (formData.footerText) {
-      components.push({ type: 'FOOTER', text: formData.footerText });
-    }
+      // BODY
+      const bodyComponent = { type: 'BODY', text: formData.bodyText };
+      if (formData.bodyText.includes('{{')) {
+        const variableCount = (formData.bodyText.match(/\{\{\d+\}\}/g) || []).length;
+        const examples = formData.bodyExamples.slice(0, variableCount).filter(Boolean);
+        if(examples.length !== variableCount) {
+          throw new Error('Debes proveer un ejemplo para cada variable del cuerpo.');
+        }
+        bodyComponent.example = { body_text: [examples] };
+      }
+      components.push(bodyComponent);
 
-    if (formData.buttons.length > 0) {
-      const formattedButtons = formData.buttons.map(({ ...rest }) => rest);
-      components.push({ type: 'BUTTONS', buttons: formattedButtons });
-    }
+      // FOOTER
+      if (formData.footerText) {
+        components.push({ type: 'FOOTER', text: formData.footerText });
+      }
 
-    const templateData = {
-      name: formData.name.toLowerCase().replace(/[^a-z0-9_]/g, ''),
-      language: formData.language,
-      category: formData.category,
-      components,
+      // BUTTONS
+      if (formData.buttons.length > 0) {
+        const formattedButtons = formData.buttons.map(({ ...rest }) => rest);
+        components.push({ type: 'BUTTONS', buttons: formattedButtons });
+      }
+
+      return components;
     };
 
     try {
+      const components = buildComponents();
+
       if (editingTemplateId) {
-        const result = await updateTemplate(editingTemplateId, templateData);
+        // Para actualizar, solo necesitamos los componentes
+        const updatePayload = { components };
+        await updateTemplate(editingTemplateId, updatePayload);
         toast.success(`Plantilla "${formData.name}" actualizada con éxito!`);
       } else {
-        const result = await createTemplate(templateData);
+        // Para crear, necesitamos toda la estructura
+        const createPayload = {
+          name: formData.name.toLowerCase().replace(/[^a-z0-9_]/g, ''),
+          language: formData.language,
+          category: formData.category,
+          components,
+        };
+        const result = await createTemplate(createPayload);
         toast.success(`Plantilla "${result.name}" creada con éxito!`);
       }
+      
       setFormData(initialFormState);
       setView('list');
     } catch (error) {
@@ -231,7 +246,7 @@ export default function TemplatesPage() {
                 />
               )}
             </div>
-             <div className="lg:sticky lg:top-6 flex justify-center">
+              <div className="lg:sticky lg:top-6 flex justify-center">
               <TemplatePreview 
                 data={view === 'create' ? formData : null} 
                 template={view === 'list' ? selectedTemplate : null} 

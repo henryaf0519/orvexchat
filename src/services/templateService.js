@@ -60,3 +60,22 @@ export const getTemplates = async () => {
     throw error;
   }
 };
+
+export const deleteTemplate = async (templateName) => {
+  try {
+    const response = await apiFetch(`/templates/${templateName}`, {
+      method: 'DELETE',
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ message: 'Error al eliminar la plantilla.' }));
+      throw new Error(errorData.message || 'Ocurrió un error en el servidor.');
+    }
+    
+    return await response.json();
+
+  } catch (error) {
+    console.error(`Fallo al eliminar la plantilla "${templateName}":`, error);
+    throw error;
+  }
+};
