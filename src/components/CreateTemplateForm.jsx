@@ -1,15 +1,13 @@
 import React from 'react';
 import { Plus, Trash2 } from 'lucide-react';
 
-// Pequeño componente para mostrar los contadores de caracteres
 const CharCounter = ({ value = '', max }) => (
   <span className={`text-xs font-mono ${value.length > max ? 'text-red-500' : 'text-gray-400'}`}>
     {value.length}/{max}
   </span>
 );
 
-export default function CreateTemplateForm({ formData, setFormData, handleSubmit, isLoading }) {
-  // Los props ahora son la única fuente de verdad
+export default function CreateTemplateForm({ formData, setFormData, handleSubmit, isLoading, isEditing }) {
   const {
     name, category, language,
     headerType, headerText, headerExample,
@@ -62,19 +60,18 @@ export default function CreateTemplateForm({ formData, setFormData, handleSubmit
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {/* --- Detalles Básicos --- */}
       <div className="p-4 border rounded-md bg-white shadow-sm">
         <h3 className="font-semibold text-lg mb-4 text-gray-800">Información Básica</h3>
         <div className="space-y-4">
           <div>
             <label className="block text-sm font-medium text-gray-700">Nombre de la Plantilla</label>
-            <input type="text" name="name" value={name} onChange={handleInputChange} className="mt-1 w-full px-4 py-2 border rounded-lg" placeholder="ejemplo_de_promo_verano" required />
-            <p className="text-xs text-gray-500 mt-1">Solo minúsculas, números y guiones bajos.</p>
+            <input type="text" name="name" value={name} onChange={handleInputChange} disabled={isEditing} className="mt-1 w-full px-4 py-2 border rounded-lg disabled:bg-gray-200 disabled:cursor-not-allowed" placeholder="ejemplo_de_promo_verano" required />
+            <p className="text-xs text-gray-500 mt-1">Solo minúsculas, números y guiones bajos. No se puede cambiar después de crear.</p>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700">Categoría</label>
-              <select name="category" value={category} onChange={handleInputChange} className="mt-1 w-full px-4 py-2 border rounded-lg">
+              <select name="category" value={category} onChange={handleInputChange} disabled={isEditing} className="mt-1 w-full px-4 py-2 border rounded-lg disabled:bg-gray-200 disabled:cursor-not-allowed">
                 <option value="MARKETING">Marketing</option>
                 <option value="UTILITY">Utilidad</option>
                 <option value="AUTHENTICATION">Autenticación</option>
@@ -82,7 +79,7 @@ export default function CreateTemplateForm({ formData, setFormData, handleSubmit
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-700">Idioma</label>
-              <select name="language" value={language} onChange={handleInputChange} className="mt-1 w-full px-4 py-2 border rounded-lg">
+              <select name="language" value={language} onChange={handleInputChange} disabled={isEditing} className="mt-1 w-full px-4 py-2 border rounded-lg disabled:bg-gray-200 disabled:cursor-not-allowed">
                 <option value="es">Español</option>
                 <option value="es_MX">Español (México)</option>
                 <option value="en_US">Inglés (US)</option>
@@ -92,7 +89,7 @@ export default function CreateTemplateForm({ formData, setFormData, handleSubmit
         </div>
       </div>
 
-      {/* --- Componente Header --- */}
+      {/* --- El resto del formulario no necesita cambios --- */}
       <div className="p-4 border rounded-md bg-white shadow-sm">
         <div className="flex justify-between items-center">
           <label className="font-semibold text-lg text-gray-800">Encabezado (Opcional)</label>
@@ -116,7 +113,6 @@ export default function CreateTemplateForm({ formData, setFormData, handleSubmit
         )}
       </div>
 
-      {/* --- Componente Body --- */}
       <div className="p-4 border rounded-md bg-white shadow-sm">
         <div className="flex justify-between items-center">
           <label className="font-semibold text-lg text-gray-800">Cuerpo del Mensaje</label>
@@ -133,7 +129,6 @@ export default function CreateTemplateForm({ formData, setFormData, handleSubmit
         )}
       </div>
       
-      {/* --- Componente Footer --- */}
       <div className="p-4 border rounded-md bg-white shadow-sm">
         <div className="flex justify-between items-center">
           <label className="font-semibold text-lg text-gray-800">Pie de Página (Opcional)</label>
@@ -142,7 +137,6 @@ export default function CreateTemplateForm({ formData, setFormData, handleSubmit
         <input type="text" name="footerText" value={footerText} onChange={handleInputChange} maxLength="60" className="w-full mt-2 px-4 py-2 border rounded-lg" placeholder="Texto corto y sutil" />
       </div>
 
-      {/* --- Componente Botones --- */}
       <div className="p-4 border rounded-md bg-white shadow-sm">
         <label className="font-semibold text-lg text-gray-800">Botones (Opcional, máx. 5)</label>
         <div className="space-y-4 mt-4">
@@ -173,7 +167,7 @@ export default function CreateTemplateForm({ formData, setFormData, handleSubmit
       </div>
 
       <button type="submit" disabled={isLoading} className="w-full bg-red-600 text-white font-bold py-3 px-4 rounded-lg hover:bg-red-700 transition-colors disabled:bg-gray-400">
-        {isLoading ? 'Creando Plantilla...' : 'Crear y Enviar a Revisión'}
+        {isLoading ? (isEditing ? 'Actualizando...' : 'Creando...') : (isEditing ? 'Guardar Cambios' : 'Crear y Enviar a Revisión')}
       </button>
     </form>
   );

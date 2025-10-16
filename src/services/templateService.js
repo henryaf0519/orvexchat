@@ -28,6 +28,26 @@ export const createTemplate = async (templateData) => {
   }
 };
 
+export const updateTemplate = async (templateId, updateData) => {
+  try {
+    const response = await apiFetch(`/templates/${templateId}`, {
+      method: 'PUT',
+      body: JSON.stringify(updateData),
+    });
+
+    const responseData = await response.json();
+    if (!response.ok) {
+      const errorMessage = responseData.message || 'Error desconocido al actualizar la plantilla.';
+      throw new Error(errorMessage);
+    }
+
+    return responseData;
+  } catch (error) {
+    console.error('Error al actualizar la plantilla:', error);
+    throw error;
+  }
+};
+
 export const getTemplates = async () => {
   try {
     const response = await apiFetch('/templates');

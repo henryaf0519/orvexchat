@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { getTemplates, createTemplate } from '../services/templateService';
+import { getTemplates, createTemplate, updateTemplate } from '../services/templateService';
 import MainSidebar from '../components/MainSidebar';
 import CreateTemplateForm from '../components/CreateTemplateForm';
 import TemplatesList from '../components/TemplatesList';
@@ -7,6 +7,7 @@ import TemplatePreview from '../components/TemplatePreview';
 import MainHeader from '../components/MainHeader';
 import { toast, ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
+import ConfirmationModal from '../components/ConfirmationModal';
 
 // Función de ayuda para convertir un archivo a un string base64
 const fileToBase64 = (file) => new Promise((resolve, reject) => {
@@ -19,17 +20,50 @@ const fileToBase64 = (file) => new Promise((resolve, reject) => {
 // Estado inicial para el formulario, para poder reiniciarlo fácilmente
 const initialFormState = {
   name: '', category: 'MARKETING', language: 'es',
-  headerType: 'NONE', headerText: '', headerBase64: null, headerExample: '',
+  headerType: 'NONE', headerText: '', headerBase64: null, headerExample: '', headerImageUrl: null,
   bodyText: '', bodyExamples: [''], footerText: '', buttons: [],
 };
 
+// Transforma los datos de la API al formato que usa el formulario
+const transformApiToFormData = (template) => {
+  const components = template.components.reduce((acc, comp) => {
+    acc[comp.type] = comp;
+    return acc;
+  }, {});
+
+  // Extraemos la URL de la imagen si existe
+  const headerComponent = components.HEADER;
+  const imageUrl = (headerComponent?.format === 'IMAGE' && headerComponent.example?.header_handle?.[0])
+    ? headerComponent.example.header_handle[0]
+    : null;
+
+  return {
+    id: template.id,
+    name: template.name,
+    category: template.category,
+    language: template.language,
+    headerType: headerComponent?.format || 'NONE',
+    headerText: headerComponent?.text || '',
+    headerExample: headerComponent?.example?.header_text?.[0] || '',
+    headerBase64: null, // Siempre nulo al inicio, el usuario debe seleccionar un archivo nuevo para cambiarlo
+    headerImageUrl: imageUrl, // <- GUARDAMOS LA URL EXISTENTE
+    bodyText: components.BODY?.text || '',
+    bodyExamples: components.BODY?.example?.body_text?.[0] || [''],
+    footerText: components.FOOTER?.text || '',
+    buttons: components.BUTTONS?.buttons || [],
+  };
+};
+
 export default function TemplatesPage() {
-  const [view, setView] = useState('create');
+  const [view, setView] = useState('list');
   const [templates, setTemplates] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedTemplate, setSelectedTemplate] = useState(null);
   const [formData, setFormData] = useState(initialFormState);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [editingTemplateId, setEditingTemplateId] = useState(null);
+  const [templateToDelete, setTemplateToDelete] = useState(null);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
 
   const fetchTemplates = () => {
     setIsLoading(true);
@@ -43,8 +77,38 @@ export default function TemplatesPage() {
     if (view === 'list') {
       fetchTemplates();
       setSelectedTemplate(null);
+      setEditingTemplateId(null);
+      setFormData(initialFormState);
     }
   }, [view]);
+
+  const handleEdit = (template) => {
+    const formDataFromApi = transformApiToFormData(template);
+    setFormData(formDataFromApi);
+    setEditingTemplateId(template.id);
+    setView('create');
+  };
+
+  const handleDeleteRequest = (templateId) => {
+    const template = templates.find(t => t.id === templateId);
+    setTemplateToDelete(template);
+    setIsDeleteModalOpen(true);
+  };
+
+  const confirmDelete = async () => {
+    if (!templateToDelete) return;
+    try {
+      // Asumiendo que tu API de backend puede eliminar por nombre de plantilla
+      await deleteTemplate(templateToDelete.name); 
+      toast.success(`Plantilla "${templateToDelete.name}" eliminada.`);
+      fetchTemplates(); 
+    } catch (error) {
+      toast.error(error.message || "No se pudo eliminar la plantilla.");
+    } finally {
+      setIsDeleteModalOpen(false);
+      setTemplateToDelete(null);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -53,7 +117,7 @@ export default function TemplatesPage() {
       return;
     }
     setIsSubmitting(true);
-    toast.info('Creando plantilla...');
+    toast.info(editingTemplateId ? 'Actualizando plantilla...' : 'Creando plantilla...');
 
     let finalHeaderBase64 = null;
     if (formData.headerType === 'IMAGE' && formData.headerBase64 instanceof File) {
@@ -75,7 +139,10 @@ export default function TemplatesPage() {
                 headerComponent.example = { header_text: [formData.headerExample] };
             }
         } else if (finalHeaderBase64) {
-            headerComponent.example = { header_base64: finalHeaderBase64 };
+             // ✅ LÓGICA CORRECTA Y RESTAURADA
+             // Siempre que se sube un archivo nuevo, se envía en 'header_base64'.
+             // El backend lo procesará para crear o actualizar.
+             headerComponent.example = { header_base64: finalHeaderBase64 };
         }
         components.push(headerComponent);
     }
@@ -110,9 +177,14 @@ export default function TemplatesPage() {
     };
 
     try {
-      const result = await createTemplate(templateData);
-      toast.success(`Plantilla "${result.name}" creada con éxito!`);
-      setFormData(initialFormState); // Reinicia el formulario
+      if (editingTemplateId) {
+        const result = await updateTemplate(editingTemplateId, templateData);
+        toast.success(`Plantilla "${formData.name}" actualizada con éxito!`);
+      } else {
+        const result = await createTemplate(templateData);
+        toast.success(`Plantilla "${result.name}" creada con éxito!`);
+      }
+      setFormData(initialFormState);
       setView('list');
     } catch (error) {
       toast.error(error.message);
@@ -132,7 +204,9 @@ export default function TemplatesPage() {
               Gestor de Plantillas
             </h1>
             <div className="flex bg-gray-200 p-1 rounded-lg">
-              <button onClick={() => setView('create')} className={`px-4 py-1.5 text-sm font-semibold rounded-md transition-colors ${view === 'create' ? 'bg-white shadow' : 'text-gray-600 hover:bg-gray-300'}`}>Crear Nueva</button>
+              <button onClick={() => { setView('create'); setEditingTemplateId(null); setFormData(initialFormState); }} className={`px-4 py-1.5 text-sm font-semibold rounded-md transition-colors ${view === 'create' ? 'bg-white shadow' : 'text-gray-600 hover:bg-gray-300'}`}>
+                {editingTemplateId ? 'Editar Plantilla' : 'Crear Nueva'}
+              </button>
               <button onClick={() => setView('list')} className={`px-4 py-1.5 text-sm font-semibold rounded-md transition-colors ${view === 'list' ? 'bg-white shadow' : 'text-gray-600 hover:bg-gray-300'}`}>Mis Plantillas</button>
             </div>
           </div>
@@ -144,13 +218,16 @@ export default function TemplatesPage() {
                   formData={formData} 
                   setFormData={setFormData} 
                   handleSubmit={handleSubmit} 
-                  isLoading={isSubmitting} 
+                  isLoading={isSubmitting}
+                  isEditing={!!editingTemplateId}
                 />
               ) : (
                 <TemplatesList 
                   templates={templates} 
                   isLoading={isLoading} 
-                  onSelectTemplate={setSelectedTemplate} 
+                  onSelectTemplate={setSelectedTemplate}
+                  onEdit={handleEdit}
+                  onDelete={handleDeleteRequest}
                 />
               )}
             </div>
@@ -164,6 +241,13 @@ export default function TemplatesPage() {
         </main>
       </div>
       <ToastContainer position="bottom-right" autoClose={5000} />
+      <ConfirmationModal
+        isOpen={isDeleteModalOpen}
+        onClose={() => setIsDeleteModalOpen(false)}
+        onConfirm={confirmDelete}
+        title="Confirmar Eliminación"
+        message={`¿Estás seguro de que quieres eliminar la plantilla "${templateToDelete?.name}"? Esta acción no se puede deshacer.`}
+      />
     </div>
   );
 }

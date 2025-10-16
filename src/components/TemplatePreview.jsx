@@ -1,9 +1,10 @@
-// src/components/TemplatePreview.jsx
 import React, { useState, useEffect } from 'react';
-import { Image, Type, Phone, Globe, MessageSquare } from 'lucide-react';
+import { Smartphone, Image as ImageIcon, Type, MessageSquare, Phone, Globe, CornerUpRight } from 'lucide-react';
 
+// Función de ayuda para renderizar texto con variables y saltos de línea
 const formatText = (text) => {
   if (!text) return { __html: '' };
+  // Reemplaza {{1}} por un span estilizado y \n por <br />
   const html = text
     .replace(/{{(\d+)}}/g, '<span class="bg-blue-200 text-blue-800 font-medium px-1 rounded-sm">[{{$1}}]</span>')
     .split('\n').join('<br />');
@@ -13,52 +14,66 @@ const formatText = (text) => {
 export default function TemplatePreview({ data, template }) {
   const [imagePreviewUrl, setImagePreviewUrl] = useState(null);
 
-  // ✅ HOOK CORREGIDO
+  // Hook para gestionar la previsualización de la imagen cargada desde el formulario
   useEffect(() => {
-    // Solo creamos una URL de previsualización si existe un archivo para mostrar
+    // Si estamos en modo formulario, el encabezado es una imagen y hay un archivo seleccionado
     if (data && data.headerType === 'IMAGE' && data.headerBase64 instanceof File) {
       const objectUrl = URL.createObjectURL(data.headerBase64);
       setImagePreviewUrl(objectUrl);
 
-      // La función de limpieza se encarga de revocar la URL cuando ya no es necesaria
+      // Función de limpieza para liberar memoria cuando el componente se desmonte o el archivo cambie
       return () => URL.revokeObjectURL(objectUrl);
     } else {
-      // Si no hay archivo o el tipo de encabezado no es imagen, nos aseguramos de limpiar la previsualización
+      // Si no se cumple la condición, se limpia la URL de previsualización
       setImagePreviewUrl(null);
     }
-    // Usamos dependencias más específicas para evitar que el efecto se ejecute innecesariamente
+    // El efecto se ejecuta solo si cambia el tipo de encabezado o el archivo
   }, [data?.headerType, data?.headerBase64]);
 
 
   let header, body, footer, buttons;
+  // Imagen por defecto
   let imageUrl = 'https://via.placeholder.com/600x314.png?text=Imagen';
 
-  if (data) { // Modo Formulario
+  if (data) { // MODO FORMULARIO: Los datos vienen del estado del formulario
     header = { format: data.headerType, text: data.headerText };
     body = { text: data.bodyText };
     footer = data.footerText ? { text: data.footerText } : null;
     buttons = data.buttons.length > 0 ? { buttons: data.buttons } : null;
     
+    // Si el encabezado es una imagen y tenemos una URL de previsualización, la usamos
     if (header.format === 'IMAGE' && imagePreviewUrl) {
       imageUrl = imagePreviewUrl;
+    // Si no hay archivo nuevo pero sí una URL existente (modo edición)
+    } else if (data.headerImageUrl) {
+      imageUrl = data.headerImageUrl;
     }
-  } else if (template) { // Modo API (plantilla existente)
+  } else if (template) { // MODO API: Los datos vienen de una plantilla seleccionada de la lista
     header = template.components.find(c => c.type === 'HEADER');
     body = template.components.find(c => c.type === 'BODY');
     footer = template.components.find(c => c.type === 'FOOTER');
     buttons = template.components.find(c => c.type === 'BUTTONS');
     
+    // Si el encabezado es una imagen y tiene una URL de Meta, la usamos
     if (header?.format === 'IMAGE' && header.example?.header_handle?.[0]) {
       imageUrl = header.example.header_handle[0];
     }
-  } else {
-    return <p className="text-gray-500 text-center">Selecciona una plantilla para ver la vista previa.</p>;
   }
 
+  // Si no hay ni `data` ni `template`, no se muestra nada
+  if (!data && !template) {
+    return (
+      <div className="w-full max-w-[320px] bg-white p-4 rounded-lg shadow-lg border border-gray-200 sticky top-6 flex items-center justify-center h-96">
+        <p className="text-gray-500 text-center">Selecciona una plantilla para ver la vista previa.</p>
+      </div>
+    );
+  }
 
   return (
     <div className="w-full max-w-[320px] bg-white p-1 rounded-lg shadow-lg border border-gray-200 sticky top-6">
+      {/* Contenedor del mensaje tipo WhatsApp */}
       <div className="bg-[#E1F7CB] p-3 rounded-lg flex flex-col gap-2">
+        {/* Renderizado del Encabezado */}
         {header && header.format !== 'NONE' && (
           <div className="header-preview mb-2 rounded-md overflow-hidden">
             {header.format === 'IMAGE' && (
@@ -69,9 +84,15 @@ export default function TemplatePreview({ data, template }) {
             )}
           </div>
         )}
+
+        {/* Renderizado del Cuerpo */}
         {body && <p className="text-sm text-gray-800 break-words" dangerouslySetInnerHTML={formatText(body.text)} />}
+        
+        {/* Renderizado del Pie de Página */}
         {footer && <p className="text-xs text-gray-500 mt-2">{footer.text}</p>}
       </div>
+
+      {/* Renderizado de los Botones */}
       {buttons && buttons.buttons.length > 0 && (
         <div className="mt-1 space-y-1">
           {buttons.buttons.map((btn, index) => (
