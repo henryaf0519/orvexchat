@@ -1,8 +1,14 @@
-const API_URL = 'http://localhost:3000/dynamo';
+// src/services/chatService.js
 
+import { CgOpenCollective } from 'react-icons/cg';
+import { apiFetch } from './api'; // Importa nuestro interceptor centralizado
+
+/**
+ * Obtiene la lista de todas las conversaciones.
+ */
 export async function getChats() {
   try {
-    const response = await fetch(`${API_URL}/conversations`);
+    const response = await apiFetch('/dynamo/conversations'); 
     if (!response.ok) {
       throw new Error('Error al obtener la lista de conversaciones.');
     }
@@ -18,15 +24,16 @@ export async function getChats() {
   }
 }
 
+/**
+ * Envía un mensaje a una conversación específica.
+ */
 export async function sendMessage(chatId, text) {
+   const [businessId, conversationId] = chatId.split('#');
   try {
-    const response = await fetch(`${API_URL}/message`, {
+    const response = await apiFetch('/dynamo/message', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
       body: JSON.stringify({
-        conversationId: chatId,
+        conversationId: conversationId,
         from: 'agent',
         text: text,
         messageId: `sent-${Date.now()}`,
@@ -37,24 +44,46 @@ export async function sendMessage(chatId, text) {
     if (!response.ok) {
       throw new Error('Error al enviar el mensaje.');
     }
-    const result = await response.json();
-    return result;
+    return await response.json();
   } catch (error) {
     console.error('Fallo en sendMessage:', error);
     return null;
   }
 }
 
+/**
+ * Obtiene todos los mensajes de una conversación.
+ */
 export async function getMessages(chatId) {
+  const [businessId, conversationId] = chatId.split('#');
   try {
-    const response = await fetch(`${API_URL}/messages/${chatId}`);
+    const response = await apiFetch(`/dynamo/messages/${conversationId}`);
     if (!response.ok) {
       throw new Error('Error al obtener los mensajes de la conversación.');
     }
-    const messages = await response.json();
-    return messages;
+    return await response.json();
   } catch (error) {
     console.error('Fallo en getMessages:', error);
     return [];
+  }
+}
+
+/**
+ * Actualiza el modo de control de un chat (IA o humano).
+ */
+export async function updateChatMode(chatId, newMode) {
+   const [businessId, conversationId] = chatId.split('#');
+  try {
+    const response = await apiFetch(`/dynamo/control/${conversationId}`, {
+      method: 'POST',
+      body: JSON.stringify({ newMode }),
+    });
+    if (!response.ok) {
+      throw new Error('Error al actualizar el modo del chat.');
+    }
+    return await response.json();
+  } catch (error) {
+    console.error('Fallo en updateChatMode:', error);
+    return null;
   }
 }
