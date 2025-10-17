@@ -74,7 +74,6 @@ export default function CreateTemplateForm({ formData, setFormData, handleSubmit
               <select name="category" value={category} onChange={handleInputChange} disabled={isEditing} className="mt-1 w-full px-4 py-2 border rounded-lg disabled:bg-gray-200 disabled:cursor-not-allowed">
                 <option value="MARKETING">Marketing</option>
                 <option value="UTILITY">Utilidad</option>
-                <option value="AUTHENTICATION">Autenticación</option>
               </select>
             </div>
             <div>
