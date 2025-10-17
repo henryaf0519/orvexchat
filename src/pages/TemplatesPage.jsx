@@ -19,7 +19,7 @@ const fileToBase64 = (file) => new Promise((resolve, reject) => {
 
 // Estado inicial para el formulario
 const initialFormState = {
-  name: '', category: 'MARKETING', language: 'es',
+  name: '', category: 'MARKETING', language: 'es_CO',
   headerType: 'NONE', headerText: '', headerBase64: null, headerExample: '', headerImageUrl: null,
   bodyText: '', bodyExamples: [''], footerText: '', buttons: [],
 };

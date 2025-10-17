@@ -80,9 +80,7 @@ export default function CreateTemplateForm({ formData, setFormData, handleSubmit
             <div>
               <label className="block text-sm font-medium text-gray-700">Idioma</label>
               <select name="language" value={language} onChange={handleInputChange} disabled={isEditing} className="mt-1 w-full px-4 py-2 border rounded-lg disabled:bg-gray-200 disabled:cursor-not-allowed">
-                <option value="es">Español</option>
-                <option value="es_MX">Español (México)</option>
-                <option value="en_US">Inglés (US)</option>
+                <option value="es_CO">Español (Colombia)</option>
               </select>
             </div>
           </div>
