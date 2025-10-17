@@ -30,36 +30,27 @@ const FlowBuilder = () => {
       nds.map((node) => (node.id === nodeId ? { ...node, data: { ...node.data, ...newData } } : node))
     );
   };
-
-  // --- CAMBIO #3: La función que elimina el nodo y sus conexiones ---
+  
   const deleteNode = useCallback((nodeIdToDelete) => {
     setNodes((nds) => nds.filter((node) => node.id !== nodeIdToDelete));
     setEdges((eds) => eds.filter((edge) => edge.source !== nodeIdToDelete && edge.target !== nodeIdToDelete));
   }, [setNodes, setEdges]);
   
   const addScreenNode = () => {
-    let newPosition = { x: 100, y: 100 }; // Posición por defecto si es el primer nodo
-
+    let newPosition = { x: 100, y: 100 };
     if (nodes.length > 0) {
-        // 1. Encontrar el nodo que está más a la derecha
-        const rightMostNode = nodes.reduce(
-            (rightmost, node) => (node.position.x > rightmost.position.x ? node : rightmost),
-            nodes[0]
-        );
-        
-        // 2. Calcular la nueva posición a la derecha de ese nodo
-        newPosition = {
-            x: rightMostNode.position.x + 400, // Ancho del nodo (350) + un espacio (50)
-            y: rightMostNode.position.y,      // Mantener la misma altura para una línea ordenada
-        };
+        const rightMostNode = nodes.reduce((rightmost, node) => (node.position.x > rightmost.position.x ? node : rightmost), nodes[0]);
+        newPosition = { x: rightMostNode.position.x + 400, y: rightMostNode.position.y };
     }
 
     const newNode = {
       id: getScreenId(),
       type: 'screenNode',
-      position: newPosition, // 3. Usar la nueva posición calculada
+      position: newPosition,
       data: { 
-        title: '', body: '', buttons: [], footer_label: '',
+        title: '', 
+        components: [],
+        footer_label: '',
         updateNodeData: updateNodeData,
         deleteNode: deleteNode 
       },
@@ -68,37 +59,55 @@ const FlowBuilder = () => {
   };
 
   const generateFlowJson = () => {
-    // (Lógica sin cambios)
     const routing_model = {};
     const screens = nodes.map(node => {
-      const outgoingEdges = edges.filter(e => e.source === node.id);
-      routing_model[node.id] = [...new Set(outgoingEdges.map(e => e.target))];
-      const dataSource = (node.data.buttons || []).map((button, index) => {
-        const edgeForButton = outgoingEdges.find(e => e.sourceHandle === `${node.id}-option-${index}`);
-        return { id: edgeForButton ? edgeForButton.target : "", title: button.title };
-      });
-      return {
-        id: node.id,
-        title: node.data.title,
-        layout: { type: "SingleColumnLayout", children: [{ type: "Form", name: `${node.id}_form`,
-            children: [
-              { type: "TextBody", text: node.data.body },
-              { type: "RadioButtonsGroup", name: "selection", "data-source": dataSource },
-              { type: "Footer", label: node.data.footer_label || 'Continuar', "on-click-action": { name: "data_exchange", payload: { selection: "${form.selection}" } }}
-            ]
-        }]},
-      };
+        const outgoingEdges = edges.filter(e => e.source === node.id);
+        routing_model[node.id] = [...new Set(outgoingEdges.map(e => e.target))];
+
+        const formChildren = (node.data.components || []).map((component, compIndex) => {
+            switch(component.type) {
+                case 'TextBody':
+                    return { type: 'TextBody', text: component.text || '' };
+                case 'TextInput':
+                    return { type: 'TextInput', name: component.name || `input_${compIndex}`, label: component.label || '', required: true };
+                case 'RadioButtonsGroup':
+                    const dataSource = (component.options || []).map((option, optIndex) => {
+                        const edgeForOption = outgoingEdges.find(e => e.sourceHandle === `${node.id}-component-${compIndex}-option-${optIndex}`);
+                        return { id: edgeForOption ? edgeForOption.target : "", title: option.title };
+                    });
+                    return { type: 'RadioButtonsGroup', name: 'selection', "data-source": dataSource };
+                case 'Image':
+                     return { type: 'Image', src: "URL_DE_LA_IMAGEN", height: 250 }; // Placeholder
+                default:
+                    return null;
+            }
+        }).filter(Boolean);
+
+        formChildren.push({
+            type: "Footer",
+            label: node.data.footer_label || 'Continuar',
+            "on-click-action": { name: "data_exchange", payload: {} }
+        });
+
+        return {
+            id: node.id,
+            title: node.data.title || 'Pantalla sin Título',
+            layout: { type: "SingleColumnLayout", children: [{ type: "Form", name: `${node.id.toLowerCase()}_form`, children: formChildren }] },
+        };
     });
+
     const finalJson = { name: flowName.toLowerCase().replace(/\s/g, '_'), version: "7.2", data_api_version: "3.0", routing_model, screens };
     setFlowJson(finalJson);
   };
 
   return (
     <div style={{ width: '100%', height: '100%', display: 'flex' }}>
-      <div style={{ width: '250px', padding: '10px', borderRight: '1px solid #ddd' }}>
+      <div style={{ width: '250px', padding: '10px', borderRight: '1px solid #ddd', background: '#f8fafc' }}>
         <h3>Constructor</h3>
-         <input value={flowName} onChange={(e) => setFlowName(e.target.value)} style={{width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px', marginBottom: '20px'}} />
-        <button onClick={addScreenNode} className="add-option-button" style={{background: '#4299e1', color: 'white', border: 'none'}}>+ Añadir Pantalla</button>
+         <input value={flowName} onChange={(e) => setFlowName(e.target.value)} placeholder="Nombre del Flujo" style={{width: '100%', padding: '8px', border: '1px solid #ccc', borderRadius: '4px', marginBottom: '20px'}} />
+        <button onClick={addScreenNode} style={{ padding: '10px', background: '#3b82f6', color: 'white', border: 'none', borderRadius: '5px', width: '100%', cursor: 'pointer' }}>
+          + Añadir Pantalla
+        </button>
       </div>
 
       <div style={{ flex: 1, background: '#fcfcfc' }}>
@@ -113,13 +122,13 @@ const FlowBuilder = () => {
           fitViewOptions={{ maxZoom: 1 }}
         >
           <Controls />
-          <Background color="#eee" gap={20} />
+          <Background color="#e2e8f0" gap={20} />
         </ReactFlow>
       </div>
 
-      <div style={{ width: '400px', padding: '10px', borderLeft: '1px solid #ddd', background: '#f7fafc' }}>
+      <div style={{ width: '400px', padding: '10px', borderLeft: '1px solid #ddd', background: '#f8fafc' }}>
         <h3>JSON del Flujo</h3>
-        <button onClick={generateFlowJson} style={{ marginBottom: '10px', padding: '10px', width: '100%', backgroundColor: '#e53e3e', color: 'white', border: 'none', borderRadius: '5px' }}>
+        <button onClick={generateFlowJson} style={{ marginBottom: '10px', padding: '10px', width: '100%', backgroundColor: '#dc2626', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}>
           Generar/Actualizar JSON
         </button>
         <pre style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all', background: 'white', padding: '10px', borderRadius: '5px', height: '85%', overflowY: 'auto', fontSize: '12px' }}>
