@@ -101,9 +101,13 @@ const FlowBuilder = () => {
                     formPayload['selection'] = `\${form.selection}`;
                     const dataSource = (component.options || []).map((option, optIndex) => {
                         const edgeForOption = outgoingEdges.find(e => e.sourceHandle === `${node.id}-component-${compIndex}-option-${optIndex}`);
-                        return { id: edgeForOption ? edgeForOption.target : "", title: option.title };
+                       
+                        return {
+                            id: option.id || `option_${optIndex + 1}`,
+                            title: option.title
+                        };
                     });
-                    return { type: 'RadioButtonsGroup', name: 'selection', "data-source": dataSource };
+                    return { type: 'RadioButtonsGroup', label: 'Selecciona una opción:', name: 'selection', "data-source": dataSource };
                 case 'Image':
                     // --- ✅ QUITA EL PREFIJO DATA URI ---
                     return {
