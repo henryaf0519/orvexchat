@@ -61,7 +61,7 @@ const componentHeaderStyle = {
 // --- Fin Estilos ---
 
 
-// --- Componentes Internos para cada tipo de bloque ---
+// --- Componentes Internos ---
 const renderComponent = (component, index, nodeId, data) => {
     const handleComponentChange = (e) => {
         const { name, value } = e.target;
@@ -84,8 +84,7 @@ const renderComponent = (component, index, nodeId, data) => {
         newComponents[index] = { ...component, options: [...(component.options || []), newOption] };
         data.updateNodeData(nodeId, { ...data, components: newComponents });
     };
-
-    // --- NUEVA FUNCIÓN PARA ELIMINAR UNA OPCIÓN ESPECÍFICA ---
+    
     const removeOption = (optionIndexToRemove) => {
         const newComponents = [...(data.components || [])];
         const newOptions = component.options.filter((_, i) => i !== optionIndexToRemove);
@@ -97,19 +96,22 @@ const renderComponent = (component, index, nodeId, data) => {
         case 'TextBody':
             return ( <div> <span style={componentHeaderStyle}>Cuerpo de Texto</span> <textarea name="text" value={component.text || ''} onChange={handleComponentChange} placeholder="Escribe el texto aquí..." style={{ width: '100%', border: '1px solid #eee', borderRadius: '4px', padding: '5px' }} /> </div> );
         case 'TextInput':
-            return ( <div> <span style={componentHeaderStyle}>Campo de Texto (Input)</span> <input name="label" value={component.label || ''} onChange={handleComponentChange} placeholder="Etiqueta del campo (ej: 'Nombre Completo')" style={{ width: '100%', border: '1px solid #eee', borderRadius: '4px', padding: '5px' }}/> </div> )
+            return (
+                 <div>
+                    <span style={componentHeaderStyle}>Campo de Texto (Input)</span>
+                    <input name="label" value={component.label || ''} onChange={handleComponentChange} placeholder="Etiqueta del campo (ej: 'Nombre Completo')" style={{ width: '100%', border: '1px solid #eee', borderRadius: '4px', padding: '5px', marginBottom: '5px' }}/>
+                    <input name="name" value={component.name || ''} onChange={handleComponentChange} placeholder="nombre_variable (ej: 'full_name')" style={{ width: '100%', border: '1px solid #eee', borderRadius: '4px', padding: '5px', fontSize: '11px' }}/>
+                </div>
+            )
         case 'RadioButtonsGroup':
             return (
                  <div>
                     <span style={componentHeaderStyle}>Opciones de Respuesta</span>
                     {(component.options || []).map((opt, optIndex) => (
-                        <div key={optIndex} style={optionStyle}>
+                        <div key={optIndex} style={{position: 'relative', display: 'flex', alignItems: 'center', padding: '5px 0'}}>
                            <input type="radio" name={`radio_group_${nodeId}_${index}`} style={{marginRight: '10px'}}/>
                            <input value={opt.title} onChange={(e) => handleOptionChange(optIndex, e.target.value)} placeholder="Texto de la opción" style={{flex: 1, border: '1px solid #f0f0f0', borderRadius: '4px', padding: '5px'}} />
-                           {/* --- BOTÓN PARA ELIMINAR LA OPCIÓN --- */}
-                           <button onClick={() => removeOption(optIndex)} className="clickable-icon" style={{color: '#ef4444', zIndex: 2}}>
-                               <FaTrash size={12}/>
-                           </button>
+                           <button onClick={() => removeOption(optIndex)} className="clickable-icon" style={{color: '#ef4444', zIndex: 2}}> <FaTrash size={12}/> </button>
                            <Handle type="source" position={Position.Right} id={`${nodeId}-component-${index}-option-${optIndex}`} className="custom-handle" style={{ top: '50%', transform: 'translateY(-50%)' }} />
                         </div>
                     ))}
@@ -128,7 +130,10 @@ export default function FlowScreenNode({ data, id }) {
 
   const addComponent = (type) => {
     const newComponent = { type: type, id: `${type.toLowerCase()}_${(data.components?.length || 0) + 1}` };
-    if (type === 'TextInput') newComponent.label = '';
+    if (type === 'TextInput') {
+        newComponent.label = '';
+        newComponent.name = '';
+    }
     if (type === 'TextBody') newComponent.text = '';
     if (type === 'RadioButtonsGroup') newComponent.options = [];
     data.updateNodeData(id, { ...data, components: [...(data.components || []), newComponent] });

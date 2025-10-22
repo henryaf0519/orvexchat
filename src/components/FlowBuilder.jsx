@@ -64,20 +64,27 @@ const FlowBuilder = () => {
         const outgoingEdges = edges.filter(e => e.source === node.id);
         routing_model[node.id] = [...new Set(outgoingEdges.map(e => e.target))];
 
+        const formPayload = {}; // Objeto para construir el payload
         const formChildren = (node.data.components || []).map((component, compIndex) => {
             switch(component.type) {
                 case 'TextBody':
                     return { type: 'TextBody', text: component.text || '' };
                 case 'TextInput':
+                    // Añadimos el campo al payload
+                    if(component.name) {
+                        formPayload[component.name] = `\${form.${component.name}}`;
+                    }
                     return { type: 'TextInput', name: component.name || `input_${compIndex}`, label: component.label || '', required: true };
                 case 'RadioButtonsGroup':
+                    // Añadimos la selección al payload
+                    formPayload['selection'] = `\${form.selection}`;
                     const dataSource = (component.options || []).map((option, optIndex) => {
                         const edgeForOption = outgoingEdges.find(e => e.sourceHandle === `${node.id}-component-${compIndex}-option-${optIndex}`);
                         return { id: edgeForOption ? edgeForOption.target : "", title: option.title };
                     });
                     return { type: 'RadioButtonsGroup', name: 'selection', "data-source": dataSource };
                 case 'Image':
-                     return { type: 'Image', src: "URL_DE_LA_IMAGEN", height: 250 }; // Placeholder
+                     return { type: 'Image', src: "URL_DE_LA_IMAGEN", height: 250 };
                 default:
                     return null;
             }
@@ -86,7 +93,10 @@ const FlowBuilder = () => {
         formChildren.push({
             type: "Footer",
             label: node.data.footer_label || 'Continuar',
-            "on-click-action": { name: "data_exchange", payload: {} }
+            "on-click-action": { 
+                name: "data_exchange", 
+                payload: formPayload // <-- Usamos el payload construido dinámicamente
+            }
         });
 
         return {
