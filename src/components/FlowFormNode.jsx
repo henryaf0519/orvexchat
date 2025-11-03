@@ -12,12 +12,15 @@ const componentHeaderClasses = "text-[10px] font-bold text-gray-400 uppercase mb
 const footerClasses = "bg-gray-50 border-t border-gray-200 py-2.5 px-4 rounded-b-xl";
 const footerInputClasses = "editable-field footer-input w-full bg-green-500 text-white border-2 border-green-600 p-2.5 rounded-lg font-bold text-center placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-green-400";
 const textInputClasses = "w-full border border-gray-200 rounded p-1 text-sm";
+// ✅ --- INICIO CAMBIO: Estilo para el nuevo textarea ---
+const textAreaClasses = "w-full border border-gray-300 rounded p-1.5 text-sm min-h-[60px] resize-none bg-white";
+// ✅ --- FIN CAMBIO ---
 const clickableIconClasses = "clickable-icon p-1 text-gray-500 hover:text-black cursor-pointer";
 const deleteComponentBtnClasses = "delete-component-btn absolute top-1 right-1 bg-white rounded-full border border-gray-300 w-5 h-5 flex items-center justify-center cursor-pointer text-red-500 hover:bg-red-500 hover:text-white shadow-sm";
 // --- Fin Estilos ---
 
 export default function FlowFormNode({ data, id }) {
-  // Función genérica para actualizar campos del nodo (title, footer_label)
+  // Función genérica para actualizar campos del nodo (title, footer_label, introText)
   const handleChange = (e) => data.updateNodeData(id, { ...data, [e.target.name]: e.target.value });
 
   // --- Funciones para los campos del formulario ---
@@ -107,6 +110,20 @@ export default function FlowFormNode({ data, id }) {
 
         {/* Cuerpo (Editor de campos) */}
         <div className={bodyClasses}>
+          {/* ✅ --- INICIO CAMBIO: Campo de Texto Introductorio --- */}
+          <div className="mb-4">
+              <label className="text-xs font-medium text-gray-500 block mb-1">Texto Introductorio (Opcional)</label>
+              <textarea
+                name="introText"
+                value={data.introText || ''}
+                onChange={handleChange}
+                placeholder="Ej: Por favor, completa los siguientes datos y un asesor se comunicará contigo ..."
+                className={textAreaClasses}
+                rows={3}
+              />
+          </div>
+          {/* ✅ --- FIN CAMBIO --- */}
+
           {(data.components || []).map((field, index) => (
             <div key={field.id || index} className={componentContainerClasses}>
               <button onClick={() => deleteField(index)} className={deleteComponentBtnClasses} title="Eliminar campo">
@@ -115,7 +132,6 @@ export default function FlowFormNode({ data, id }) {
               
               <span className={`${componentHeaderClasses} mb-1`}>Campo de Texto {index + 1}</span>
               
-              {/* ✅ --- INICIO DE LA MODIFICACIÓN --- */}
               <div className="space-y-2">
                 {/* 1. Input de Etiqueta */}
                 <input
@@ -151,9 +167,7 @@ export default function FlowFormNode({ data, id }) {
                         />
                     </button>
                 </div>
-                 {/* 3. Texto de la variable ELIMINADO */}
               </div>
-              {/* ✅ --- FIN DE LA MODIFICACIÓN --- */}
             </div>
           ))}
           <button onClick={addField} className="text-sm text-blue-600 hover:text-blue-800 flex items-center gap-2 mt-3">

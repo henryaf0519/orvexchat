@@ -16,22 +16,17 @@ const RenderScreenComponent = ({ component }) => {
         case 'TextCaption':
              return <p className="text-xs text-gray-500 px-4 pb-2 pt-1">{component.text || 'Caption...'}</p>;
         
-        // ✅ --- INICIO DEL CAMBIO ---
-        // Así se ve en la imagen que enviaste
         case 'TextInput':
             return (
-                <div className="px-4 py-2"> {/* Espaciado reducido */}
-                    {/* Label removido de aquí */}
+                <div className="px-4 py-2">
                     <input 
                         type="text" 
-                        placeholder={component.label || 'Input Label'} // El label ahora es el placeholder
+                        placeholder={component.label || 'Input Label'}
                         disabled 
-                        // Estilos actualizados para parecerse al de la imagen
                         className="w-full border border-gray-300 rounded-lg p-3 text-sm bg-white cursor-not-allowed" 
                     />
                 </div>
             );
-        // ✅ --- FIN DEL CAMBIO ---
             
         case 'RadioButtonsGroup':
             return (
@@ -54,10 +49,7 @@ const RenderScreenComponent = ({ component }) => {
 const RenderCatalogContent = ({ nodeData }) => {
     return (
         <>
-            {/* Texto introductorio */}
             {nodeData.introText && <p className="text-sm text-gray-700 px-4 py-2 whitespace-pre-wrap">{nodeData.introText}</p>}
-
-            {/* Productos */}
             {(nodeData.products || []).map((product, index) => (
                 <div key={product.id || index} className="border-b border-gray-100 pb-3 mb-3">
                     {product.imageBase64 && <img src={product.imageBase64} alt={product.title || 'Producto'} className="w-full h-auto object-cover block" />}
@@ -68,8 +60,6 @@ const RenderCatalogContent = ({ nodeData }) => {
                     </p>
                 </div>
             ))}
-
-            {/* Radio Buttons del catálogo */}
             {(nodeData.radioOptions || []).length > 0 && (
                 <div className="px-4 py-3 space-y-1">
                     <span className="block text-xs font-medium text-gray-500 mb-2">{nodeData.radioLabel || 'Selecciona:'}</span>
@@ -92,14 +82,15 @@ export default function PreviewModal({ nodeData, onClose }) {
     // Detecta el tipo de nodo
     const isCatalogNode = nodeData.type === 'catalogNode';
     const isFormNode = nodeData.type === 'formNode';
-    const isConfirmationNode = nodeData.type === 'confirmationNode'; // ✅ 1. Detectar Nodo Confirmación
+    const isConfirmationNode = nodeData.type === 'confirmationNode';
     const isScreenNode = !isCatalogNode && !isFormNode && !isConfirmationNode; // Default
     
     const title = nodeData.title;
-    // ✅ 2. Lógica de etiqueta de footer actualizada
-    let footer_label = 'Continuar'; // Default
+    let footer_label = 'Continuar';
     if (isConfirmationNode) {
         footer_label = nodeData.footer_label || 'Finalizar';
+    } else if (isFormNode) { // ✅ El formulario también puede tener su propio label
+        footer_label = nodeData.footer_label || 'Enviar Datos';
     } else {
         footer_label = nodeData.footer_label || 'Continuar';
     }
@@ -120,14 +111,12 @@ export default function PreviewModal({ nodeData, onClose }) {
                     <button onClick={onClose} className="text-gray-600 hover:text-black z-10 p-1 rounded-full hover:bg-gray-200">
                         <FaTimes size={16} />
                     </button>
-                    {/* El título (ej: "Formulario") se toma del nodo */}
                     <h3 className="text-sm font-semibold text-gray-700 truncate absolute left-1/2 transform -translate-x-1/2">{title || 'Vista Previa'}</h3>
                     <div className="w-6 z-10"></div>
                 </header>
 
                 {/* Cuerpo (Scrollable) */}
                 <div className="flex-grow overflow-y-auto bg-white">
-                   {/* ✅ 3. Lógica de renderizado actualizada */}
                    {isCatalogNode ? (
                        <RenderCatalogContent nodeData={nodeData} />
                    ) : isConfirmationNode ? (
@@ -140,34 +129,41 @@ export default function PreviewModal({ nodeData, onClose }) {
                            <RenderScreenComponent component={{ type: 'TextBody', text: nodeData.bodyText }} />
                        </>
                    ) : (
-                       /* Renderizado para screenNode Y formNode. */
-                       (nodeData.components || []).map((component, index) => (
-                            <div key={component.id || index} className={`${(component.type === 'Image' && index === 0) || index === nodeData.components.length - 1 ? '' : 'border-b border-gray-100'}`}>
-                                 <RenderScreenComponent component={component} />
-                            </div>
-                       ))
+                       /* ✅ --- INICIO CAMBIO: Renderizado para screenNode Y formNode --- */
+                       <>
+                           {/* Si es un FormNode Y tiene introText, lo renderiza primero */}
+                           {isFormNode && nodeData.introText && (
+                               <div className="border-b border-gray-100">
+                                   <RenderScreenComponent component={{ type: 'TextBody', text: nodeData.introText }} />
+                               </div>
+                           )}
+
+                           {/* Mapea el resto de los componentes (inputs, imágenes, etc.) */}
+                           {(nodeData.components || []).map((component, index) => (
+                                <div key={component.id || index} className={`${(component.type === 'Image' && index === 0 && !isFormNode) || index === nodeData.components.length - 1 ? '' : 'border-b border-gray-100'}`}>
+                                     <RenderScreenComponent component={component} />
+                                </div>
+                           ))}
+                       </>
+                       /* ✅ --- FIN CAMBIO --- */
                    )}
                 </div>
 
-                {/* ✅ --- INICIO CAMBIO FOOTER --- */}
+                {/* Footer */}
                 <footer className="p-4 pt-3 border-t border-gray-200 bg-white flex-shrink-0 shadow-[0_-2px_5px_rgba(0,0,0,0.05)]">
                      <button
                         disabled
-                        // Estilo de botón "deshabilitado" como en la imagen
                         className="w-full bg-gray-200 text-gray-500 p-2.5 rounded-lg font-semibold text-sm cursor-not-allowed" >
-                        {footer_label} {/* ✅ 4. Usar la etiqueta de footer dinámica */}
+                        {footer_label}
                     </button>
                      <p className="text-[10px] text-center text-gray-400 mt-2">
-                        {/* Texto de pie de página como en la imagen */}
                         Administrado por la empresa. <span className="text-blue-600">Más información</span>
                      </p>
                 </footer>
-                {/* ✅ --- FIN CAMBIO FOOTER --- */}
             </div>
              <style jsx>{`
                 @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
                 .animate-fade-in { animation: fade-in 0.2s ease-out forwards; }
-                /* Estilos para scrollbar si quieres personalizarlos */
                 .overflow-y-auto::-webkit-scrollbar { width: 4px; }
                 .overflow-y-auto::-webkit-scrollbar-thumb { background-color: #cbd5e1; border-radius: 4px; }
                 .overflow-y-auto::-webkit-scrollbar-track { background-color: #f1f5f9; }
