@@ -23,9 +23,26 @@ const nodeTypes = {
   formNode: FlowFormNode, // Registrado
 };
 
-// Función para generar IDs únicos para las pantallas
-let screenId = 1;
-const getScreenId = () => `SCREEN_${screenId++}`;
+// ✅ --- INICIO DEL CAMBIO: Nueva Función de Formato de ID ---
+/**
+ * Convierte un título de nodo (ej: "Pantalla Bienvenida")
+ * en un ID compatible con WhatsApp (ej: "PANTALLA_BIENVENIDA").
+ * @param {string} title - El título del nodo.
+ * @param {number} index - Un índice de respaldo para IDs únicos.
+ * @returns {string} - El ID formateado.
+ */
+const formatTitleToID = (title, index) => {
+    if (!title || title.trim() === "") {
+        // Fallback si el título está vacío para evitar IDs duplicados
+        return `PANTALLA_SIN_TITULO_${index + 1}`;
+    }
+    return title
+        .trim()
+        .toUpperCase() // MAYUSCULAS
+        .replace(/\s+/g, '_'); // espacios -> _
+};
+// ✅ --- FIN DEL CAMBIO ---
+
 
 // --- COMPONENTE PRINCIPAL DEL CONSTRUCTOR ---
 const FlowBuilder = () => {
@@ -74,8 +91,10 @@ const FlowBuilder = () => {
   };
   const closePreviewModal = () => setIsPreviewModalOpen(false);
 
-  // Función para añadir un nuevo nodo de pantalla
-  const addScreenNode = () => {
+  // ✅ --- INICIO DEL CAMBIO: Lógica de añadir nodos actualizada ---
+
+  // Función genérica para obtener la posición del nuevo nodo
+  const getNewNodePosition = () => {
     let newPosition = { x: 100, y: 100 };
     if (nodes.length > 0) {
       const rightMostNode = nodes.reduce(
@@ -88,43 +107,40 @@ const FlowBuilder = () => {
         y: rightMostNode.position.y,
       };
     }
+    return newPosition;
+  };
 
+  // Función para añadir un nuevo nodo de pantalla
+  const addScreenNode = () => {
     const newNode = {
-      id: getScreenId(),
-      type: "screenNode", // Usa el tipo de nodo personalizado
-      position: newPosition,
+      // ID interno estable para React Flow
+      id: `node_${Date.now()}`, 
+      type: "screenNode", 
+      position: getNewNodePosition(),
       data: {
-        // Datos que se pasarán como props al componente FlowScreenNode
-        title: ``, // Título inicial
-        components: [], // Lista inicial de componentes vacía
-        footer_label: "", // Texto inicial del botón
-        updateNodeData: updateNodeData, // Pasa la función para actualizar datos
-        openPreviewModal: openPreviewModal, // *** ¡IMPORTANTE! Pasa la función para abrir el modal ***
-        deleteNode: deleteNode, // Pasa la función para eliminar el nodo
+        title: ``,
+        components: [], 
+        footer_label: "Continuar", 
+        updateNodeData: updateNodeData, 
+        openPreviewModal: openPreviewModal,
+        deleteNode: deleteNode, 
       },
     };
     setNodes((nds) => nds.concat(newNode));
   };
 
   const addCatalogNode = () => {
-    let newPosition = { x: 100, y: 100 };
-    if (nodes.length > 0) {
-        const rightMostNode = nodes.reduce((rightmost, node) => (node.position.x > rightmost.position.x ? node : rightmost), nodes[0]);
-        newPosition = { x: rightMostNode.position.x + 400, y: rightMostNode.position.y };
-    }
-
     const newNode = {
-      id: getScreenId(),
-      type: 'catalogNode', // Tipo específico
-      position: newPosition,
-      data: { // Datos iniciales
+      id: `node_${Date.now()}`, // ID interno estable
+      type: 'catalogNode', 
+      position: getNewNodePosition(),
+      data: { 
         title: '',
         introText: 'Mira nuestros productos destacados:',
         products: [],
         radioLabel: '¿Cuál producto te interesa más?',
         radioOptions: [],
         footer_label: 'Seleccionar',
-        // Funciones pasadas
         updateNodeData: updateNodeData,
         openPreviewModal: openPreviewModal,
         deleteNode: deleteNode
@@ -135,24 +151,14 @@ const FlowBuilder = () => {
 
   // --- FUNCIÓN PARA AÑADIR EL NODO DE FORMULARIO ---
   const addFormNode = () => {
-    let newPosition = { x: 100, y: 100 };
-    if (nodes.length > 0) {
-        const rightMostNode = nodes.reduce((rightmost, node) => (node.position.x > rightmost.position.x ? node : rightmost), nodes[0]);
-        newPosition = { x: rightMostNode.position.x + 400, y: rightMostNode.position.y };
-    }
-
-    // El formulario se crea vacío
-    const initialComponents = [];
-
     const newNode = {
-      id: getScreenId(),
-      type: 'formNode', // Tipo específico
-      position: newPosition,
-      data: { // Datos iniciales
-        title: 'Formulario de Datos',
-        components: initialComponents, // Lista vacía
+      id: `node_${Date.now()}`, // ID interno estable
+      type: 'formNode', 
+      position: getNewNodePosition(),
+      data: { 
+        title: '',
+        components: [], 
         footer_label: 'Continuar',
-        // Funciones pasadas
         updateNodeData: updateNodeData,
         openPreviewModal: openPreviewModal,
         deleteNode: deleteNode
@@ -160,17 +166,39 @@ const FlowBuilder = () => {
     };
     setNodes((nds) => nds.concat(newNode));
   };
+  // ✅ --- FIN DEL CAMBIO ---
 
-  // --- GENERACIÓN DE JSON (Actualizada para incluir formNode) ---
+
+  // ✅ --- INICIO DEL CAMBIO: `generateFlowJson` reestructurado ---
   const generateFlowJson = () => {
     const routing_model = {};
-    const screens = nodes.map(node => {
-        const outgoingEdges = edges.filter(e => e.source === node.id);
-        const nodeRoutes = [...new Set(outgoingEdges.map(e => e.target))];
-        routing_model[node.id] = nodeRoutes; // Asigna rutas al routing_model
+    
+    // 1. Crear un mapa de búsqueda (Lookup Map)
+    //    Mapea el ID interno (ej: 'node_123') al ID de JSON (ej: 'NUEVA_PANTALLA')
+    const idLookup = new Map();
+    nodes.forEach((n, index) => {
+        const jsonScreenID = formatTitleToID(n.data.title, index);
+        idLookup.set(n.id, jsonScreenID);
+    });
 
-        let screenChildren = []; // Array para los hijos del layout
-        let screenTerminal = false; // Por defecto no es terminal
+    // 2. Mapear Nodos y Rutas usando el mapa de búsqueda
+    const screens = nodes.map((node, index) => {
+        // Obtener el ID de JSON para este nodo
+        const jsonScreenID = idLookup.get(node.id);
+
+        // Encontrar todas las rutas salientes (edges)
+        const outgoingEdges = edges.filter(e => e.source === node.id);
+        
+        // Mapear los IDs de destino al formato de JSON
+        const nodeRoutes = outgoingEdges
+            .map(edge => idLookup.get(edge.target)) // Traduce 'node_456' a 'PANTALLA_SIGUIENTE'
+            .filter(Boolean); // Filtrar por si acaso hay un enlace roto
+        
+        // Asignar al routing_model
+        routing_model[jsonScreenID] = [...new Set(nodeRoutes)]; // Usar Set para evitar duplicados
+
+        let screenChildren = []; 
+        let screenTerminal = false; 
 
         // --- MANEJO PARA NODO DE CATÁLOGO ---
         if (node.type === 'catalogNode') {
@@ -217,21 +245,19 @@ const FlowBuilder = () => {
                 type: "Footer",
                 label: node.data.footer_label || 'Continuar',
                 "on-click-action": {
-                    name: "data_exchange", // Asume data_exchange, necesita ajuste si se conecta
+                    name: "data_exchange", 
                     payload: {
-                         catalog_selection: `\${form.catalog_selection}` // Payload depende del nombre del RadioButtonsGroup
+                         catalog_selection: `\${form.catalog_selection}` 
                     }
                 }
             });
 
-             // El formulario es el hijo del layout
              screenChildren.push({
                  type: "Form",
-                 name: `${node.id.toLowerCase()}_catalog_form`,
+                 name: `${jsonScreenID.toLowerCase()}_catalog_form`, // Usar ID de JSON
                  children: catalogFormChildren
              });
 
-            // Un nodo de catálogo es terminal si NO tiene opciones de radio O si ninguna opción está conectada
              screenTerminal = !(radioDataSource.length > 0 && nodeRoutes.length > 0);
         
         // --- NUEVO MANEJO PARA NODO DE FORMULARIO ---
@@ -239,15 +265,11 @@ const FlowBuilder = () => {
             const formPayload = {};
             const formChildren = [];
 
-            // Itera sobre los componentes (campos) guardados en data
             (node.data.components || []).forEach((component) => {
                 if (component.type === 'TextInput' && component.name) {
-                    // 1. Añadir al payload
                     formPayload[component.name] = `\${form.${component.name}}`;
                     
-                    // 2. Añadir al children del formulario
-                    let inputType = "text"; // Default
-                    
+                    let inputType = "text"; 
                     if (component.name.includes('phone') || component.name.includes('celular')) inputType = "phone";
                     if (component.name.includes('email') || component.name.includes('correo')) inputType = "email";
 
@@ -256,31 +278,26 @@ const FlowBuilder = () => {
                         label: component.label,
                         name: component.name,
                         "input-type": inputType, 
-                        // ✅ --- CAMBIO: Lee el valor del componente ---
-                        // Si 'required' es undefined (por si acaso), lo pone en 'true'
                         required: component.required === undefined ? true : component.required
                     });
                 }
             });
 
-            // 3. Añadir el Footer
             formChildren.push({
                 type: "Footer",
                 label: node.data.footer_label || 'Continuar',
                 "on-click-action": {
                     name: "data_exchange",
-                    payload: formPayload // El payload dinámico
+                    payload: formPayload 
                 }
             });
 
-            // 4. Envolver en el componente Form
             screenChildren.push({
                  type: "Form",
-                 name: `${node.id.toLowerCase()}_form`,
+                 name: `${jsonScreenID.toLowerCase()}_form`, // Usar ID de JSON
                  children: formChildren
             });
             
-            // Un nodo de formulario es terminal si no tiene rutas salientes
             screenTerminal = nodeRoutes.length === 0;
 
         // --- MANEJO PARA NODO NORMAL (screenNode) ---
@@ -301,7 +318,6 @@ const FlowBuilder = () => {
                             height: 250,
                             "scale-type": "cover"
                         };
-                         // Quitar componente si no tiene src
                         if (!jsonComponent.src) jsonComponent = null;
                         break;
                     case 'TextInput':
@@ -311,18 +327,18 @@ const FlowBuilder = () => {
                         jsonComponent = { type: 'TextInput', name: component.name || `input_${compIndex}`, label: component.label || '', required: true };
                         break;
                     case 'RadioButtonsGroup':
-                        formPayload['selection'] = `\${form.selection}`; // Asume 'selection' como name
+                        formPayload['selection'] = `\${form.selection}`; 
                         const dataSource = (component.options || []).map((option, optIndex) => {
                             const edgeForOption = outgoingEdges.find(e => e.sourceHandle === `${node.id}-component-${compIndex}-option-${optIndex}`);
                             return {
-                                id: option.id || `option_${optIndex + 1}`, // ID de la opción
+                                id: option.id || `option_${optIndex + 1}`, 
                                 title: option.title
                             };
                         });
                         jsonComponent = {
                              type: 'RadioButtonsGroup',
-                             label: 'Selecciona una opción:', // Hacer editable si es necesario
-                             name: 'selection', // Asegurar que sea único si hay varios
+                             label: 'Selecciona una opción:', 
+                             name: 'selection', 
                              "data-source": dataSource,
                              required: true
                         };
@@ -344,27 +360,26 @@ const FlowBuilder = () => {
 
              screenChildren.push({
                  type: "Form",
-                 name: `${node.id.toLowerCase()}_form`,
+                 name: `${jsonScreenID.toLowerCase()}_form`, // Usar ID de JSON
                  children: formChildren
              });
 
-             screenTerminal = nodeRoutes.length === 0; // Terminal si no hay rutas salientes
+             screenTerminal = nodeRoutes.length === 0; 
         }
 
         // --- Construcción final del objeto Screen ---
         return {
-            id: node.id,
-            title: node.data.title || (node.type === 'catalogNode' ? 'Catálogo' : (node.type === 'formNode' ? 'Formulario' : 'Pantalla sin Título')),
+            id: jsonScreenID, // ID del JSON (ej: "PANTALLA_NUEVA")
+            title: node.data.title || 'Pantalla sin Título', // Título para WA
             terminal: screenTerminal,
             layout: {
                 type: "SingleColumnLayout",
-                children: screenChildren // Usa los hijos construidos arriba
+                children: screenChildren 
             },
         };
     }); // Fin del nodes.map
 
     const finalJson = {
-        name: flowName.toLowerCase().replace(/\s+/g, '_'), // Reemplaza espacios con guiones bajos
         version: "7.2",
         data_api_version: "3.0",
         routing_model,
@@ -372,6 +387,8 @@ const FlowBuilder = () => {
     };
     setFlowJson(finalJson);
   };
+  // ✅ --- FIN DEL CAMBIO ---
+
 
   return (
     <div style={{ width: "100%", height: "100%", display: "flex" }}>

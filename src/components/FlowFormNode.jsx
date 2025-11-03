@@ -93,7 +93,7 @@ export default function FlowFormNode({ data, id }) {
             <FaKeyboard className="mr-2 text-yellow-600" />
             <input
               name="title"
-              value={data.title || 'Formulario'}
+              value={data.title || ''}
               onChange={handleChange}
               placeholder="Título del Formulario..."
               className="editable-field flex-grow bg-transparent focus:outline-none font-semibold text-gray-800"
