@@ -154,7 +154,7 @@ const FlowBuilder = () => {
       position: getNewNodePosition(),
       data: { 
         title: '',
-        introText: 'Por favor, completa los siguientes datos y un asesor se contactara contigo para confirmar los detalles:',
+        introText: 'Por favor, completa los siguientes datos:',
         components: [], 
         footer_label: 'Continuar',
         updateNodeData: updateNodeData,
@@ -337,11 +337,21 @@ const FlowBuilder = () => {
              screenTerminal = nodeRoutes.length === 0; 
         }
 
+        // ✅ --- INICIO DE LA CORRECCIÓN ---
+        // Aquí es donde definimos el bloque 'data' para el JSON final.
+        const finalDataBlock = (node.type === 'confirmationNode') ? {
+            details: {
+                type: "string",
+                __example__: "Name: John Doe\nEmail: john@example.com\nPhone: 123456789\n\nA free skin care consultation, please"
+            }
+        } : undefined;
+        // ✅ --- FIN DE LA CORRECCIÓN ---
+
         return {
             id: jsonScreenID,
             title: node.data.title || 'Pantalla sin Título',
             terminal: screenTerminal,
-            data: (node.type === 'confirmationNode') ? { details: {} } : undefined,
+            data: finalDataBlock, // ✅ Usar el bloque 'data' corregido
             layout: {
                 type: "SingleColumnLayout",
                 children: screenChildren 
@@ -428,10 +438,7 @@ const FlowBuilder = () => {
           + Añadir Formulario
         </button>
          <button
-          // ✅ --- ¡AQUÍ ESTABA EL ERROR! ---
-          // Esta es la corrección. Debe ser 'addConfirmationNode'
           onClick={addConfirmationNode} 
-          // ✅ --- FIN DE LA CORRECCIÓN ---
           style={{
             marginTop: "10px",
             padding: "10px",
