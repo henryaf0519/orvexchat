@@ -92,10 +92,18 @@ export default function PreviewModal({ nodeData, onClose }) {
     // Detecta el tipo de nodo
     const isCatalogNode = nodeData.type === 'catalogNode';
     const isFormNode = nodeData.type === 'formNode';
-    const isScreenNode = !isCatalogNode && !isFormNode; // Default
+    const isConfirmationNode = nodeData.type === 'confirmationNode'; // ✅ 1. Detectar Nodo Confirmación
+    const isScreenNode = !isCatalogNode && !isFormNode && !isConfirmationNode; // Default
     
     const title = nodeData.title;
-    const footer_label = nodeData.footer_label;
+    // ✅ 2. Lógica de etiqueta de footer actualizada
+    let footer_label = 'Continuar'; // Default
+    if (isConfirmationNode) {
+        footer_label = nodeData.footer_label || 'Finalizar';
+    } else {
+        footer_label = nodeData.footer_label || 'Continuar';
+    }
+
 
     return (
         <div
@@ -119,8 +127,18 @@ export default function PreviewModal({ nodeData, onClose }) {
 
                 {/* Cuerpo (Scrollable) */}
                 <div className="flex-grow overflow-y-auto bg-white">
+                   {/* ✅ 3. Lógica de renderizado actualizada */}
                    {isCatalogNode ? (
                        <RenderCatalogContent nodeData={nodeData} />
+                   ) : isConfirmationNode ? (
+                       <>
+                           <RenderScreenComponent component={{ type: 'TextHeading', text: nodeData.headingText }} />
+                           <div className="border-y border-gray-100 px-4 py-3">
+                               <p className="text-xs text-gray-400 italic mb-1">Vista previa de datos dinámicos:</p>
+                               <p className="text-sm text-gray-800 whitespace-pre-wrap break-words font-mono bg-gray-50 p-2 rounded">${'{data.details}'}</p>
+                           </div>
+                           <RenderScreenComponent component={{ type: 'TextBody', text: nodeData.bodyText }} />
+                       </>
                    ) : (
                        /* Renderizado para screenNode Y formNode. */
                        (nodeData.components || []).map((component, index) => (
@@ -137,7 +155,7 @@ export default function PreviewModal({ nodeData, onClose }) {
                         disabled
                         // Estilo de botón "deshabilitado" como en la imagen
                         className="w-full bg-gray-200 text-gray-500 p-2.5 rounded-lg font-semibold text-sm cursor-not-allowed" >
-                        {footer_label || 'Continuar'}
+                        {footer_label} {/* ✅ 4. Usar la etiqueta de footer dinámica */}
                     </button>
                      <p className="text-[10px] text-center text-gray-400 mt-2">
                         {/* Texto de pie de página como en la imagen */}

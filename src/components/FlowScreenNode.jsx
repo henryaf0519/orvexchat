@@ -4,14 +4,17 @@ import React, { useState } from 'react'; // Importa useState
 import { Handle, Position } from 'reactflow';
 import {
     FaTrash, FaPen, FaTimes, FaPlus, FaImage,
-    FaKeyboard, FaDotCircle, FaHeading, FaSmile // Importa FaSmile
+    FaKeyboard, FaDotCircle, FaHeading, FaSmile,
+    FaThLarge // <-- ✅ ÍCONO AÑADIDO
 } from 'react-icons/fa';
 import Picker from 'emoji-picker-react'; // Importa el selector de emojis
 
 // --- Estilos de Tailwind (reemplazando los objetos de estilo) ---
 
-const nodeClasses = "relative bg-white border border-gray-300 rounded-xl w-[350px] shadow-lg font-sans";
-const headerClasses = "flex items-center justify-between bg-gray-50 border-b border-gray-200 py-2.5 px-4 rounded-t-xl font-semibold relative";
+// ✅ CAMBIO: Borde azul
+const nodeClasses = "relative bg-white border border-blue-400 rounded-xl w-[350px] shadow-lg font-sans"; 
+// ✅ CAMBIO: Cabecera azul
+const headerClasses = "flex items-center justify-between bg-blue-50 border-b border-blue-300 py-2.5 px-4 rounded-t-xl font-semibold relative"; 
 const bodyClasses = "p-4";
 const componentContainerClasses = "border border-dashed border-gray-200 rounded-lg p-2.5 my-2.5 relative";
 const componentHeaderClasses = "text-[10px] font-bold text-gray-400 uppercase mb-1";
@@ -63,14 +66,14 @@ export default function FlowScreenNode({ data, id }) {
           const newOption = { id: `option_${(component.options?.length || 0) + 1}`, title: '' };
           const newComponents = [...(data.components || [])];
           newComponents[index] = { ...component, options: [...(component.options || []), newOption] };
-          data.updateNodeData(nodeId, { ...data, components: newComponents });
+          data.updateNodeData(id, { ...data, components: newComponents });
       };
 
       const removeOption = (optionIndexToRemove) => {
           const newComponents = [...(data.components || [])];
           const newOptions = component.options.filter((_, i) => i !== optionIndexToRemove);
           newComponents[index] = { ...component, options: newOptions };
-          data.updateNodeData(nodeId, { ...data, components: newComponents });
+          data.updateNodeData(id, { ...data, components: newOptions });
       };
 
       // --- ✅ INICIO MANEJO DE IMAGEN ---
@@ -257,13 +260,15 @@ export default function FlowScreenNode({ data, id }) {
         <Handle type="target" position={Position.Left} className="custom-handle" style={{left: '-32px'}}/>
 
         <div className={headerClasses}>
-            <div className="editable-container flex-1 relative">
+            {/* ✅ CAMBIO: Añadido ícono y color */}
+            <div className="editable-container flex-1 relative flex items-center">
+                <FaThLarge className="mr-2 text-blue-600" /> 
                 <input
                     name="title"
                     value={data.title}
                     onChange={handleChange}
                     placeholder="Escribe el título de la pantalla..."
-                    className="editable-field w-[calc(100%-20px)] bg-transparent focus:outline-none"
+                    className="editable-field w-[calc(100%-40px)] bg-transparent focus:outline-none font-semibold text-gray-800"
                 />
                 <FaPen className="edit-icon" size={12}/>
             </div>

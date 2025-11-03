@@ -1,11 +1,14 @@
 // src/components/FlowCatalogNode.jsx
 import React, { useState } from 'react';
 import { Handle, Position } from 'reactflow';
-import { FaTrash, FaPen, FaTimes, FaPlus } from 'react-icons/fa';
+// ✅ CAMBIO: Ícono añadido
+import { FaTrash, FaPen, FaTimes, FaPlus, FaShoppingCart } from 'react-icons/fa'; 
 
 // Estilos (puedes ajustarlos o moverlos a CSS/Tailwind)
-const nodeClasses = "relative bg-white border border-gray-300 rounded-xl w-[380px] shadow-lg font-sans";
-const headerClasses = "flex items-center justify-between bg-gray-50 border-b border-gray-200 py-2.5 px-4 rounded-t-xl font-semibold relative";
+// ✅ CAMBIO: Borde verde
+const nodeClasses = "relative bg-white border border-green-400 rounded-xl w-[380px] shadow-lg font-sans"; 
+// ✅ CAMBIO: Cabecera verde
+const headerClasses = "flex items-center justify-between bg-green-50 border-b border-green-300 py-2.5 px-4 rounded-t-xl font-semibold relative"; 
 const bodyClasses = "p-4 max-h-[400px] overflow-y-auto"; // Body con scroll
 const sectionHeaderClasses = "text-sm font-semibold text-gray-700 mt-4 mb-2 border-b pb-1";
 const productContainerClasses = "border border-dashed border-gray-200 rounded-lg p-3 my-2 relative bg-gray-50";
@@ -96,7 +99,9 @@ export default function FlowCatalogNode({ data, id }) {
 
         {/* Cabecera */}
         <div className={headerClasses}>
+            {/* ✅ CAMBIO: Añadido ícono y color */}
             <div className="editable-container flex-1 relative flex items-center">
+                <FaShoppingCart className="mr-2 text-green-600" />
                 <input
                     name="title"
                     value={data.title || ''}

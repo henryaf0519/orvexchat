@@ -14,13 +14,15 @@ import "reactflow/dist/style.css";
 import PreviewModal from "./PreviewModal";
 import FlowScreenNode from "./FlowScreenNode";
 import FlowCatalogNode from "./FlowCatalogNode";
-import FlowFormNode from "./FlowFormNode"; // Importado
+import FlowFormNode from "./FlowFormNode";
+import FlowConfirmationNode from "./FlowConfirmationNode"; // ✅ 1. Importado
 
 // Tipos de nodo personalizados
 const nodeTypes = {
   screenNode: FlowScreenNode,
   catalogNode: FlowCatalogNode,
-  formNode: FlowFormNode, // Registrado
+  formNode: FlowFormNode,
+  confirmationNode: FlowConfirmationNode, // ✅ 2. Registrado
 };
 
 // ✅ --- INICIO DEL CAMBIO: Nueva Función de Formato de ID ---
@@ -166,6 +168,25 @@ const FlowBuilder = () => {
     };
     setNodes((nds) => nds.concat(newNode));
   };
+
+  // ✅ 3. FUNCIÓN PARA AÑADIR EL NODO DE CONFIRMACIÓN
+  const addConfirmationNode = () => {
+    const newNode = {
+      id: `node_${Date.now()}`, // ID interno estable
+      type: 'confirmationNode', 
+      position: getNewNodePosition(),
+      data: { 
+        title: '', // El usuario lo llenará (ej: 'CONFIRM')
+        headingText: '✅ ¡Todo listo!', // Valor por defecto
+        bodyText: 'Oprime el boton y un agente se comunicará contigo para finalizar el proceso.', // Valor por defecto
+        footer_label: 'Finalizar', // Valor por defecto
+        updateNodeData: updateNodeData,
+        openPreviewModal: openPreviewModal,
+        deleteNode: deleteNode
+      },
+    };
+    setNodes((nds) => nds.concat(newNode));
+  };
   // ✅ --- FIN DEL CAMBIO ---
 
 
@@ -300,6 +321,38 @@ const FlowBuilder = () => {
             
             screenTerminal = nodeRoutes.length === 0;
 
+        // ✅ 4. NUEVO MANEJO PARA NODO DE CONFIRMACIÓN
+        } else if (node.type === 'confirmationNode') {
+            // Este nodo es terminal
+            routing_model[jsonScreenID] = []; // Sin rutas de salida
+            screenTerminal = true; // Marcar como terminal
+
+            screenChildren.push({
+                type: "Form",
+                name: `${jsonScreenID.toLowerCase()}_form`,
+                children: [
+                    {
+                        type: "TextHeading",
+                        text: node.data.headingText || "✅ ¡Todo listo!"
+                    },
+                    {
+                        type: "TextBody",
+                        text: "${data.details}" // Variable dinámica
+                    },
+                    {
+                        type: "TextBody",
+                        text: node.data.bodyText || "Oprime el boton y un agente se comunicará contigo para finalizar el proceso."
+                    },
+                    {
+                        type: "Footer",
+                        label: node.data.footer_label || 'Finalizar',
+                        "on-click-action": {
+                            name: "complete" // Acción de finalización
+                        }
+                    }
+                ]
+            });
+
         // --- MANEJO PARA NODO NORMAL (screenNode) ---
         } else {
              const formPayload = {};
@@ -372,6 +425,8 @@ const FlowBuilder = () => {
             id: jsonScreenID, // ID del JSON (ej: "PANTALLA_NUEVA")
             title: node.data.title || 'Pantalla sin Título', // Título para WA
             terminal: screenTerminal,
+            // ✅ 5. AÑADIDO 'data' para el nodo de confirmación
+            data: (node.type === 'confirmationNode') ? { details: {} } : undefined,
             layout: {
                 type: "SingleColumnLayout",
                 children: screenChildren 
@@ -418,7 +473,7 @@ const FlowBuilder = () => {
           onClick={addScreenNode}
           style={{
             padding: "10px",
-            background: "#3b82f6",
+            background: "#3b82f6", // Azul
             color: "white",
             border: "none",
             borderRadius: "5px",
@@ -433,7 +488,7 @@ const FlowBuilder = () => {
           style={{
             marginTop: "10px",
             padding: "10px",
-            background: "#10b981",
+            background: "#10b981", // Verde
             color: "white",
             border: "none",
             borderRadius: "5px",
@@ -449,7 +504,7 @@ const FlowBuilder = () => {
           style={{
             marginTop: "10px",
             padding: "10px",
-            background: "#f59e0b", // Color ámbar
+            background: "#f59e0b", // Ámbar/Amarillo
             color: "white",
             border: "none",
             borderRadius: "5px",
@@ -458,6 +513,22 @@ const FlowBuilder = () => {
           }}
         >
           + Añadir Formulario
+        </button>
+        {/* ✅ 6. BOTÓN DE CONFIRMACIÓN */}
+         <button
+          onClick={addConfirmationNode}
+          style={{
+            marginTop: "10px",
+            padding: "10px",
+            background: "#ef4444", // Rojo
+            color: "white",
+            border: "none",
+            borderRadius: "5px",
+            width: "100%",
+            cursor: "pointer",
+          }}
+        >
+          + Añadir Confirmación
         </button>
       </div>
 
