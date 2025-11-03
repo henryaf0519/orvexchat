@@ -2,7 +2,7 @@
 import React from 'react';
 import { FaTimes, FaImage, FaHeading, FaKeyboard, FaDotCircle } from 'react-icons/fa';
 
-// Componente auxiliar para NODO NORMAL (screenNode)
+// Componente auxiliar para NODO NORMAL (screenNode) Y FORMULARIO (formNode)
 const RenderScreenComponent = ({ component }) => {
     // (Mantenemos la lógica de RenderFlowComponent de la respuesta anterior aquí)
     switch (component.type) {
@@ -15,18 +15,28 @@ const RenderScreenComponent = ({ component }) => {
             return <p className="text-sm text-gray-700 px-4 py-2 whitespace-pre-wrap">{component.text || 'Cuerpo del texto...'}</p>;
         case 'TextCaption':
              return <p className="text-xs text-gray-500 px-4 pb-2 pt-1">{component.text || 'Caption...'}</p>;
+        
+        // ✅ --- INICIO DEL CAMBIO ---
+        // Así se ve en la imagen que enviaste
         case 'TextInput':
             return (
-                <div className="px-4 py-3">
-                    <label className="block text-xs font-medium text-gray-500 mb-1">{component.label || 'Input Label'}</label>
-                    <input type="text" placeholder={`Escribe ${component.label || 'aquí'}...`} disabled className="w-full border border-gray-300 rounded p-2 text-sm bg-gray-100 cursor-not-allowed" />
+                <div className="px-4 py-2"> {/* Espaciado reducido */}
+                    {/* Label removido de aquí */}
+                    <input 
+                        type="text" 
+                        placeholder={component.label || 'Input Label'} // El label ahora es el placeholder
+                        disabled 
+                        // Estilos actualizados para parecerse al de la imagen
+                        className="w-full border border-gray-300 rounded-lg p-3 text-sm bg-white cursor-not-allowed" 
+                    />
                 </div>
             );
+        // ✅ --- FIN DEL CAMBIO ---
+            
         case 'RadioButtonsGroup':
             return (
                 <div className="px-4 py-3 space-y-1">
                      <span className="block text-xs font-medium text-gray-500 mb-2">{component.label || 'Selecciona una opción:'}</span>
-                     {/* 👇 CORRECCIÓN: Leer desde component.options 👇 */}
                     {(component.options || []).map((opt, index) => (
                         <div key={opt.id || index} className="flex items-center p-2 rounded hover:bg-gray-100 border border-transparent -ml-2">
                             <input type="radio" name={`preview-radio-${component.name || index}`} disabled className="mr-2 ml-1 h-4 w-4 text-green-600 cursor-not-allowed border-gray-300 focus:ring-green-500 focus:ring-offset-0 focus:ring-1" />
@@ -79,8 +89,11 @@ const RenderCatalogContent = ({ nodeData }) => {
 export default function PreviewModal({ nodeData, onClose }) {
     if (!nodeData) return null;
 
-    // Detecta si es nodo de catálogo (basado en la presencia de 'products', podrías pasar el tipo si es más robusto)
-    const isCatalogNode = Array.isArray(nodeData.products);
+    // Detecta el tipo de nodo
+    const isCatalogNode = nodeData.type === 'catalogNode';
+    const isFormNode = nodeData.type === 'formNode';
+    const isScreenNode = !isCatalogNode && !isFormNode; // Default
+    
     const title = nodeData.title;
     const footer_label = nodeData.footer_label;
 
@@ -99,7 +112,8 @@ export default function PreviewModal({ nodeData, onClose }) {
                     <button onClick={onClose} className="text-gray-600 hover:text-black z-10 p-1 rounded-full hover:bg-gray-200">
                         <FaTimes size={16} />
                     </button>
-                    <h3 className="text-sm font-semibold text-gray-700 truncate absolute left-1/2 transform -translate-x-1/2">{title || (isCatalogNode ? 'Catálogo' : 'Vista Previa')}</h3>
+                    {/* El título (ej: "Formulario") se toma del nodo */}
+                    <h3 className="text-sm font-semibold text-gray-700 truncate absolute left-1/2 transform -translate-x-1/2">{title || 'Vista Previa'}</h3>
                     <div className="w-6 z-10"></div>
                 </header>
 
@@ -108,7 +122,7 @@ export default function PreviewModal({ nodeData, onClose }) {
                    {isCatalogNode ? (
                        <RenderCatalogContent nodeData={nodeData} />
                    ) : (
-                       /* Renderizado para screenNode normal */
+                       /* Renderizado para screenNode Y formNode. */
                        (nodeData.components || []).map((component, index) => (
                             <div key={component.id || index} className={`${(component.type === 'Image' && index === 0) || index === nodeData.components.length - 1 ? '' : 'border-b border-gray-100'}`}>
                                  <RenderScreenComponent component={component} />
@@ -117,15 +131,20 @@ export default function PreviewModal({ nodeData, onClose }) {
                    )}
                 </div>
 
-                {/* Footer */}
-                <footer className="p-4 pt-3 border-t border-gray-200 bg-gray-50 flex-shrink-0 shadow-[0_-2px_5px_rgba(0,0,0,0.05)]">
+                {/* ✅ --- INICIO CAMBIO FOOTER --- */}
+                <footer className="p-4 pt-3 border-t border-gray-200 bg-white flex-shrink-0 shadow-[0_-2px_5px_rgba(0,0,0,0.05)]">
                      <button
                         disabled
-                        className="w-full bg-green-600 text-white p-2.5 rounded-lg font-semibold text-sm cursor-not-allowed opacity-90" >
+                        // Estilo de botón "deshabilitado" como en la imagen
+                        className="w-full bg-gray-200 text-gray-500 p-2.5 rounded-lg font-semibold text-sm cursor-not-allowed" >
                         {footer_label || 'Continuar'}
                     </button>
-                     <p className="text-[10px] text-center text-gray-400 mt-2">Administrado por la empresa.</p>
+                     <p className="text-[10px] text-center text-gray-400 mt-2">
+                        {/* Texto de pie de página como en la imagen */}
+                        Administrado por la empresa. <span className="text-blue-600">Más información</span>
+                     </p>
                 </footer>
+                {/* ✅ --- FIN CAMBIO FOOTER --- */}
             </div>
              <style jsx>{`
                 @keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }

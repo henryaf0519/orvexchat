@@ -14,9 +14,14 @@ import "reactflow/dist/style.css";
 import PreviewModal from "./PreviewModal";
 import FlowScreenNode from "./FlowScreenNode";
 import FlowCatalogNode from "./FlowCatalogNode";
+import FlowFormNode from "./FlowFormNode"; // Importado
 
 // Tipos de nodo personalizados
-const nodeTypes = { screenNode: FlowScreenNode, catalogNode: FlowCatalogNode };
+const nodeTypes = {
+  screenNode: FlowScreenNode,
+  catalogNode: FlowCatalogNode,
+  formNode: FlowFormNode, // Registrado
+};
 
 // Función para generar IDs únicos para las pantallas
 let screenId = 1;
@@ -128,7 +133,35 @@ const FlowBuilder = () => {
     setNodes((nds) => nds.concat(newNode));
   };
 
-  // Función para generar el JSON del flujo
+  // --- FUNCIÓN PARA AÑADIR EL NODO DE FORMULARIO ---
+  const addFormNode = () => {
+    let newPosition = { x: 100, y: 100 };
+    if (nodes.length > 0) {
+        const rightMostNode = nodes.reduce((rightmost, node) => (node.position.x > rightmost.position.x ? node : rightmost), nodes[0]);
+        newPosition = { x: rightMostNode.position.x + 400, y: rightMostNode.position.y };
+    }
+
+    // El formulario se crea vacío
+    const initialComponents = [];
+
+    const newNode = {
+      id: getScreenId(),
+      type: 'formNode', // Tipo específico
+      position: newPosition,
+      data: { // Datos iniciales
+        title: 'Formulario de Datos',
+        components: initialComponents, // Lista vacía
+        footer_label: 'Continuar',
+        // Funciones pasadas
+        updateNodeData: updateNodeData,
+        openPreviewModal: openPreviewModal,
+        deleteNode: deleteNode
+      },
+    };
+    setNodes((nds) => nds.concat(newNode));
+  };
+
+  // --- GENERACIÓN DE JSON (Actualizada para incluir formNode) ---
   const generateFlowJson = () => {
     const routing_model = {};
     const screens = nodes.map(node => {
@@ -200,7 +233,55 @@ const FlowBuilder = () => {
 
             // Un nodo de catálogo es terminal si NO tiene opciones de radio O si ninguna opción está conectada
              screenTerminal = !(radioDataSource.length > 0 && nodeRoutes.length > 0);
+        
+        // --- NUEVO MANEJO PARA NODO DE FORMULARIO ---
+        } else if (node.type === 'formNode') {
+            const formPayload = {};
+            const formChildren = [];
 
+            // Itera sobre los componentes (campos) guardados en data
+            (node.data.components || []).forEach((component) => {
+                if (component.type === 'TextInput' && component.name) {
+                    // 1. Añadir al payload
+                    formPayload[component.name] = `\${form.${component.name}}`;
+                    
+                    // 2. Añadir al children del formulario
+                    let inputType = "text"; // Default
+                    
+                    if (component.name.includes('phone') || component.name.includes('celular')) inputType = "phone";
+                    if (component.name.includes('email') || component.name.includes('correo')) inputType = "email";
+
+                    formChildren.push({
+                        type: 'TextInput',
+                        label: component.label,
+                        name: component.name,
+                        "input-type": inputType, 
+                        // ✅ --- CAMBIO: Lee el valor del componente ---
+                        // Si 'required' es undefined (por si acaso), lo pone en 'true'
+                        required: component.required === undefined ? true : component.required
+                    });
+                }
+            });
+
+            // 3. Añadir el Footer
+            formChildren.push({
+                type: "Footer",
+                label: node.data.footer_label || 'Continuar',
+                "on-click-action": {
+                    name: "data_exchange",
+                    payload: formPayload // El payload dinámico
+                }
+            });
+
+            // 4. Envolver en el componente Form
+            screenChildren.push({
+                 type: "Form",
+                 name: `${node.id.toLowerCase()}_form`,
+                 children: formChildren
+            });
+            
+            // Un nodo de formulario es terminal si no tiene rutas salientes
+            screenTerminal = nodeRoutes.length === 0;
 
         // --- MANEJO PARA NODO NORMAL (screenNode) ---
         } else {
@@ -273,7 +354,7 @@ const FlowBuilder = () => {
         // --- Construcción final del objeto Screen ---
         return {
             id: node.id,
-            title: node.data.title || (node.type === 'catalogNode' ? 'Catálogo' : 'Pantalla sin Título'),
+            title: node.data.title || (node.type === 'catalogNode' ? 'Catálogo' : (node.type === 'formNode' ? 'Formulario' : 'Pantalla sin Título')),
             terminal: screenTerminal,
             layout: {
                 type: "SingleColumnLayout",
@@ -343,7 +424,23 @@ const FlowBuilder = () => {
             cursor: "pointer",
           }}
         >
-          + + Añadir Catálogo +{" "}
+          + Añadir Catálogo
+        </button>
+        {/* --- Botón de Formulario --- */}
+        <button
+          onClick={addFormNode}
+          style={{
+            marginTop: "10px",
+            padding: "10px",
+            background: "#f59e0b", // Color ámbar
+            color: "white",
+            border: "none",
+            borderRadius: "5px",
+            width: "100%",
+            cursor: "pointer",
+          }}
+        >
+          + Añadir Formulario
         </button>
       </div>
 
