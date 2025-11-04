@@ -70,8 +70,17 @@ export const deleteFlow = async (flowId) => {
   const response = await apiFetch(`/flow/${flowId}`, {
     method: 'DELETE',
   });
+
   if (!response.ok) {
-    throw new Error('Error al eliminar el flujo');
+    const error = await response.json().catch(() => ({})); 
+    throw new Error(error.message || 'Error al eliminar el flujo');
   }
-  return response.json();
+  
+  // Muchos endpoints DELETE devuelven 204 (No Content) o un JSON de éxito
+  // Intentamos parsear el JSON, si falla, devolvemos un objeto de éxito
+  try {
+    return await response.json();
+  } catch (e) {
+    return { success: true, id: flowId };
+  }
 };

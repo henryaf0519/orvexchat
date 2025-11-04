@@ -259,6 +259,7 @@ export const useChatStore = create(
       // Esta acción llama a 'deleteFlowAPI'
       deleteFlow: async (flowId) => {
         try {
+          console.log('Deleting flow with ID:', flowId);
           await deleteFlowAPI(flowId);
           set((state) => ({
             flows: state.flows.filter((f) => f.id !== flowId),
