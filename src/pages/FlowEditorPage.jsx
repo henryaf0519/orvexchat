@@ -60,6 +60,7 @@ function FlowEditorPage() {
           {flow && (
             <FlowBuilder
               flowData={flow}
+              flowId={flowId} 
             />
           )}
         </div>

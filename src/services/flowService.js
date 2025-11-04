@@ -52,15 +52,17 @@ export const createFlow = async (name) => {
 /**
  * Actualiza un flujo (PATCH /flow/:flowId)
  */
-export const updateFlow = async (flowId, flowData) => {
-    const response = await apiFetch(`/flow/${flowId}`, {
-        method: 'PATCH',
-        body: JSON.stringify(flowData),
-    });
-    if (!response.ok) {
-        throw new Error('Error al actualizar el flujo');
-    }
-    return response.json();
+export const updateFlowJson = async (flowId, flowJsonString) => {
+  const response = await apiFetch(`/flow/${flowId}/assets`, {
+    method: 'PUT',
+    body: JSON.stringify({ flowJson: flowJsonString }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.message || 'Error al guardar el JSON del flujo');
+  }
+  return response.json();
 };
 
 /**

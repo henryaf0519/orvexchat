@@ -6,8 +6,7 @@ import {
   getFlows, // <--- La que trae todos
   getFlowById,
   createFlow as createFlowAPI,
-  deleteFlow as deleteFlowAPI,
-  updateFlow as updateFlowAPI
+  deleteFlow as deleteFlowAPI
 } from '../services/flowService';
 import {
   getChats,
@@ -271,14 +270,7 @@ export const useChatStore = create(
       },
       
       // Esta acción llama a 'updateFlowAPI'
-      updateFlow: async (flowId, flowData) => {
-        try {
-          await updateFlowAPI(flowId, flowData);
-        } catch (error) {
-          console.error('Error updating flow:', error);
-          throw error; // Lanza el error para que el toast lo atrape
-        }
-      },
+
 
       // Esta acción llama a 'getFlowById'
       fetchFlowById: async (flowId) => {
