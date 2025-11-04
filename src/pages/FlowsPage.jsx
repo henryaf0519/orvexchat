@@ -16,17 +16,17 @@ const statusTranslations = {
 
 function FlowsPage() {
   const navigate = useNavigate();
-  
+
   // Estados para CREAR
   const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
   const [isCreatingFlow, setIsCreatingFlow] = useState(false);
-  
+
   // Estados para ELIMINAR
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [flowToDelete, setFlowToDelete] = useState(null);
-  const [isDeletingFlow, setIsDeletingFlow] = useState(false); // <-- 1. NUEVO ESTADO
+  const [isDeletingFlow, setIsDeletingFlow] = useState(false);
 
-  // ... (tus selecciones del store están perfectas)
+  // Seleccionamos individualmente para evitar bucles de renderizado
   const flows = useChatStore((state) => state.flows);
   const loadingFlows = useChatStore((state) => state.loadingFlows);
   const fetchFlows = useChatStore((state) => state.fetchFlows);
@@ -37,9 +37,8 @@ function FlowsPage() {
     fetchFlows();
   }, [fetchFlows]);
 
-  // Lógica para CREAR (Esta ya estaba bien)
+  // Lógica para CREAR
   const handleConfirmCreate = async (flowName) => {
-    // ... (esta función ya está bien con try/catch/finally)
     const trimmedName = flowName.trim();
     if (!trimmedName) {
       toast.error('El nombre no puede estar vacío.');
@@ -57,13 +56,13 @@ function FlowsPage() {
       setIsCreatingFlow(false);
     }
   };
-  
+
   const handleEditClick = (flowId) => {
     navigate(`/flows/${flowId}`);
   };
 
-  
-  // --- LÓGICA DE ELIMINAR ACTUALIZADA ---
+
+  // --- LÓGICA DE ELIMINAR ---
 
   const handleDeleteClick = (flow) => {
     setFlowToDelete(flow);
@@ -71,30 +70,22 @@ function FlowsPage() {
   };
 
   const handleCloseDeleteModal = () => {
-    if (isDeletingFlow) return; // No cerrar si está cargando
+    if (isDeletingFlow) return;
     setIsDeleteModalOpen(false);
     setFlowToDelete(null);
   };
 
-  // 2. FUNCIÓN confirmDelete ACTUALIZADA
   const confirmDelete = async () => {
     if (flowToDelete) {
-      setIsDeletingFlow(true); // <-- Activa el spinner
+      setIsDeletingFlow(true);
 
       try {
-        // Llama al store (que llama a la API)
         await deleteFlow(flowToDelete.id);
-        
-        // Éxito: muestra toast y cierra el modal
         toast.success('Flujo eliminado con éxito 👋');
         handleCloseDeleteModal();
-
       } catch (error) {
-        // Error: muestra toast (el modal sigue abierto para reintentar)
         toast.error(`Error al eliminar el flujo: ${error.message || 'Error desconocido'}`);
-      
       } finally {
-        // Al final, quita el spinner
         setIsDeletingFlow(false);
       }
     }
@@ -105,10 +96,8 @@ function FlowsPage() {
       <MainSidebar />
       <div className="flex-1 flex flex-col overflow-auto">
         <MainHeader />
-        
+
         <main className="flex-1 p-6">
-          {/* ... (Tu cabecera y tabla de flujos están perfectas) ... */}
-          {/* ... (Omitido por brevedad, tu código de tabla está bien) ... */}
           <div className="flex justify-between items-center mb-6">
             <h1 className="text-3xl font-semibold text-gray-900">Gestor de Flujos</h1>
             <button
@@ -119,7 +108,7 @@ function FlowsPage() {
               Crear flujo
             </button>
           </div>
-          
+
           {loadingFlows ? (
             <p>Cargando flujos...</p>
           ) : (
@@ -139,30 +128,38 @@ function FlowsPage() {
                       <tr key={flow.id}>
                         <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{flow.name}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                          <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                            flow.status === 'PUBLISHED' ? 'bg-green-100 text-green-800' :
-                            flow.status === 'DEPRECATED' ? 'bg-yellow-100 text-yellow-800' :
-                            'bg-gray-100 text-gray-800'
-                          }`}>
+                          <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${flow.status === 'PUBLISHED' ? 'bg-green-100 text-green-800' :
+                              flow.status === 'DEPRECATED' ? 'bg-yellow-100 text-yellow-800' :
+                                'bg-gray-100 text-gray-800'
+                            }`}>
                             {statusTranslations[flow.status] || flow.status}
                           </span>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">{flow.id}</td>
                         <td className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
-                          <button
-                            onClick={() => handleEditClick(flow.id)}
-                            className="text-blue-600 hover:text-blue-900 mr-4"
-                            title="Editar"
-                          >
-                            <Edit2 size={18} />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteClick(flow)}
-                            className="text-red-600 hover:text-red-900"
-                            title="Eliminar"
-                          >
-                            <Trash2 size={18} />
-                          </button>
+
+                          {/* ✅ --- INICIO DE LA MODIFICACIÓN --- */}
+                          {/* Solo mostrar si el estado NO es DEPRECATED (Obsoleto) */}
+                          {flow.status !== 'DEPRECATED' && (
+                            <>
+                              <button
+                                onClick={() => handleEditClick(flow.id)}
+                                className="text-blue-600 hover:text-blue-900 mr-4"
+                                title="Editar"
+                              >
+                                <Edit2 size={18} />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteClick(flow)}
+                                className="text-red-600 hover:text-red-900"
+                                title="Eliminar"
+                              >
+                                <Trash2 size={18} />
+                              </button>
+                            </>
+                          )}
+                          {/* ✅ --- FIN DE LA MODIFICACIÓN --- */}
+
                         </td>
                       </tr>
                     ))
@@ -172,7 +169,7 @@ function FlowsPage() {
                         No se encontraron flujos. ¡Crea uno nuevo!
                       </td>
                     </tr>
-                  )}
+                   )}
                 </tbody>
               </table>
             </div>
@@ -180,8 +177,6 @@ function FlowsPage() {
         </main>
       </div>
 
-      {/* --- 3. RENDERIZADO DE MODALES ACTUALIZADO --- */}
-      
       <ConfirmationModal
         title="Eliminar Flujo"
         message={`¿Estás seguro de que deseas eliminar el flujo "${flowToDelete?.name}"? Esta acción no se puede deshacer.`}
@@ -190,7 +185,7 @@ function FlowsPage() {
         onConfirm={confirmDelete}
         confirmText="Eliminar"
         confirmColor="red"
-        isLoading={isDeletingFlow} // <-- Pasa el estado de carga
+        isLoading={isDeletingFlow}
       />
 
       {isCreateModalOpen && (

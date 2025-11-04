@@ -1,6 +1,6 @@
 // src/components/FlowBuilder.jsx
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect } from "react"; // Importar useEffect
 import ReactDOM from "react-dom";
 import ReactFlow, {
   Controls,
@@ -9,6 +9,7 @@ import ReactFlow, {
   useNodesState,
   useEdgesState,
   ReactFlowProvider,
+  MarkerType, // Para las flechas
 } from "reactflow";
 import "reactflow/dist/style.css";
 import { ToastContainer, toast } from 'react-toastify';
@@ -20,7 +21,6 @@ import FlowCatalogNode from "./FlowCatalogNode";
 import FlowFormNode from "./FlowFormNode";
 import FlowConfirmationNode from "./FlowConfirmationNode"; 
 
-// ... (nodeTypes y formatTitleToID se mantienen igual) ...
 const nodeTypes = {
   screenNode: FlowScreenNode,
   catalogNode: FlowCatalogNode,
@@ -28,6 +28,7 @@ const nodeTypes = {
   confirmationNode: FlowConfirmationNode, 
 };
 
+// --- Función de Formato de ID ---
 const formatTitleToID = (title, index) => {
     if (!title || title.trim() === "") {
         return `PANTALLA_SIN_TITULO_${index + 1}`;
@@ -39,20 +40,177 @@ const formatTitleToID = (title, index) => {
 };
 
 
+// --- LÓGICA DE RECONSTRUCCIÓN DE JSON A NODOS ---
+
+// Ayudante para inferir el tipo de nodo basado en el contenido del JSON
+const determineNodeType = (screen) => {
+  const form = screen.layout.children.find(c => c.type === "Form");
+  if (!form || !form.children) return 'screenNode'; // Default
+
+  // 1. Signature de ConfirmationNode
+  const hasCompleteAction = form.children.some(c => c.type === 'Footer' && c['on-click-action']?.name === 'complete');
+  if (hasCompleteAction) return 'confirmationNode';
+
+  // 2. Signature de CatalogNode
+  const hasCatalogSelection = form.children.some(c => c.type === 'RadioButtonsGroup' && c.name === 'catalog_selection');
+  if (hasCatalogSelection) return 'catalogNode';
+  
+  // 3. Signature de FormNode
+  const hasTextInput = form.children.some(c => c.type === 'TextInput');
+  if (hasTextInput) return 'formNode';
+
+  // 4. Default a ScreenNode (Menu)
+  return 'screenNode';
+};
+
+// Ayudante para reconstruir el 'data' object que espera el nodo
+const reconstructNodeData = (screen, nodeType) => {
+  const form = screen.layout.children.find(c => c.type === "Form");
+  if (!form) return { title: screen.title || '' }; // Fallback
+  
+  const footer = form.children.find(c => c.type === 'Footer');
+  const baseData = {
+    title: screen.title || '',
+    footer_label: footer?.label || 'Continuar',
+  };
+
+  try {
+    switch (nodeType) {
+      case 'confirmationNode':
+        return {
+          ...baseData,
+          headingText: form.children.find(c => c.type === 'TextHeading')?.text || '',
+          bodyText: form.children.find(c => c.type === 'TextBody' && c.text !== '${data.details}')?.text || '',
+          footer_label: footer?.label || 'Finalizar',
+        };
+      
+      case 'catalogNode':
+        // Esto es una aproximación, ya que el JSON no guarda 'products'
+        return {
+          ...baseData,
+          introText: form.children.find(c => c.type === 'TextBody')?.text || '',
+          products: [], // Imposible reconstruir productos desde el JSON actual
+          radioLabel: form.children.find(c => c.type === 'RadioButtonsGroup')?.label || '',
+          radioOptions: form.children.find(c => c.type === 'RadioButtonsGroup')?.['data-source']
+            .map(opt => ({ id: opt.id, title: opt.title })) || [],
+        };
+        
+      case 'formNode':
+        return {
+          ...baseData,
+          introText: form.children.find(c => c.type === 'TextBody')?.text || '',
+          components: form.children
+            .filter(c => c.type === 'TextInput')
+            .map((c, i) => ({
+              type: 'TextInput',
+              id: `input_${i}`,
+              label: c.label,
+              name: c.name,
+              required: c.required,
+            })) || [],
+        };
+
+      case 'screenNode':
+      default:
+        return {
+          ...baseData,
+          components: form.children
+            .filter(c => c.type !== 'Footer') // Filtramos el footer
+            .map((c, i) => {
+              // Reconstruir componentes
+              if (c.type === 'Image') {
+                return { type: 'Image', id: `image_${i}`, src: c.src ? `data:image/png;base64,${c.src}` : null };
+              }
+              if (c.type === 'TextBody') {
+                return { type: 'TextBody', id: `textbody_${i}`, text: c.text };
+              }
+              if (c.type === 'RadioButtonsGroup') {
+                return {
+                  type: 'RadioButtonsGroup',
+                  id: `radio_${i}`,
+                  options: c['data-source'].map(opt => ({ id: opt.id, title: opt.title })) || [],
+                };
+              }
+              return null;
+            }).filter(Boolean), // Eliminar nulos
+        };
+    }
+  } catch (error) {
+    console.error("Error reconstruyendo datos del nodo:", error, screen);
+    return { ...baseData, title: screen.title || "ERROR AL CARGAR" };
+  }
+};
+
+/**
+ * Función principal de reconstrucción.
+ * Toma el flow.json y lo convierte en nodos y ejes.
+ */
+const parseJsonToElements = (flowJson) => {
+  if (!flowJson || !flowJson.screens || !flowJson.routing_model) {
+    console.warn("JSON de flujo inválido o vacío. Empezando tablero limpio.");
+    return { initialNodes: [], initialEdges: [] };
+  }
+
+  const { screens, routing_model } = flowJson;
+  const screenMap = new Map(screens.map(s => [s.id, s]));
+
+  // 1. Crear Nodos
+  const initialNodes = screens.map((screen, index) => {
+    const nodeType = determineNodeType(screen);
+    const nodeData = reconstructNodeData(screen, nodeType);
+    
+    return {
+      id: screen.id, // Usamos el ID del JSON (ej: PANTALLA_INICIO)
+      type: nodeType,
+      position: { x: 250 + (index * 400), y: 100 }, // Posición simple en fila
+      data: {
+        ...nodeData,
+        // Inyectamos placeholders que se sobreescribirán
+        updateNodeData: () => {}, 
+        openPreviewModal: () => {},
+        deleteNode: () => {}, 
+      },
+    };
+  });
+
+  // 2. Crear Ejes
+  const initialEdges = [];
+  for (const [sourceId, targets] of Object.entries(routing_model)) {
+    if (screenMap.has(sourceId)) {
+      targets.forEach(targetId => {
+        if (screenMap.has(targetId)) {
+          initialEdges.push({
+            id: `edge_${sourceId}_${targetId}`,
+            source: sourceId,
+            target: targetId,
+            markerEnd: { type: MarkerType.ArrowClosed },
+          });
+        }
+      });
+    }
+  }
+
+  return { initialNodes, initialEdges };
+};
+
+
 // --- COMPONENTE PRINCIPAL DEL CONSTRUCTOR ---
 const FlowBuilder = ({ flowData, flowId }) => {
+  // Usamos el hook 'useNodesState' para inicializar.
+  // El 'useEffect' de abajo se encargará de poblarlos.
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  
   const [flowName, setFlowName] = useState(flowData?.name || "Mi Flujo");
   const [isSaving, setIsSaving] = useState(false); 
-  const [flowJson, setFlowJson] = useState({});
+  // Inicializamos el JSON con el que viene de props (si existe)
+  const [flowJson, setFlowJson] = useState(flowData?.flow_json || {}); 
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
   const [previewNodeData, setPreviewNodeData] = useState(null);
 
-  // ... (onConnect, updateNodeData, deleteNode, open/close modals, getNewNodePosition, add*Node se mantienen igual) ...
   // Callback para conectar nodos
   const onConnect = useCallback(
-    (params) => setEdges((eds) => addEdge(params, eds)),
+    (params) => setEdges((eds) => addEdge({ ...params, markerEnd: { type: MarkerType.ArrowClosed } }, eds)),
     [setEdges]
   );
 
@@ -87,10 +245,8 @@ const FlowBuilder = ({ flowData, flowId }) => {
     setIsPreviewModalOpen(true);
   };
   const closePreviewModal = () => setIsPreviewModalOpen(false);
-
+  
   // --- Lógica de añadir nodos ---
-
-  // Función genérica para obtener la posición del nuevo nodo
   const getNewNodePosition = () => {
     let newPosition = { x: 100, y: 100 };
     if (nodes.length > 0) {
@@ -106,6 +262,17 @@ const FlowBuilder = ({ flowData, flowId }) => {
     }
     return newPosition;
   };
+
+  // Helper para inyectar funciones en nodos (nuevos o cargados)
+  const injectNodeFunctions = (node) => ({
+    ...node,
+    data: {
+      ...node.data,
+      updateNodeData: updateNodeData,
+      openPreviewModal: openPreviewModal,
+      deleteNode: deleteNode,
+    }
+  });
 
   const addScreenNode = () => {
     const newNode = {
@@ -123,12 +290,9 @@ const FlowBuilder = ({ flowData, flowId }) => {
           }
         ], 
         footer_label: "Continuar", 
-        updateNodeData: updateNodeData, 
-        openPreviewModal: openPreviewModal,
-        deleteNode: deleteNode, 
       },
     };
-    setNodes((nds) => nds.concat(newNode));
+    setNodes((nds) => nds.concat(injectNodeFunctions(newNode))); // Inyectamos funciones
   };
 
   const addCatalogNode = () => {
@@ -143,12 +307,9 @@ const FlowBuilder = ({ flowData, flowId }) => {
         radioLabel: '¿Cuál producto te interesa más?',
         radioOptions: [],
         footer_label: 'Seleccionar',
-        updateNodeData: updateNodeData,
-        openPreviewModal: openPreviewModal,
-        deleteNode: deleteNode
       },
     };
-    setNodes((nds) => nds.concat(newNode));
+    setNodes((nds) => nds.concat(injectNodeFunctions(newNode)));
   };
 
   const addFormNode = () => {
@@ -161,12 +322,9 @@ const FlowBuilder = ({ flowData, flowId }) => {
         introText: 'Por favor, completa los siguientes datos:',
         components: [], 
         footer_label: 'Continuar',
-        updateNodeData: updateNodeData,
-        openPreviewModal: openPreviewModal,
-        deleteNode: deleteNode
       },
     };
-    setNodes((nds) => nds.concat(newNode));
+    setNodes((nds) => nds.concat(injectNodeFunctions(newNode)));
   };
 
   const addConfirmationNode = () => {
@@ -179,32 +337,71 @@ const FlowBuilder = ({ flowData, flowId }) => {
         headingText: '✅ ¡Todo listo!',
         bodyText: 'Oprime el boton y un agente se comunicará contigo para finalizar el proceso.',
         footer_label: 'Finalizar',
-        updateNodeData: updateNodeData,
-        openPreviewModal: openPreviewModal,
-        deleteNode: deleteNode
       },
     };
-    setNodes((nds) => nds.concat(newNode));
+    setNodes((nds) => nds.concat(injectNodeFunctions(newNode)));
   };
   
+  /**
+   * Este hook se ejecuta cuando el componente carga
+   * o cuando 'flowData' (del store) cambia.
+   */
+  useEffect(() => {
+    // Verificamos que flowData exista y tenga un flow_json
+    if (flowData && flowData.flow_json && Object.keys(flowData.flow_json).length > 0) {
+      console.log("Cargando flujo existente desde JSON...");
+      
+      // 1. Reconstruir nodos y ejes desde el JSON
+      const { initialNodes, initialEdges } = parseJsonToElements(flowData.flow_json);
+
+      // 2. Inyectar las funciones (update, delete, etc.) en los nodos cargados
+      const nodesWithFunctions = initialNodes.map(injectNodeFunctions);
+      
+      // 3. Setear el estado de React Flow
+      setNodes(nodesWithFunctions);
+      setEdges(initialEdges);
+      
+      // 4. Setear el JSON en el panel derecho
+      setFlowJson(flowData.flow_json);
+
+      // 5. Actualizar el nombre del flujo en el panel izquierdo
+      if (flowData.name) {
+        setFlowName(flowData.name);
+      }
+
+    } else if (flowData) { // Existe el flowData pero no el flow_json (es nuevo)
+      console.log("Iniciando nuevo flujo (tablero limpio).");
+      setNodes([]);
+      setEdges([]);
+      setFlowJson({});
+      if (flowData.name) {
+        setFlowName(flowData.name);
+      }
+    }
+    // 'setNodes' y 'setEdges' no deben ir en las dependencias si usamos 'useNodesState'
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [flowData]); // Solo se ejecuta cuando flowData cambia
+
+
   // --- Lógica para Generar JSON ---
-  // ✅ --- INICIO DE LA MODIFICACIÓN ---
-  // Esta función ahora solo retorna el JSON.
-  // Ya no llama a setFlowJson.
   const generateFlowJson = () => {
-  // ✅ --- FIN DE LA MODIFICACIÓN ---
     const routing_model = {};
     
-    // ... (toda la lógica interna de generateFlowJson se mantiene igual) ...
-    
+    // Usamos 'nodes' (el estado actual) para asegurar que los IDs
+    // (ej: PANTALLA_INICIO) se preserven al guardar.
     const idLookup = new Map();
     nodes.forEach((n, index) => {
-        const jsonScreenID = formatTitleToID(n.data.title, index);
+        // Si el nodo ya tiene un ID (cargado de JSON), usarlo.
+        // Si es un nodo nuevo (id: node_12345), generar uno.
+        const jsonScreenID = n.id.startsWith('node_') 
+                           ? formatTitleToID(n.data.title, index) 
+                           : n.id;
         idLookup.set(n.id, jsonScreenID);
     });
 
     const screens = nodes.map((node, index) => {
-        const jsonScreenID = idLookup.get(node.id);
+        const jsonScreenID = idLookup.get(node.id); // Usamos el ID del lookup
+
         const outgoingEdges = edges.filter(e => e.source === node.id);
         const nodeRoutes = outgoingEdges
             .map(edge => idLookup.get(edge.target))
@@ -212,6 +409,7 @@ const FlowBuilder = ({ flowData, flowId }) => {
         
         routing_model[jsonScreenID] = [...new Set(nodeRoutes)];
 
+        // ... (El resto de la lógica de serialización es idéntica) ...
         let screenChildren = []; 
         let screenTerminal = false; 
 
@@ -372,39 +570,27 @@ const FlowBuilder = ({ flowData, flowId }) => {
         routing_model,
         screens
     };
-
-    // ✅ --- INICIO DE LA MODIFICACIÓN ---
-    // Quitamos setFlowJson(finalJson) de aquí...
-    return finalJson; // Y solo retornamos el JSON
-    // ✅ --- FIN DE LA MODIFICACIÓN ---
+    
+    return finalJson; 
   };
-
-  // ✅ --- INICIO DE LA MODIFICACIÓN ---
-  // Nueva función para guardar
+  
+  // --- Lógica para Guardar ---
   const handleSave = async () => {
     setIsSaving(true);
     toast.info("Guardando flujo...");
 
     try {
-      // 1. Generar el JSON
       const newFlowJson = generateFlowJson();
+      setFlowJson(newFlowJson); // Actualizar vista previa
       
-      // 2. ACTUALIZAR LA VISTA PREVIA (Esto arregla el Bug 1)
-      setFlowJson(newFlowJson);
-
-      // 3. Comprobar el flowId (Esto arregla el Bug 2)
       if (!flowId) {
         toast.error("No se ha podido identificar el ID del flujo.");
         setIsSaving(false);
         return;
       }
       
-      // 4. Convertir a string para enviar
       const jsonString = JSON.stringify(newFlowJson);
-
-      // 5. Llamar al servicio de actualización
       await updateFlowJson(flowId, jsonString);
-
       toast.success("¡Flujo guardado con éxito!");
 
     } catch (error) {
@@ -414,7 +600,6 @@ const FlowBuilder = ({ flowData, flowId }) => {
       setIsSaving(false);
     }
   };
-  // ✅ --- FIN DE LA MODIFICACIÓN ---
 
 
   return (
@@ -428,7 +613,6 @@ const FlowBuilder = ({ flowData, flowId }) => {
           background: "#f8fafc",
         }}
       >
-        {/* ... (Input de flowName y botones de añadir nodos se mantienen igual) ... */}
         <h3>Constructor</h3>
         <input
           value={flowName}
@@ -590,9 +774,6 @@ const FlowBuilder = ({ flowData, flowId }) => {
 };
 
 // --- Proveedor de React Flow ---
-// ✅ --- INICIO DE LA MODIFICACIÓN ---
-// Aquí estaba el error. Debemos aceptar 'props' y pasarlas
-// al componente FlowBuilder.
 export default function FlowBuilderProvider(props) {
   return (
     <ReactFlowProvider>
@@ -600,4 +781,3 @@ export default function FlowBuilderProvider(props) {
     </ReactFlowProvider>
   );
 }
-// ✅ --- FIN DE LA MODIFICACIÓN ---

@@ -268,16 +268,17 @@ export const useChatStore = create(
           throw error; // Lanza el error para que el toast lo atrape
         }
       },
-      
-      // Esta acción llama a 'updateFlowAPI'
 
-
-      // Esta acción llama a 'getFlowById'
       fetchFlowById: async (flowId) => {
         set({ loadingCurrentFlow: true, currentEditingFlow: null });
         try {
-          const flow = await getFlowById(flowId);
-          set({ currentEditingFlow: flow, loadingCurrentFlow: false });
+          const existingFlow = get().flows.find(f => f.id === flowId);
+          const flowDetails = await getFlowById(flowId);
+          const combinedFlowData = {
+            ...existingFlow,
+            ...flowDetails,
+          };
+          set({ currentEditingFlow: combinedFlowData, loadingCurrentFlow: false });
         } catch (error) {
           console.error('Error fetching flow by ID:', error);
           set({ loadingCurrentFlow: false });
