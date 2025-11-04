@@ -8,7 +8,8 @@ import ContactsPage from '../pages/ContactsPage';
 import ProtectedRoute from '../components/ProtectedRoute';
 import ButtonsPage from '../pages/ButtonsPage';
 import TemplatesPage from '../pages/TemplatesPage';
-import FlowBuilderPage from '../pages/FlowBuilderPage';
+import FlowEditorPage from '../pages/FlowEditorPage';
+import FlowsPage from '../pages/FlowsPage';
 import App from '../app';
 
 export const router = createBrowserRouter([
@@ -72,7 +73,15 @@ export const router = createBrowserRouter([
         path: 'flows',
         element: (
           <ProtectedRoute>
-            <FlowBuilderPage />
+            <FlowsPage />
+          </ProtectedRoute>
+        )
+      },
+      {
+        path: 'flows/:flowId',
+        element: (
+          <ProtectedRoute>
+            <FlowEditorPage />
           </ProtectedRoute>
         )
       }

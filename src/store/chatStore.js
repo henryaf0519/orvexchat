@@ -3,6 +3,13 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import {
+  getFlows, // <--- La que trae todos
+  getFlowById,
+  createFlow as createFlowAPI,
+  deleteFlow as deleteFlowAPI,
+  updateFlow as updateFlowAPI
+} from '../services/flowService';
+import {
   getChats,
   getMessages,
   sendMessage as sendMessageAPI,
@@ -42,6 +49,10 @@ export const useChatStore = create(
       schedules: [],
       loadingSchedules: false,
       companyId: null,
+      flows: [],
+      loadingFlows: false,
+      currentEditingFlow: null,
+      loadingCurrentFlow: false,
 
       setAuthData: (data) => {
         set({
@@ -221,6 +232,68 @@ export const useChatStore = create(
           schedules: state.schedules.filter((s) => s.scheduleId !== scheduleId),
         }));
       },
+      fetchFlows: async () => {
+        set({ loadingFlows: true });
+        try {
+          // Y aquí llama a 'getFlows' del servicio
+          const flowsFromApi = await getFlows(); 
+          set({ flows: flowsFromApi || [], loadingFlows: false });
+        } catch (error) {
+          console.error('Error fetching flows:', error);
+          set({ loadingFlows: false });
+        }
+      },
+      createNewFlow: async (name) => {
+        try {
+          const newFlow = await createFlowAPI(name);
+          set((state) => ({
+            flows: [...state.flows, newFlow],
+          }));
+          return newFlow;
+        } catch (error) {
+          console.error('Error creating flow:', error);
+          throw error;
+        }
+      },
+
+      // Esta acción llama a 'deleteFlowAPI'
+      deleteFlow: async (flowId) => {
+        try {
+          await deleteFlowAPI(flowId);
+          set((state) => ({
+            flows: state.flows.filter((f) => f.id !== flowId),
+          }));
+        } catch (error) {
+          console.error('Error deleting flow:', error);
+          throw error; // Lanza el error para que el toast lo atrape
+        }
+      },
+      
+      // Esta acción llama a 'updateFlowAPI'
+      updateFlow: async (flowId, flowData) => {
+        try {
+          await updateFlowAPI(flowId, flowData);
+        } catch (error) {
+          console.error('Error updating flow:', error);
+          throw error; // Lanza el error para que el toast lo atrape
+        }
+      },
+
+      // Esta acción llama a 'getFlowById'
+      fetchFlowById: async (flowId) => {
+        set({ loadingCurrentFlow: true, currentEditingFlow: null });
+        try {
+          const flow = await getFlowById(flowId);
+          set({ currentEditingFlow: flow, loadingCurrentFlow: false });
+        } catch (error) {
+          console.error('Error fetching flow by ID:', error);
+          set({ loadingCurrentFlow: false });
+        }
+      },
+      
+      clearCurrentEditingFlow: () => {
+        set({ currentEditingFlow: null });
+      }
     }),
     {
       name: "orvex-chat-storage",
