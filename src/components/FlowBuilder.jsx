@@ -731,17 +731,22 @@ const FlowBuilder = ({ flowData, flowId }) => {
             case "RadioButtonsGroup": {
               formPayload["selection"] = `\${form.selection}`;
 
-              // --- CORRECCIÓN DE GUARDADO ---
-              // Leemos el 'option.id' que *ya tiene* el ID de destino
-              const dataSource = (component.options || []).map(
-                (option, optIndex) => {
-                  return {
-                    id: option.id || `ERROR_ID_${optIndex + 1}`, // Usamos el ID de la opción
-                    title: option.title,
-                  };
-                }
+              
+              const optionEdges = outgoingEdges.filter(edge => 
+                edge.sourceHandle && edge.sourceHandle.startsWith(`${node.id}-option-`)
               );
 
+              
+              const dataSource = (component.options || []).map((option, optIndex) => {
+                
+               
+                const targetScreenId = nodeRoutes[optIndex]; 
+                
+                return {
+                  id: targetScreenId || `ERROR_ID_${optIndex + 1}`, 
+                  title: option.title,
+                };
+              });
               jsonComponent = {
                 type: "RadioButtonsGroup",
                 label: "Selecciona una opción:",
@@ -1159,7 +1164,8 @@ const FlowBuilder = ({ flowData, flowId }) => {
         <FlowInstructionsModal
           flowName={flowId}
           onClose={() => setIsInstructionsModalOpen(false)}
-          onConfirm={handleInstructionsConfirm} // <-- Al confirmar, llama al paso intermedio
+          onConfirm={handleInstructionsConfirm}
+          test={true}
         />
       )}
     </div>

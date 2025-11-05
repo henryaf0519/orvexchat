@@ -109,3 +109,17 @@ export const sendTestFlow = async (internalFlowId,  to, screen, flowName) => {
   }
   return response.json();
 };
+
+export const publishFlow = async (flowId, name) => {
+  const response = await apiFetch('/flow/publish', { // Llama al POST /flow/publish
+    method: 'POST',
+    body: JSON.stringify({ flowId, name }), // Envía el body { flowId, name }
+  });
+
+  const responseData = await response.json();
+
+  if (!response.ok) {
+    throw responseData; 
+  }
+  return responseData;
+};

@@ -5,7 +5,7 @@ import { useChatStore } from '../store/chatStore';
 // Asegúrate de que esta ruta sea correcta para tu nueva imagen (verificar.jpg)
 import metaExtremoImage from '../assets/verificar.jpg'; 
 
-export default function FlowInstructionsModal({ flowName, onConfirm, onClose }) {
+export default function FlowInstructionsModal({ flowName, onConfirm, onClose, test }) {
   console.log("FlowInstructionsModal renderizado con metaFlowId:", flowName);
   
   const wabaId = useChatStore((state) => state.userData?.waba_id);
@@ -35,11 +35,18 @@ export default function FlowInstructionsModal({ flowName, onConfirm, onClose }) 
           </button>
         </div>
 
-        {/* Contenido con Pasos */}
         <div className="p-6" style={{ maxHeight: '70vh', overflowY: 'auto' }}>
-          
+          {test ? (
+            <div className="mb-4 p-3 bg-blue-50 text-blue-800 border border-blue-200 rounded-md">
+              Antes de enviar una prueba, Meta requiere una conexión manual. Sigue estos 2 pasos:
+            </div>
+          ): (
+            <div className="mb-4 p-3 bg-blue-50 text-blue-800 border border-blue-200 rounded-md">
+              Antes de publicar el flujo, Meta requiere una conexión manual. Sigue estos 2 pasos:
+            </div>
+          )}
           <p className="text-gray-700 mb-4">
-            Antes de enviar una prueba, Meta requiere una conexión manual. Sigue estos 2 pasos:
+            
           </p>
           
           {/* --- ✅ NOTA IMPORTANTE (MOVIDA AL INICIO) --- */}
