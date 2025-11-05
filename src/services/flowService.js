@@ -86,3 +86,25 @@ export const deleteFlow = async (flowId) => {
     return { success: true, id: flowId };
   }
 };
+
+
+export const sendTestFlow = async (internalFlowId,  to, screen) => {
+  console.log("Sending test flow with:", {internalFlowId,  to, screen});
+
+  const testData = {
+    flowId: internalFlowId, 
+    to: to,
+    screen: screen,
+  };
+
+  const response = await apiFetch(`/flow/${internalFlowId}/test`, {
+    method: 'POST',
+    body: JSON.stringify(testData),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.message || 'Error al enviar la prueba del flujo');
+  }
+  return response.json();
+};

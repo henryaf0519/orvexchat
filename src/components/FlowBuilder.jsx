@@ -15,14 +15,16 @@ import ReactFlow, {
 import "reactflow/dist/style.css";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+import { useChatStore } from '../store/chatStore';
 // Iconos para la pestaña
 import { FaChevronLeft, FaChevronRight } from 'react-icons/fa';
-import { updateFlowJson } from "../services/flowService";
+import { updateFlowJson, sendTestFlow } from "../services/flowService";
 import PreviewModal from "./PreviewModal";
 import FlowScreenNode from "./FlowScreenNode";
 import FlowCatalogNode from "./FlowCatalogNode";
 import FlowFormNode from "./FlowFormNode";
 import FlowConfirmationNode from "./FlowConfirmationNode";
+import InputModal from "./InputModal";
 
 const nodeTypes = {
   screenNode: FlowScreenNode,
@@ -298,6 +300,12 @@ const FlowBuilder = ({ flowData, flowId }) => {
   
   // 2. Estado local para el panel
   const [isPanelOpen, setIsPanelOpen] = useState(true);
+  const [isSendingTest, setIsSendingTest] = useState(false);
+  const [isTestModalOpen, setIsTestModalOpen] = useState(false);
+  const userData = useChatStore((state) => state.userData);
+  const defaultPhoneNumber = (userData && userData.PK) 
+                             ? userData.PK.replace('USER#', '') 
+                             : "573001234567";
 
   // --- (Lógica de onConnect, updateNodeData, deleteNode, etc. sin cambios) ---
   const onConnect = useCallback(
@@ -805,6 +813,55 @@ const FlowBuilder = ({ flowData, flowId }) => {
     }
   };
 
+  const handleSendTest = async () => {
+    await handleSave();
+    let startScreenId;
+    try {
+      const currentFlowJson = generateFlowJson(); 
+      startScreenId = Object.keys(currentFlowJson.routing_model)[0];
+    } catch (e) {
+      toast.error("Error al leer el JSON del flujo. ¿Tiene pantalla de inicio?");
+      return;
+    }
+    console.log("Start Screen ID:", startScreenId);
+    console.log("Flow ID:", flowId);
+
+
+    if ( !startScreenId || !flowId) {
+      toast.error("Faltan datos para enviar la prueba (pantalla de inicio no encontrados).");
+      return;
+    }
+
+    setIsTestModalOpen(true);
+  };
+
+  const handleConfirmSendTest = async (to) => {
+    if (!to || !/^\d+$/.test(to)) {
+       toast.error("Por favor, ingresa un número de teléfono válido (solo dígitos).");
+       return;
+    }
+
+    const internalFlowId = flowId;
+    const metaFlowId = flowData?.flow_id;
+    const currentFlowJson = generateFlowJson(); 
+    const startScreenId = Object.keys(currentFlowJson.routing_model)[0];
+
+    setIsSendingTest(true);
+    toast.info(`Enviando prueba a ${to}...`);
+
+    try {
+      await sendTestFlow(internalFlowId, to, startScreenId);
+
+      toast.success("¡Prueba de flujo enviada con éxito!");
+      setIsTestModalOpen(false);
+    } catch (error) {
+      console.error("Error al enviar prueba:", error);
+      toast.error(`Error al enviar prueba: ${error.message}`);
+    } finally {
+      setIsSendingTest(false);
+    }
+  };
+
   
   // --- 3. Variables dinámicas para el estilo del panel ---
   const panelWidth = isPanelOpen ? "250px" : "0px";
@@ -934,20 +991,21 @@ const FlowBuilder = ({ flowData, flowId }) => {
             {isSaving ? "Guardando..." : "Guardar Flujo"}
           </button>
 
-          <button
-            onClick={() => toast.info('Funcionalidad de prueba pendiente.')}
+         <button
+            onClick={handleSendTest} // <-- 1. Conectado al handler que abre el modal
+            disabled={isSaving || isSendingTest} // <-- 2. Deshabilitado mientras se guarda o envía
             style={{
               padding: "10px",
               width: "100%",
-              backgroundColor: "#0ea5e9",
+              backgroundColor: (isSaving || isSendingTest) ? "#9ca3af" : "#0ea5e9",
               color: "white",
               border: "none",
               borderRadius: "5px",
-              cursor: "pointer",
+              cursor: (isSaving || isSendingTest) ? "not-allowed" : "pointer",
               transition: "background-color 0.2s",
             }}
           >
-            Enviar Flujo Prueba
+            {isSendingTest ? "Enviando..." : "Enviar Flujo Prueba"} 
           </button>
         </div>
       </div>
@@ -1045,6 +1103,22 @@ const FlowBuilder = ({ flowData, flowId }) => {
           />,
           document.getElementById("modal-root")
         )}
+        {isTestModalOpen && (
+        <InputModal
+          title="Enviar Prueba de Flujo"
+          message="Ingresa el número de teléfono de destino (con código de país, sin el +). Ejemplo: 573001234567"
+          inputLabel="Número de Teléfono"
+          inputPlaceholder= {defaultPhoneNumber}
+          confirmText={isSendingTest ? "Enviando..." : "Enviar"}
+          isLoading={isSendingTest}
+          onConfirm={handleConfirmSendTest} // <-- Llama a la nueva función
+          onCancel={() => {
+            if (!isSendingTest) {
+              setIsTestModalOpen(false);
+            }
+          }}
+        />
+      )}
     </div>
   );
 };
