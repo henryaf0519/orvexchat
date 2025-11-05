@@ -842,15 +842,22 @@ const FlowBuilder = ({ flowData, flowId }) => {
     }
 
     const internalFlowId = flowId;
-    const metaFlowId = flowData?.flow_id;
+    const flow_name = flowData?.name;
     const currentFlowJson = generateFlowJson(); 
     const startScreenId = Object.keys(currentFlowJson.routing_model)[0];
+
+    console.log("Enviando prueba del flujo:", {
+      internalFlowId,
+      to,
+      startScreenId,
+      flow_name,
+    });
 
     setIsSendingTest(true);
     toast.info(`Enviando prueba a ${to}...`);
 
     try {
-      await sendTestFlow(internalFlowId, to, startScreenId);
+      await sendTestFlow(internalFlowId, to, startScreenId, flow_name);
 
       toast.success("¡Prueba de flujo enviada con éxito!");
       setIsTestModalOpen(false);

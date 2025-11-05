@@ -88,13 +88,14 @@ export const deleteFlow = async (flowId) => {
 };
 
 
-export const sendTestFlow = async (internalFlowId,  to, screen) => {
-  console.log("Sending test flow with:", {internalFlowId,  to, screen});
+export const sendTestFlow = async (internalFlowId,  to, screen, flowName) => {
+  console.log("Sending test flow with:", {internalFlowId,  to, screen, flowName});
 
   const testData = {
     flowId: internalFlowId, 
     to: to,
     screen: screen,
+    flowName: flowName
   };
 
   const response = await apiFetch(`/flow/${internalFlowId}/test`, {
