@@ -15,9 +15,9 @@ import ReactFlow, {
 import "reactflow/dist/style.css";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
-import { useChatStore } from '../store/chatStore';
+import { useChatStore } from "../store/chatStore";
 // Iconos para la pestaña
-import { FaChevronLeft, FaChevronRight } from 'react-icons/fa';
+import { FaChevronLeft, FaChevronRight } from "react-icons/fa";
 import { updateFlowJson, sendTestFlow } from "../services/flowService";
 import PreviewModal from "./PreviewModal";
 import FlowScreenNode from "./FlowScreenNode";
@@ -25,6 +25,7 @@ import FlowCatalogNode from "./FlowCatalogNode";
 import FlowFormNode from "./FlowFormNode";
 import FlowConfirmationNode from "./FlowConfirmationNode";
 import InputModal from "./InputModal";
+import FlowInstructionsModal from "./FlowInstructionsModal";
 
 const nodeTypes = {
   screenNode: FlowScreenNode,
@@ -197,21 +198,24 @@ const parseJsonToElements = (flowJson) => {
   // 2. Crear Ejes (Con la lógica de handles que implementamos)
   const initialEdges = [];
   for (const [sourceId, targets] of Object.entries(routing_model)) {
-
-    const sourceNode = initialNodes.find(n => n.id === sourceId);
+    const sourceNode = initialNodes.find((n) => n.id === sourceId);
     if (!sourceNode || !screenMap.has(sourceId)) continue;
-    
+
     let connectionsHandled = false;
 
-    if (sourceNode.type === 'screenNode') {
-      const radioCompIndex = sourceNode.data.components.findIndex(c => c.type === 'RadioButtonsGroup');
-      
+    if (sourceNode.type === "screenNode") {
+      const radioCompIndex = sourceNode.data.components.findIndex(
+        (c) => c.type === "RadioButtonsGroup"
+      );
+
       if (radioCompIndex !== -1) {
         const radioComponent = sourceNode.data.components[radioCompIndex];
-        
+
         targets.forEach((targetId) => {
           if (!screenMap.has(targetId)) return;
-          const optionIndex = (radioComponent.options || []).findIndex(opt => opt.id === targetId);
+          const optionIndex = (radioComponent.options || []).findIndex(
+            (opt) => opt.id === targetId
+          );
 
           if (optionIndex !== -1) {
             const handleId = `${sourceId}-component-${radioCompIndex}-option-${optionIndex}`;
@@ -221,7 +225,7 @@ const parseJsonToElements = (flowJson) => {
               target: targetId,
               sourceHandle: handleId,
               markerEnd: { type: MarkerType.ArrowClosed },
-              type: 'smoothstep',
+              type: "smoothstep",
             });
           } else {
             initialEdges.push({
@@ -229,7 +233,7 @@ const parseJsonToElements = (flowJson) => {
               source: sourceId,
               target: targetId,
               markerEnd: { type: MarkerType.ArrowClosed },
-              type: 'smoothstep',
+              type: "smoothstep",
             });
           }
         });
@@ -237,14 +241,16 @@ const parseJsonToElements = (flowJson) => {
       }
     }
 
-    if (sourceNode.type === 'catalogNode') {
+    if (sourceNode.type === "catalogNode") {
       const catalogOptions = sourceNode.data.radioOptions || [];
 
       if (catalogOptions.length > 0) {
         targets.forEach((targetId) => {
           if (!screenMap.has(targetId)) return;
-          const optionIndex = catalogOptions.findIndex(opt => opt.id === targetId);
-          
+          const optionIndex = catalogOptions.findIndex(
+            (opt) => opt.id === targetId
+          );
+
           if (optionIndex !== -1) {
             const handleId = `${sourceId}-catalog-option-${optionIndex}`;
             initialEdges.push({
@@ -253,7 +259,7 @@ const parseJsonToElements = (flowJson) => {
               target: targetId,
               sourceHandle: handleId,
               markerEnd: { type: MarkerType.ArrowClosed },
-              type: 'smoothstep',
+              type: "smoothstep",
             });
           } else {
             initialEdges.push({
@@ -261,7 +267,7 @@ const parseJsonToElements = (flowJson) => {
               source: sourceId,
               target: targetId,
               markerEnd: { type: MarkerType.ArrowClosed },
-              type: 'smoothstep',
+              type: "smoothstep",
             });
           }
         });
@@ -277,7 +283,7 @@ const parseJsonToElements = (flowJson) => {
             source: sourceId,
             target: targetId,
             markerEnd: { type: MarkerType.ArrowClosed },
-            type: 'smoothstep',
+            type: "smoothstep",
           });
         }
       });
@@ -297,22 +303,25 @@ const FlowBuilder = ({ flowData, flowId }) => {
   const [flowJson, setFlowJson] = useState(flowData?.flow_json || {});
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
   const [previewNodeData, setPreviewNodeData] = useState(null);
-  
-  // 2. Estado local para el panel
+
+  const [isInstructionsModalOpen, setIsInstructionsModalOpen] = useState(false);
   const [isPanelOpen, setIsPanelOpen] = useState(true);
   const [isSendingTest, setIsSendingTest] = useState(false);
   const [isTestModalOpen, setIsTestModalOpen] = useState(false);
   const userData = useChatStore((state) => state.userData);
-  const defaultPhoneNumber = (userData && userData.PK) 
-                             ? userData.PK.replace('USER#', '') 
-                             : "573001234567";
+  const defaultPhoneNumber =
+    userData && userData.PK ? userData.PK.replace("USER#", "") : "573001234567";
 
   // --- (Lógica de onConnect, updateNodeData, deleteNode, etc. sin cambios) ---
   const onConnect = useCallback(
     (params) => {
-      const newEdge = { ...params, type: 'smoothstep', markerEnd: { type: MarkerType.ArrowClosed } };
+      const newEdge = {
+        ...params,
+        type: "smoothstep",
+        markerEnd: { type: MarkerType.ArrowClosed },
+      };
       setEdges((eds) => addEdge(newEdge, eds));
-      
+
       if (
         params.sourceHandle &&
         params.sourceHandle.startsWith(`${params.source}-option`)
@@ -320,8 +329,8 @@ const FlowBuilder = ({ flowData, flowId }) => {
         setNodes((nds) =>
           nds.map((node) => {
             if (node.id === params.source) {
-              const newComponents = node.data.components.map(comp => {
-                if (comp.type === 'RadioButtonsGroup') {
+              const newComponents = node.data.components.map((comp) => {
+                if (comp.type === "RadioButtonsGroup") {
                   const updatedOptions = comp.options.map((opt) => {
                     if (opt.targetHandle === params.sourceHandle) {
                       return { ...opt, targetScreen: params.target };
@@ -342,23 +351,23 @@ const FlowBuilder = ({ flowData, flowId }) => {
               };
             }
             return node;
-          }),
+          })
         );
       } else if (params.sourceHandle === `${params.source}-add-option-source`) {
         setNodes((nds) =>
           nds.map((node) => {
             if (node.id === params.source) {
               const newData = { ...node.data };
-              const newComponents = newData.components.map(comp => {
-                if (comp.type === 'RadioButtonsGroup') {
-                  const newOptionId = params.target; 
+              const newComponents = newData.components.map((comp) => {
+                if (comp.type === "RadioButtonsGroup") {
+                  const newOptionId = params.target;
                   const newOption = {
                     id: newOptionId,
                     title: `Ir a ${params.target}`,
                   };
                   return {
                     ...comp,
-                    options: [...(comp.options || []), newOption]
+                    options: [...(comp.options || []), newOption],
                   };
                 }
                 return comp;
@@ -367,16 +376,16 @@ const FlowBuilder = ({ flowData, flowId }) => {
                 ...node,
                 data: {
                   ...newData,
-                  components: newComponents
+                  components: newComponents,
                 },
               };
             }
             return node;
-          }),
+          })
         );
       }
     },
-    [setEdges, setNodes],
+    [setEdges, setNodes]
   );
 
   const updateNodeData = (nodeId, newData) => {
@@ -434,7 +443,7 @@ const FlowBuilder = ({ flowData, flowId }) => {
     },
   });
 
- const addScreenNode = () => {
+  const addScreenNode = () => {
     const newNode = {
       id: `node_${Date.now()}`,
       type: "screenNode",
@@ -720,15 +729,17 @@ const FlowBuilder = ({ flowData, flowId }) => {
               break;
             case "RadioButtonsGroup": {
               formPayload["selection"] = `\${form.selection}`;
-              
+
               // --- CORRECCIÓN DE GUARDADO ---
               // Leemos el 'option.id' que *ya tiene* el ID de destino
-              const dataSource = (component.options || []).map((option, optIndex) => {
-                return {
-                  id: option.id || `ERROR_ID_${optIndex + 1}`, // Usamos el ID de la opción
-                  title: option.title,
-                };
-              });
+              const dataSource = (component.options || []).map(
+                (option, optIndex) => {
+                  return {
+                    id: option.id || `ERROR_ID_${optIndex + 1}`, // Usamos el ID de la opción
+                    title: option.title,
+                  };
+                }
+              );
 
               jsonComponent = {
                 type: "RadioButtonsGroup",
@@ -817,33 +828,42 @@ const FlowBuilder = ({ flowData, flowId }) => {
     await handleSave();
     let startScreenId;
     try {
-      const currentFlowJson = generateFlowJson(); 
+      const currentFlowJson = generateFlowJson();
       startScreenId = Object.keys(currentFlowJson.routing_model)[0];
     } catch (e) {
-      toast.error("Error al leer el JSON del flujo. ¿Tiene pantalla de inicio?");
+      toast.error(
+        "Error al leer el JSON del flujo. ¿Tiene pantalla de inicio?"
+      );
       return;
     }
     console.log("Start Screen ID:", startScreenId);
     console.log("Flow ID:", flowId);
 
-
-    if ( !startScreenId || !flowId) {
-      toast.error("Faltan datos para enviar la prueba (pantalla de inicio no encontrados).");
+    if (!startScreenId || !flowId) {
+      toast.error(
+        "Faltan datos para enviar la prueba (pantalla de inicio no encontrados)."
+      );
       return;
     }
+    setIsInstructionsModalOpen(true);
+  };
 
+  const handleInstructionsConfirm = () => {
+    setIsInstructionsModalOpen(false);
     setIsTestModalOpen(true);
   };
 
   const handleConfirmSendTest = async (to) => {
     if (!to || !/^\d+$/.test(to)) {
-       toast.error("Por favor, ingresa un número de teléfono válido (solo dígitos).");
-       return;
+      toast.error(
+        "Por favor, ingresa un número de teléfono válido (solo dígitos)."
+      );
+      return;
     }
 
     const internalFlowId = flowId;
     const flow_name = flowData?.name;
-    const currentFlowJson = generateFlowJson(); 
+    const currentFlowJson = generateFlowJson();
     const startScreenId = Object.keys(currentFlowJson.routing_model)[0];
 
     console.log("Enviando prueba del flujo:", {
@@ -869,18 +889,22 @@ const FlowBuilder = ({ flowData, flowId }) => {
     }
   };
 
-  
   // --- 3. Variables dinámicas para el estilo del panel ---
   const panelWidth = isPanelOpen ? "250px" : "0px";
   const panelPadding = isPanelOpen ? "10px" : "0px";
   const panelOpacity = isPanelOpen ? 1 : 0;
   // ---------------------------------------------------
 
-
   return (
     // --- 4. DIV principal ahora es relativo ---
-    <div style={{ width: "100%", height: "100%", display: "flex", position: "relative" }}>
-      
+    <div
+      style={{
+        width: "100%",
+        height: "100%",
+        display: "flex",
+        position: "relative",
+      }}
+    >
       {/* ================================================================
         Panel Izquierdo (Controles) 
         --- 5. Estilos actualizados para animar width, padding y opacity ---
@@ -893,12 +917,12 @@ const FlowBuilder = ({ flowData, flowId }) => {
           opacity: panelOpacity, // <-- Opacidad en el panel padre
           background: "#f8fafc",
           borderRight: isPanelOpen ? "1px solid #ddd" : "none",
-          display: "flex", 
-          flexDirection: "column", 
+          display: "flex",
+          flexDirection: "column",
           justifyContent: "space-between",
           overflow: "hidden", // <-- Clave para ocultar
           transition: "all 0.3s ease-in-out", // <-- Transición simple
-          flexShrink: 0, 
+          flexShrink: 0,
         }}
       >
         {/* --- 6. CORRECCIÓN: Eliminados los estilos de los hijos ---
@@ -978,7 +1002,7 @@ const FlowBuilder = ({ flowData, flowId }) => {
             + Añadir Confirmación
           </button>
         </div>
-        
+
         <div style={{ marginTop: "20px" }}>
           <button
             onClick={handleSave}
@@ -998,21 +1022,22 @@ const FlowBuilder = ({ flowData, flowId }) => {
             {isSaving ? "Guardando..." : "Guardar Flujo"}
           </button>
 
-         <button
+          <button
             onClick={handleSendTest} // <-- 1. Conectado al handler que abre el modal
             disabled={isSaving || isSendingTest} // <-- 2. Deshabilitado mientras se guarda o envía
             style={{
               padding: "10px",
               width: "100%",
-              backgroundColor: (isSaving || isSendingTest) ? "#9ca3af" : "#0ea5e9",
+              backgroundColor:
+                isSaving || isSendingTest ? "#9ca3af" : "#0ea5e9",
               color: "white",
               border: "none",
               borderRadius: "5px",
-              cursor: (isSaving || isSendingTest) ? "not-allowed" : "pointer",
+              cursor: isSaving || isSendingTest ? "not-allowed" : "pointer",
               transition: "background-color 0.2s",
             }}
           >
-            {isSendingTest ? "Enviando..." : "Enviar Flujo Prueba"} 
+            {isSendingTest ? "Enviando..." : "Enviar Flujo Prueba"}
           </button>
         </div>
       </div>
@@ -1040,9 +1065,12 @@ const FlowBuilder = ({ flowData, flowId }) => {
           transition: "left 0.3s ease-in-out", // Anima su posición
         }}
       >
-        {isPanelOpen ? <FaChevronLeft size={14} /> : <FaChevronRight size={14} />}
+        {isPanelOpen ? (
+          <FaChevronLeft size={14} />
+        ) : (
+          <FaChevronRight size={14} />
+        )}
       </button>
-
 
       {/* Área Central: Canvas de React Flow */}
       <div style={{ flex: 1, background: "#fcfcfc", position: "relative" }}>
@@ -1110,12 +1138,12 @@ const FlowBuilder = ({ flowData, flowId }) => {
           />,
           document.getElementById("modal-root")
         )}
-        {isTestModalOpen && (
+      {isTestModalOpen && (
         <InputModal
           title="Enviar Prueba de Flujo"
           message="Ingresa el número de teléfono de destino (con código de país, sin el +). Ejemplo: 573001234567"
           inputLabel="Número de Teléfono"
-          inputPlaceholder= {defaultPhoneNumber}
+          inputPlaceholder={defaultPhoneNumber}
           confirmText={isSendingTest ? "Enviando..." : "Enviar"}
           isLoading={isSendingTest}
           onConfirm={handleConfirmSendTest} // <-- Llama a la nueva función
@@ -1124,6 +1152,12 @@ const FlowBuilder = ({ flowData, flowId }) => {
               setIsTestModalOpen(false);
             }
           }}
+        />
+      )}
+      {isInstructionsModalOpen && (
+        <FlowInstructionsModal
+          onClose={() => setIsInstructionsModalOpen(false)}
+          onConfirm={handleInstructionsConfirm} // <-- Al confirmar, llama al paso intermedio
         />
       )}
     </div>
