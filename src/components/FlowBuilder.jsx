@@ -202,7 +202,87 @@ const parseJsonToElements = (flowJson) => {
   // 2. Crear Ejes
   const initialEdges = [];
   for (const [sourceId, targets] of Object.entries(routing_model)) {
-    if (screenMap.has(sourceId)) {
+
+    const sourceNode = initialNodes.find(n => n.id === sourceId);
+    if (!sourceNode || !screenMap.has(sourceId)) continue;
+    
+    let connectionsHandled = false;
+
+    if (sourceNode.type === 'screenNode') {
+      const radioCompIndex = sourceNode.data.components.findIndex(c => c.type === 'RadioButtonsGroup');
+      
+      if (radioCompIndex !== -1) {
+        const radioComponent = sourceNode.data.components[radioCompIndex];
+        
+        targets.forEach((targetId) => {
+          if (!screenMap.has(targetId)) return;
+          const optionIndex = (radioComponent.options || []).findIndex(opt => opt.id === targetId);
+
+          if (optionIndex !== -1) {
+            // Found the option! Create an edge from its specific handle
+            const handleId = `${sourceId}-component-${radioCompIndex}-option-${optionIndex}`;
+            initialEdges.push({
+              id: `edge_${sourceId}_${handleId}_${targetId}`,
+              source: sourceId,
+              target: targetId,
+              sourceHandle: handleId,
+              markerEnd: { type: MarkerType.ArrowClosed },
+              type: 'smoothstep',
+            });
+          } else {
+            // This target is not from a radio button, must be from the main footer
+            initialEdges.push({
+              id: `edge_${sourceId}_${targetId}`,
+              source: sourceId, // Main node output
+              target: targetId,
+              markerEnd: { type: MarkerType.ArrowClosed },
+              type: 'smoothstep',
+            });
+          }
+        });
+        connectionsHandled = true; // Mark as handled
+      }
+    }
+
+    // --- Caso 2: Nodos de Catálogo ---
+    if (sourceNode.type === 'catalogNode') {
+      const catalogOptions = sourceNode.data.radioOptions || [];
+
+      if (catalogOptions.length > 0) {
+        targets.forEach((targetId) => {
+          if (!screenMap.has(targetId)) return;
+
+          // Find the corresponding option index
+          const optionIndex = catalogOptions.findIndex(opt => opt.id === targetId);
+          
+          if (optionIndex !== -1) {
+            // Found it! Create edge from the catalog option handle
+            const handleId = `${sourceId}-catalog-option-${optionIndex}`;
+            initialEdges.push({
+              id: `edge_${sourceId}_${handleId}_${targetId}`,
+              source: sourceId,
+              target: targetId,
+              sourceHandle: handleId,
+              markerEnd: { type: MarkerType.ArrowClosed },
+              type: 'smoothstep',
+            });
+          } else {
+              // Fallback for the main footer button (if it exists)
+            initialEdges.push({
+              id: `edge_${sourceId}_${targetId}`,
+              source: sourceId,
+              target: targetId,
+              markerEnd: { type: MarkerType.ArrowClosed },
+              type: 'smoothstep',
+            });
+          }
+        });
+        connectionsHandled = true; // Mark as handled
+      }
+    }
+
+    // --- Caso 3: Fallback (Formularios o Nodos sin opciones) ---
+    if (!connectionsHandled) {
       targets.forEach((targetId) => {
         if (screenMap.has(targetId)) {
           initialEdges.push({
@@ -210,6 +290,7 @@ const parseJsonToElements = (flowJson) => {
             source: sourceId,
             target: targetId,
             markerEnd: { type: MarkerType.ArrowClosed },
+            type: 'smoothstep',
           });
         }
       });
