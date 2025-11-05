@@ -1,6 +1,7 @@
 // src/components/FlowBuilder.jsx
 
-import React, { useState, useCallback, useEffect } from "react"; // Importar useEffect
+// 1. Imports actualizados
+import React, { useState, useCallback, useEffect } from "react";
 import ReactDOM from "react-dom";
 import ReactFlow, {
   Controls,
@@ -9,11 +10,13 @@ import ReactFlow, {
   useNodesState,
   useEdgesState,
   ReactFlowProvider,
-  MarkerType, // Para las flechas
+  MarkerType,
 } from "reactflow";
 import "reactflow/dist/style.css";
 import { ToastContainer, toast } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
+// Iconos para la pestaña
+import { FaChevronLeft, FaChevronRight } from 'react-icons/fa';
 import { updateFlowJson } from "../services/flowService";
 import PreviewModal from "./PreviewModal";
 import FlowScreenNode from "./FlowScreenNode";
@@ -28,7 +31,8 @@ const nodeTypes = {
   confirmationNode: FlowConfirmationNode,
 };
 
-// --- Función de Formato de ID ---
+// --- (La lógica de formatTitleToID, determineNodeType, reconstructNodeData, y parseJsonToElements no cambia) ---
+
 const formatTitleToID = (title, index) => {
   if (!title || title.trim() === "") {
     return `PANTALLA_SIN_TITULO_${index + 1}`;
@@ -39,9 +43,6 @@ const formatTitleToID = (title, index) => {
     .replace(/\s+/g, "_"); // espacios -> _
 };
 
-// --- LÓGICA DE RECONSTRUCCIÓN DE JSON A NODOS ---
-
-// Ayudante para inferir el tipo de nodo basado en el contenido del JSON
 const determineNodeType = (screen) => {
   const form = screen.layout.children.find((c) => c.type === "Form");
   if (!form || !form.children) return "screenNode"; // Default
@@ -66,7 +67,6 @@ const determineNodeType = (screen) => {
   return "screenNode";
 };
 
-// Ayudante para reconstruir el 'data' object que espera el nodo
 const reconstructNodeData = (screen, nodeType) => {
   const form = screen.layout.children.find((c) => c.type === "Form");
   if (!form) return { title: screen.title || "" }; // Fallback
@@ -92,12 +92,11 @@ const reconstructNodeData = (screen, nodeType) => {
         };
 
       case "catalogNode":
-        // Esto es una aproximación, ya que el JSON no guarda 'products'
         return {
           ...baseData,
           introText:
             form.children.find((c) => c.type === "TextBody")?.text || "",
-          products: [], // Imposible reconstruir productos desde el JSON actual
+          products: [],
           radioLabel:
             form.children.find((c) => c.type === "RadioButtonsGroup")?.label ||
             "",
@@ -132,9 +131,8 @@ const reconstructNodeData = (screen, nodeType) => {
         return {
           ...baseData,
           components: form.children
-            .filter((c) => c.type !== "Footer") // Filtramos el footer
+            .filter((c) => c.type !== "Footer")
             .map((c, i) => {
-              // Reconstruir componentes
               if (c.type === "Image") {
                 return {
                   type: "Image",
@@ -158,7 +156,7 @@ const reconstructNodeData = (screen, nodeType) => {
               }
               return null;
             })
-            .filter(Boolean), // Eliminar nulos
+            .filter(Boolean),
         };
     }
   } catch (error) {
@@ -167,10 +165,6 @@ const reconstructNodeData = (screen, nodeType) => {
   }
 };
 
-/**
- * Función principal de reconstrucción.
- * Toma el flow.json y lo convierte en nodos y ejes.
- */
 const parseJsonToElements = (flowJson) => {
   if (!flowJson || !flowJson.screens || !flowJson.routing_model) {
     console.warn("JSON de flujo inválido o vacío. Empezando tablero limpio.");
@@ -186,12 +180,11 @@ const parseJsonToElements = (flowJson) => {
     const nodeData = reconstructNodeData(screen, nodeType);
 
     return {
-      id: screen.id, // Usamos el ID del JSON (ej: PANTALLA_INICIO)
+      id: screen.id,
       type: nodeType,
-      position: { x: 250 + index * 400, y: 100 }, // Posición simple en fila
+      position: { x: 250 + index * 400, y: 100 },
       data: {
         ...nodeData,
-        // Inyectamos placeholders que se sobreescribirán
         updateNodeData: () => {},
         openPreviewModal: () => {},
         deleteNode: () => {},
@@ -199,7 +192,7 @@ const parseJsonToElements = (flowJson) => {
     };
   });
 
-  // 2. Crear Ejes
+  // 2. Crear Ejes (Con la lógica de handles que implementamos)
   const initialEdges = [];
   for (const [sourceId, targets] of Object.entries(routing_model)) {
 
@@ -219,7 +212,6 @@ const parseJsonToElements = (flowJson) => {
           const optionIndex = (radioComponent.options || []).findIndex(opt => opt.id === targetId);
 
           if (optionIndex !== -1) {
-            // Found the option! Create an edge from its specific handle
             const handleId = `${sourceId}-component-${radioCompIndex}-option-${optionIndex}`;
             initialEdges.push({
               id: `edge_${sourceId}_${handleId}_${targetId}`,
@@ -230,33 +222,28 @@ const parseJsonToElements = (flowJson) => {
               type: 'smoothstep',
             });
           } else {
-            // This target is not from a radio button, must be from the main footer
             initialEdges.push({
               id: `edge_${sourceId}_${targetId}`,
-              source: sourceId, // Main node output
+              source: sourceId,
               target: targetId,
               markerEnd: { type: MarkerType.ArrowClosed },
               type: 'smoothstep',
             });
           }
         });
-        connectionsHandled = true; // Mark as handled
+        connectionsHandled = true;
       }
     }
 
-    // --- Caso 2: Nodos de Catálogo ---
     if (sourceNode.type === 'catalogNode') {
       const catalogOptions = sourceNode.data.radioOptions || [];
 
       if (catalogOptions.length > 0) {
         targets.forEach((targetId) => {
           if (!screenMap.has(targetId)) return;
-
-          // Find the corresponding option index
           const optionIndex = catalogOptions.findIndex(opt => opt.id === targetId);
           
           if (optionIndex !== -1) {
-            // Found it! Create edge from the catalog option handle
             const handleId = `${sourceId}-catalog-option-${optionIndex}`;
             initialEdges.push({
               id: `edge_${sourceId}_${handleId}_${targetId}`,
@@ -267,7 +254,6 @@ const parseJsonToElements = (flowJson) => {
               type: 'smoothstep',
             });
           } else {
-              // Fallback for the main footer button (if it exists)
             initialEdges.push({
               id: `edge_${sourceId}_${targetId}`,
               source: sourceId,
@@ -277,11 +263,10 @@ const parseJsonToElements = (flowJson) => {
             });
           }
         });
-        connectionsHandled = true; // Mark as handled
+        connectionsHandled = true;
       }
     }
 
-    // --- Caso 3: Fallback (Formularios o Nodos sin opciones) ---
     if (!connectionsHandled) {
       targets.forEach((targetId) => {
         if (screenMap.has(targetId)) {
@@ -302,43 +287,34 @@ const parseJsonToElements = (flowJson) => {
 
 // --- COMPONENTE PRINCIPAL DEL CONSTRUCTOR ---
 const FlowBuilder = ({ flowData, flowId }) => {
-  // Usamos el hook 'useNodesState' para inicializar.
-  // El 'useEffect' de abajo se encargará de poblarlos.
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
 
   const [flowName, setFlowName] = useState(flowData?.name || "Mi Flujo");
   const [isSaving, setIsSaving] = useState(false);
-  // Inicializamos el JSON con el que viene de props (si existe)
   const [flowJson, setFlowJson] = useState(flowData?.flow_json || {});
   const [isPreviewModalOpen, setIsPreviewModalOpen] = useState(false);
   const [previewNodeData, setPreviewNodeData] = useState(null);
+  
+  // 2. Estado local para el panel
+  const [isPanelOpen, setIsPanelOpen] = useState(true);
 
-  // Callback para conectar nodos
+  // --- (Lógica de onConnect, updateNodeData, deleteNode, etc. sin cambios) ---
   const onConnect = useCallback(
     (params) => {
-      // 1. Crear la nueva conexión (edge)
       const newEdge = { ...params, type: 'smoothstep', markerEnd: { type: MarkerType.ArrowClosed } };
       setEdges((eds) => addEdge(newEdge, eds));
-
-      // 2. Lógica para actualizar los datos del NODO DE ORIGEN
       
       if (
         params.sourceHandle &&
         params.sourceHandle.startsWith(`${params.source}-option`)
       ) {
-        // Caso: Se está conectando un handle de opción *existente*
-        // (Esto actualiza el 'targetScreen' si se reconecta un handle)
         setNodes((nds) =>
           nds.map((node) => {
             if (node.id === params.source) {
-              
-              // Buscamos el RadioButtonsGroup
               const newComponents = node.data.components.map(comp => {
                 if (comp.type === 'RadioButtonsGroup') {
-                  // Actualizamos la opción específica
                   const updatedOptions = comp.options.map((opt) => {
-                    // 'targetHandle' se define en FlowScreenNode, asegurémonos que exista
                     if (opt.targetHandle === params.sourceHandle) {
                       return { ...opt, targetScreen: params.target };
                     }
@@ -361,27 +337,17 @@ const FlowBuilder = ({ flowData, flowId }) => {
           }),
         );
       } else if (params.sourceHandle === `${params.source}-add-option-source`) {
-        // --- ESTA ES LA LÓGICA QUE FALTABA ---
-        // Caso: Se está conectando el handle "Añadir Menú" (crear nueva opción)
         setNodes((nds) =>
           nds.map((node) => {
-            // Encontrar el nodo de origen
             if (node.id === params.source) {
               const newData = { ...node.data };
-              
-              // Encontrar el componente RadioButtonsGroup dentro del nodo
               const newComponents = newData.components.map(comp => {
                 if (comp.type === 'RadioButtonsGroup') {
-                  
-                  // El ID de la opción es el ID de la pantalla de destino
-                  const newOptionId = params.target; // ej: "DATOS"
-
+                  const newOptionId = params.target; 
                   const newOption = {
-                    id: newOptionId, // ID de la pantalla de destino
-                    title: `Ir a ${params.target}`, // Título por defecto
+                    id: newOptionId,
+                    title: `Ir a ${params.target}`,
                   };
-
-                  // Retornar el componente actualizado con la nueva opción
                   return {
                     ...comp,
                     options: [...(comp.options || []), newOption]
@@ -389,8 +355,6 @@ const FlowBuilder = ({ flowData, flowId }) => {
                 }
                 return comp;
               });
-
-              // Retornamos el nodo actualizado con los nuevos componentes
               return {
                 ...node,
                 data: {
@@ -404,10 +368,9 @@ const FlowBuilder = ({ flowData, flowId }) => {
         );
       }
     },
-    [setEdges, setNodes], // ¡Importante añadir setNodes!
+    [setEdges, setNodes],
   );
 
-  // Función para actualizar los datos internos de un nodo (pasada al nodo)
   const updateNodeData = (nodeId, newData) => {
     setNodes((nds) =>
       nds.map((node) =>
@@ -418,7 +381,6 @@ const FlowBuilder = ({ flowData, flowId }) => {
     );
   };
 
-  // Función para eliminar un nodo (pasada al nodo)
   const deleteNode = useCallback(
     (nodeIdToDelete) => {
       setNodes((nds) => nds.filter((node) => node.id !== nodeIdToDelete));
@@ -432,14 +394,12 @@ const FlowBuilder = ({ flowData, flowId }) => {
     [setNodes, setEdges]
   );
 
-  // --- Funciones para controlar el modal ---
   const openPreviewModal = (nodeData) => {
     setPreviewNodeData(nodeData);
     setIsPreviewModalOpen(true);
   };
   const closePreviewModal = () => setIsPreviewModalOpen(false);
 
-  // --- Lógica de añadir nodos ---
   const getNewNodePosition = () => {
     let newPosition = { x: 100, y: 100 };
     if (nodes.length > 0) {
@@ -456,7 +416,6 @@ const FlowBuilder = ({ flowData, flowId }) => {
     return newPosition;
   };
 
-  // Helper para inyectar funciones en nodos (nuevos o cargados)
   const injectNodeFunctions = (node) => ({
     ...node,
     data: {
@@ -484,8 +443,7 @@ const FlowBuilder = ({ flowData, flowId }) => {
           {
             type: "RadioButtonsGroup",
             id: "radiobuttonsgroup_1",
-            // --- ¡AQUÍ ESTÁ LA CORRECCIÓN! ---
-            options: [], // ¡Debe empezar vacío!
+            options: [],
           },
         ],
         footer_label: "Continuar",
@@ -542,40 +500,24 @@ const FlowBuilder = ({ flowData, flowId }) => {
     setNodes((nds) => nds.concat(injectNodeFunctions(newNode)));
   };
 
-  /**
-   * Este hook se ejecuta cuando el componente carga
-   * o cuando 'flowData' (del store) cambia.
-   */
   useEffect(() => {
-    // Verificamos que flowData exista y tenga un flow_json
     if (
       flowData &&
       flowData.flow_json &&
       Object.keys(flowData.flow_json).length > 0
     ) {
       console.log("Cargando flujo existente desde JSON...");
-
-      // 1. Reconstruir nodos y ejes desde el JSON
       const { initialNodes, initialEdges } = parseJsonToElements(
         flowData.flow_json
       );
-
-      // 2. Inyectar las funciones (update, delete, etc.) en los nodos cargados
       const nodesWithFunctions = initialNodes.map(injectNodeFunctions);
-
-      // 3. Setear el estado de React Flow
       setNodes(nodesWithFunctions);
       setEdges(initialEdges);
-
-      // 4. Setear el JSON en el panel derecho
       setFlowJson(flowData.flow_json);
-
-      // 5. Actualizar el nombre del flujo en el panel izquierdo
       if (flowData.name) {
         setFlowName(flowData.name);
       }
     } else if (flowData) {
-      // Existe el flowData pero no el flow_json (es nuevo)
       console.log("Iniciando nuevo flujo (tablero limpio).");
       setNodes([]);
       setEdges([]);
@@ -584,20 +526,14 @@ const FlowBuilder = ({ flowData, flowId }) => {
         setFlowName(flowData.name);
       }
     }
-    // 'setNodes' y 'setEdges' no deben ir en las dependencias si usamos 'useNodesState'
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [flowData]); // Solo se ejecuta cuando flowData cambia
+  }, [flowData]);
 
-  // --- Lógica para Generar JSON ---
   const generateFlowJson = () => {
     const routing_model = {};
 
-    // Usamos 'nodes' (el estado actual) para asegurar que los IDs
-    // (ej: PANTALLA_INICIO) se preserven al guardar.
     const idLookup = new Map();
     nodes.forEach((n, index) => {
-      // Si el nodo ya tiene un ID (cargado de JSON), usarlo.
-      // Si es un nodo nuevo (id: node_12345), generar uno.
       const jsonScreenID = n.id.startsWith("node_")
         ? formatTitleToID(n.data.title, index)
         : n.id;
@@ -605,8 +541,7 @@ const FlowBuilder = ({ flowData, flowId }) => {
     });
 
     const screens = nodes.map((node, index) => {
-      const jsonScreenID = idLookup.get(node.id); // Usamos el ID del lookup
-
+      const jsonScreenID = idLookup.get(node.id);
       const outgoingEdges = edges.filter((e) => e.source === node.id);
       const nodeRoutes = outgoingEdges
         .map((edge) => idLookup.get(edge.target))
@@ -614,7 +549,6 @@ const FlowBuilder = ({ flowData, flowId }) => {
 
       routing_model[jsonScreenID] = [...new Set(nodeRoutes)];
 
-      // ... (El resto de la lógica de serialización es idéntica) ...
       let screenChildren = [];
       let screenTerminal = false;
 
@@ -648,7 +582,7 @@ const FlowBuilder = ({ flowData, flowId }) => {
         });
         const radioDataSource = (node.data.radioOptions || []).map(
           (opt, index) => ({
-            id: opt.id || `cat_opt_${index + 1}`,
+            id: opt.id || `cat_opt_${index + 1}`, // Usamos el ID de la opción (que es el ID de destino)
             title: opt.title || `Opción ${index + 1}`,
           })
         );
@@ -776,36 +710,17 @@ const FlowBuilder = ({ flowData, flowId }) => {
                 required: true,
               };
               break;
-            case "RadioButtonsGroup": { // <-- (Línea 514)
+            case "RadioButtonsGroup": {
               formPayload["selection"] = `\${form.selection}`;
-
-              // --- INICIO DE LA CORRECCIÓN ---
               
-              // 1. Obtener las conexiones (flechas) que salen de este nodo
-              const optionEdges = outgoingEdges.filter(edge => 
-                edge.sourceHandle && edge.sourceHandle.startsWith(`${node.id}-option-`)
-              );
-
-              // 2. Mapear las opciones del componente (las que tienen 'title')
+              // --- CORRECCIÓN DE GUARDADO ---
+              // Leemos el 'option.id' que *ya tiene* el ID de destino
               const dataSource = (component.options || []).map((option, optIndex) => {
-                
-                // 3. Buscar la conexión (flecha) correspondiente a esta opción
-                // (Asumimos que el 'targetHandle' se guardó en onConnect)
-                // OJO: Si 'targetHandle' no está, necesitamos otra estrategia.
-                //
-                // ¡Vamos a hacerlo más simple!
-                // El `routing_model` ya nos dice los destinos: ["DATOS", "SERVICIOS"]
-                // Asumimos que el orden es el mismo.
-                
-                // El ID de la pantalla de destino (ej: "DATOS")
-                const targetScreenId = nodeRoutes[optIndex]; // <-- Obtenemos el ID desde las rutas
-                
                 return {
-                  id: targetScreenId || `ERROR_ID_${optIndex + 1}`, // Usamos el ID de la ruta
+                  id: option.id || `ERROR_ID_${optIndex + 1}`, // Usamos el ID de la opción
                   title: option.title,
                 };
               });
-              // --- FIN DE LA CORRECCIÓN ---
 
               jsonComponent = {
                 type: "RadioButtonsGroup",
@@ -867,21 +782,18 @@ const FlowBuilder = ({ flowData, flowId }) => {
     return finalJson;
   };
 
-  // --- Lógica para Guardar ---
   const handleSave = async () => {
     setIsSaving(true);
     toast.info("Guardando flujo...");
 
     try {
       const newFlowJson = generateFlowJson();
-      setFlowJson(newFlowJson); // Actualizar vista previa
-
+      setFlowJson(newFlowJson);
       if (!flowId) {
         toast.error("No se ha podido identificar el ID del flujo.");
         setIsSaving(false);
         return;
       }
-
       const jsonString = JSON.stringify(newFlowJson);
       await updateFlowJson(flowId, jsonString);
       toast.success("¡Flujo guardado con éxito!");
@@ -893,34 +805,60 @@ const FlowBuilder = ({ flowData, flowId }) => {
     }
   };
 
+  
+  // --- 3. Variables dinámicas para el estilo del panel ---
+  const panelWidth = isPanelOpen ? "250px" : "0px";
+  const panelPadding = isPanelOpen ? "10px" : "0px";
+  const panelOpacity = isPanelOpen ? 1 : 0;
+  // ---------------------------------------------------
+
+
   return (
-    <div style={{ width: "100%", height: "100%", display: "flex" }}>
+    // --- 4. DIV principal ahora es relativo ---
+    <div style={{ width: "100%", height: "100%", display: "flex", position: "relative" }}>
       
       {/* ================================================================
-        CAMBIO 1: Panel Izquierdo (Controles) 
-        Se añadió display: "flex" y flex-direction: "column"
-        para crear espacio en la parte inferior.
+        Panel Izquierdo (Controles) 
+        --- 5. Estilos actualizados para animar width, padding y opacity ---
         ================================================================
       */}
       <div
         style={{
-          width: "250px",
-          padding: "10px",
-          borderRight: "1px solid #ddd",
+          width: panelWidth,
+          padding: panelPadding,
+          opacity: panelOpacity, // <-- Opacidad en el panel padre
           background: "#f8fafc",
+          borderRight: isPanelOpen ? "1px solid #ddd" : "none",
           display: "flex", 
           flexDirection: "column", 
-          justifyContent: "space-between" 
+          justifyContent: "space-between",
+          overflow: "hidden", // <-- Clave para ocultar
+          transition: "all 0.3s ease-in-out", // <-- Transición simple
+          flexShrink: 0, 
         }}
       >
-        {/* Grupo Superior: Controles existentes */}
+        {/* --- 6. CORRECCIÓN: Eliminados los estilos de los hijos ---
+          Los hijos ya no necesitan 'opacity' o 'white-space'
+        */}
         <div>
-
+          <h3>Constructor</h3>
+          <input
+            value={flowName}
+            onChange={(e) => setFlowName(e.target.value)}
+            placeholder="Nombre del Flujo"
+            style={{
+              width: "100%",
+              padding: "8px",
+              border: "1px solid #ccc",
+              borderRadius: "4px",
+              marginBottom: "20px",
+            }}
+          />
           <button
             onClick={addScreenNode}
             style={{
               padding: "10px",
-              background: "#3b82f6", // Azul
+              background: "#3b82f6",
               color: "white",
               border: "none",
               borderRadius: "5px",
@@ -935,7 +873,7 @@ const FlowBuilder = ({ flowData, flowId }) => {
             style={{
               marginTop: "10px",
               padding: "10px",
-              background: "#10b981", // Verde
+              background: "#10b981",
               color: "white",
               border: "none",
               borderRadius: "5px",
@@ -950,7 +888,7 @@ const FlowBuilder = ({ flowData, flowId }) => {
             style={{
               marginTop: "10px",
               padding: "10px",
-              background: "#f59e0b", // Ámbar/Amarillo
+              background: "#f59e0b",
               color: "white",
               border: "none",
               borderRadius: "5px",
@@ -965,7 +903,7 @@ const FlowBuilder = ({ flowData, flowId }) => {
             style={{
               marginTop: "10px",
               padding: "10px",
-              background: "#ef4444", // Rojo
+              background: "#ef4444",
               color: "white",
               border: "none",
               borderRadius: "5px",
@@ -977,11 +915,6 @@ const FlowBuilder = ({ flowData, flowId }) => {
           </button>
         </div>
         
-        {/* ================================================================
-          CAMBIO 2: Grupo Inferior (Nuevos botones)
-          Aquí se movió el botón "Guardar" y se añadió el de "Prueba".
-          ================================================================
-        */}
         <div style={{ marginTop: "20px" }}>
           <button
             onClick={handleSave}
@@ -1006,7 +939,7 @@ const FlowBuilder = ({ flowData, flowId }) => {
             style={{
               padding: "10px",
               width: "100%",
-              backgroundColor: "#0ea5e9", // Azul (para prueba)
+              backgroundColor: "#0ea5e9",
               color: "white",
               border: "none",
               borderRadius: "5px",
@@ -1019,7 +952,34 @@ const FlowBuilder = ({ flowData, flowId }) => {
         </div>
       </div>
 
-      {/* Área Central: Canvas de React Flow (Sin cambios) */}
+      {/* ================================================================
+        --- 7. NUEVA Pestaña/Botón para Ocultar/Mostrar ---
+        ================================================================
+      */}
+      <button
+        onClick={() => setIsPanelOpen(!isPanelOpen)}
+        title={isPanelOpen ? "Ocultar panel" : "Mostrar panel"}
+        style={{
+          position: "absolute",
+          top: "50%",
+          left: panelWidth, // Se adhiere al borde del panel
+          transform: "translateY(-50%)",
+          background: "#1e293b",
+          color: "white",
+          border: "none",
+          borderTopRightRadius: "8px",
+          borderBottomRightRadius: "8px",
+          padding: "10px 4px",
+          cursor: "pointer",
+          zIndex: 20,
+          transition: "left 0.3s ease-in-out", // Anima su posición
+        }}
+      >
+        {isPanelOpen ? <FaChevronLeft size={14} /> : <FaChevronRight size={14} />}
+      </button>
+
+
+      {/* Área Central: Canvas de React Flow */}
       <div style={{ flex: 1, background: "#fcfcfc", position: "relative" }}>
         <ToastContainer
           position="top-center"
@@ -1048,22 +1008,17 @@ const FlowBuilder = ({ flowData, flowId }) => {
         </ReactFlow>
       </div>
 
-      {/* ================================================================
-        CAMBIO 3: Panel Derecho (JSON) 
-        Se añadió display: "none" para ocultar este panel.
-        ================================================================
-      */}
+      {/* Panel Derecho (JSON) - Sigue oculto */}
       <div
         style={{
           width: "400px",
           padding: "10px",
           borderLeft: "1px solid #ddd",
           background: "#f8fafc",
-          display: "none", // <-- AQUÍ
+          display: "none",
         }}
       >
         <h3>JSON del Flujo</h3>
-        {/* El botón de guardar fue MOVIDO de aquí */}
         <pre
           style={{
             whiteSpace: "pre-wrap",
@@ -1094,7 +1049,7 @@ const FlowBuilder = ({ flowData, flowId }) => {
   );
 };
 
-// --- Proveedor de React Flow ---
+// --- Proveedor de React Flow (Sin cambios) ---
 export default function FlowBuilderProvider(props) {
   return (
     <ReactFlowProvider>
