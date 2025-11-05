@@ -275,9 +275,10 @@ export const useChatStore = create(
           const existingFlow = get().flows.find(f => f.id === flowId);
           const flowDetails = await getFlowById(flowId);
           const combinedFlowData = {
-            ...existingFlow,
+            ...existingFlow, 
             ...flowDetails,
           };
+
           set({ currentEditingFlow: combinedFlowData, loadingCurrentFlow: false });
         } catch (error) {
           console.error('Error fetching flow by ID:', error);

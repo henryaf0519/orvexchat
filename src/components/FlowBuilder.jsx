@@ -295,6 +295,7 @@ const parseJsonToElements = (flowJson) => {
 
 // --- COMPONENTE PRINCIPAL DEL CONSTRUCTOR ---
 const FlowBuilder = ({ flowData, flowId }) => {
+  console.log("FlowBuilder renderizado con flowId:", flowId, "y flowData:",  flowData);
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
 
@@ -1156,6 +1157,7 @@ const FlowBuilder = ({ flowData, flowId }) => {
       )}
       {isInstructionsModalOpen && (
         <FlowInstructionsModal
+          flowName={flowId}
           onClose={() => setIsInstructionsModalOpen(false)}
           onConfirm={handleInstructionsConfirm} // <-- Al confirmar, llama al paso intermedio
         />
