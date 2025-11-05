@@ -217,7 +217,16 @@ export default function FlowScreenNode({ data, id }) {
   // --- Fin Componentes Internos ---
 
 
-  const handleChange = (e) => data.updateNodeData(id, { ...data, [e.target.name]: e.target.value });
+const handleChange = (e) => {
+    const { name, value } = e.target;
+    let finalValue = value;
+    
+    if (name === 'title') {
+      finalValue = value.replace(/[^a-zA-Z\s]/g, '');
+    }
+    
+    data.updateNodeData(id, { ...data, [name]: finalValue });
+  };
 
   const addComponent = (type) => {
     const newComponent = { type: type, id: `${type.toLowerCase()}_${(data.components?.length || 0) + 1}` };

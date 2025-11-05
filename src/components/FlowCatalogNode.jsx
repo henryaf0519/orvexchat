@@ -23,7 +23,16 @@ const deleteBtnClasses = "delete-component-btn absolute top-1 right-1 bg-white r
 
 export default function FlowCatalogNode({ data, id }) {
   // Función genérica para actualizar cualquier campo de primer nivel en 'data'
-  const handleChange = (e) => data.updateNodeData(id, { ...data, [e.target.name]: e.target.value });
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    let finalValue = value;
+
+    if (name === 'title') {
+      finalValue = value.replace(/[^a-zA-Z\s]/g, '');
+    }
+    
+    data.updateNodeData(id, { ...data, [name]: finalValue });
+  };
 
   // --- Funciones para Productos ---
   const addProduct = () => {

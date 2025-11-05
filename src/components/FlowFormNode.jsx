@@ -21,7 +21,16 @@ const deleteComponentBtnClasses = "delete-component-btn absolute top-1 right-1 b
 
 export default function FlowFormNode({ data, id }) {
   // Función genérica para actualizar campos del nodo (title, footer_label, introText)
-  const handleChange = (e) => data.updateNodeData(id, { ...data, [e.target.name]: e.target.value });
+  const handleChange = (e) => {
+    const { name, value } = e.target;
+    let finalValue = value;
+
+    if (name === 'title') {
+      finalValue = value.replace(/[^a-zA-Z\s]/g, '');
+    }
+    
+    data.updateNodeData(id, { ...data, [name]: finalValue });
+  };
 
   // --- Funciones para los campos del formulario ---
 
