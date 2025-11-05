@@ -293,7 +293,6 @@ const parseJsonToElements = (flowJson) => {
   return { initialNodes, initialEdges };
 };
 
-// --- COMPONENTE PRINCIPAL DEL CONSTRUCTOR ---
 const FlowBuilder = ({ flowData, flowId }) => {
   console.log("FlowBuilder renderizado con flowId:", flowId, "y flowData:",  flowData);
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
@@ -935,8 +934,8 @@ const FlowBuilder = ({ flowData, flowId }) => {
           Los hijos ya no necesitan 'opacity' o 'white-space'
         */}
         <div>
-          <h3>Constructor</h3>
           <input
+          disabled={true}
             value={flowName}
             onChange={(e) => setFlowName(e.target.value)}
             placeholder="Nombre del Flujo"
