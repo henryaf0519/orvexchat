@@ -895,90 +895,131 @@ const FlowBuilder = ({ flowData, flowId }) => {
 
   return (
     <div style={{ width: "100%", height: "100%", display: "flex" }}>
-      {/* Panel Izquierdo: Controles del Constructor */}
+      
+      {/* ================================================================
+        CAMBIO 1: Panel Izquierdo (Controles) 
+        Se añadió display: "flex" y flex-direction: "column"
+        para crear espacio en la parte inferior.
+        ================================================================
+      */}
       <div
         style={{
           width: "250px",
           padding: "10px",
           borderRight: "1px solid #ddd",
           background: "#f8fafc",
+          display: "flex", 
+          flexDirection: "column", 
+          justifyContent: "space-between" 
         }}
       >
-        <h3>Constructor</h3>
-        <input
-          value={flowName}
-          onChange={(e) => setFlowName(e.target.value)}
-          placeholder="Nombre del Flujo"
-          style={{
-            width: "100%",
-            padding: "8px",
-            border: "1px solid #ccc",
-            borderRadius: "4px",
-            marginBottom: "20px",
-          }}
-        />
-        <button
-          onClick={addScreenNode}
-          style={{
-            padding: "10px",
-            background: "#3b82f6", // Azul
-            color: "white",
-            border: "none",
-            borderRadius: "5px",
-            width: "100%",
-            cursor: "pointer",
-          }}
-        >
-          + Añadir Menú
-        </button>
-        <button
-          onClick={addCatalogNode}
-          style={{
-            marginTop: "10px",
-            padding: "10px",
-            background: "#10b981", // Verde
-            color: "white",
-            border: "none",
-            borderRadius: "5px",
-            width: "100%",
-            cursor: "pointer",
-          }}
-        >
-          + Añadir Catálogo
-        </button>
-        <button
-          onClick={addFormNode}
-          style={{
-            marginTop: "10px",
-            padding: "10px",
-            background: "#f59e0b", // Ámbar/Amarillo
-            color: "white",
-            border: "none",
-            borderRadius: "5px",
-            width: "100%",
-            cursor: "pointer",
-          }}
-        >
-          + Añadir Formulario
-        </button>
-        <button
-          onClick={addConfirmationNode}
-          style={{
-            marginTop: "10px",
-            padding: "10px",
-            background: "#ef4444", // Rojo
-            color: "white",
-            border: "none",
-            borderRadius: "5px",
-            width: "100%",
-            cursor: "pointer",
-          }}
-        >
-          + Añadir Confirmación
-        </button>
+        {/* Grupo Superior: Controles existentes */}
+        <div>
+
+          <button
+            onClick={addScreenNode}
+            style={{
+              padding: "10px",
+              background: "#3b82f6", // Azul
+              color: "white",
+              border: "none",
+              borderRadius: "5px",
+              width: "100%",
+              cursor: "pointer",
+            }}
+          >
+            + Añadir Menú
+          </button>
+          <button
+            onClick={addCatalogNode}
+            style={{
+              marginTop: "10px",
+              padding: "10px",
+              background: "#10b981", // Verde
+              color: "white",
+              border: "none",
+              borderRadius: "5px",
+              width: "100%",
+              cursor: "pointer",
+            }}
+          >
+            + Añadir Catálogo
+          </button>
+          <button
+            onClick={addFormNode}
+            style={{
+              marginTop: "10px",
+              padding: "10px",
+              background: "#f59e0b", // Ámbar/Amarillo
+              color: "white",
+              border: "none",
+              borderRadius: "5px",
+              width: "100%",
+              cursor: "pointer",
+            }}
+          >
+            + Añadir Formulario
+          </button>
+          <button
+            onClick={addConfirmationNode}
+            style={{
+              marginTop: "10px",
+              padding: "10px",
+              background: "#ef4444", // Rojo
+              color: "white",
+              border: "none",
+              borderRadius: "5px",
+              width: "100%",
+              cursor: "pointer",
+            }}
+          >
+            + Añadir Confirmación
+          </button>
+        </div>
+        
+        {/* ================================================================
+          CAMBIO 2: Grupo Inferior (Nuevos botones)
+          Aquí se movió el botón "Guardar" y se añadió el de "Prueba".
+          ================================================================
+        */}
+        <div style={{ marginTop: "20px" }}>
+          <button
+            onClick={handleSave}
+            disabled={isSaving}
+            style={{
+              marginBottom: "10px",
+              padding: "10px",
+              width: "100%",
+              backgroundColor: isSaving ? "#9ca3af" : "#16a34a",
+              color: "white",
+              border: "none",
+              borderRadius: "5px",
+              cursor: isSaving ? "not-allowed" : "pointer",
+              transition: "background-color 0.2s",
+            }}
+          >
+            {isSaving ? "Guardando..." : "Guardar Flujo"}
+          </button>
+
+          <button
+            onClick={() => toast.info('Funcionalidad de prueba pendiente.')}
+            style={{
+              padding: "10px",
+              width: "100%",
+              backgroundColor: "#0ea5e9", // Azul (para prueba)
+              color: "white",
+              border: "none",
+              borderRadius: "5px",
+              cursor: "pointer",
+              transition: "background-color 0.2s",
+            }}
+          >
+            Enviar Flujo Prueba
+          </button>
+        </div>
       </div>
 
-      {/* Área Central: Canvas de React Flow */}
+      {/* Área Central: Canvas de React Flow (Sin cambios) */}
       <div style={{ flex: 1, background: "#fcfcfc", position: "relative" }}>
         <ToastContainer
           position="top-center"
@@ -1007,33 +1048,22 @@ const FlowBuilder = ({ flowData, flowId }) => {
         </ReactFlow>
       </div>
 
-      {/* Panel Derecho: JSON */}
+      {/* ================================================================
+        CAMBIO 3: Panel Derecho (JSON) 
+        Se añadió display: "none" para ocultar este panel.
+        ================================================================
+      */}
       <div
         style={{
           width: "400px",
           padding: "10px",
           borderLeft: "1px solid #ddd",
           background: "#f8fafc",
+          display: "none", // <-- AQUÍ
         }}
       >
         <h3>JSON del Flujo</h3>
-        <button
-          onClick={handleSave}
-          disabled={isSaving}
-          style={{
-            marginBottom: "10px",
-            padding: "10px",
-            width: "100%",
-            backgroundColor: isSaving ? "#9ca3af" : "#16a34a",
-            color: "white",
-            border: "none",
-            borderRadius: "5px",
-            cursor: isSaving ? "not-allowed" : "pointer",
-            transition: "background-color 0.2s",
-          }}
-        >
-          {isSaving ? "Guardando..." : "Guardar"}
-        </button>
+        {/* El botón de guardar fue MOVIDO de aquí */}
         <pre
           style={{
             whiteSpace: "pre-wrap",
@@ -1050,7 +1080,7 @@ const FlowBuilder = ({ flowData, flowId }) => {
         </pre>
       </div>
 
-      {/* Renderizado del Modal */}
+      {/* Renderizado del Modal (Sin cambios) */}
       {isPreviewModalOpen &&
         previewNodeData &&
         ReactDOM.createPortal(
