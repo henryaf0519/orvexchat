@@ -10,6 +10,7 @@ import ButtonsPage from '../pages/ButtonsPage';
 import TemplatesPage from '../pages/TemplatesPage';
 import FlowEditorPage from '../pages/FlowEditorPage';
 import FlowsPage from '../pages/FlowsPage';
+import TriggersPage from '../pages/TriggersPage';
 import App from '../app';
 
 export const router = createBrowserRouter([
@@ -82,6 +83,14 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute>
             <FlowEditorPage />
+          </ProtectedRoute>
+        )
+      },
+      {
+        path: 'triggers',
+        element: (
+          <ProtectedRoute>
+            <TriggersPage />
           </ProtectedRoute>
         )
       }

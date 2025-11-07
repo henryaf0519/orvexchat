@@ -21,6 +21,11 @@ import {
   deleteSchedule,
   getContacts
 } from "../services/reminderService";
+import {
+  getTriggers,
+  createTrigger,
+  updateTrigger as updateTriggerAPI
+} from '../services/flowTriggerService';
 
 const sortConversations = (conversations) => {
   return conversations.sort((a, b) => {
@@ -52,6 +57,8 @@ export const useChatStore = create(
       loadingFlows: false,
       currentEditingFlow: null,
       loadingCurrentFlow: false,
+      triggers: [],
+      loadingTriggers: false, 
 
       setAuthData: (data) => {
         set({
@@ -288,7 +295,51 @@ export const useChatStore = create(
       
       clearCurrentEditingFlow: () => {
         set({ currentEditingFlow: null });
-      }
+      },
+      fetchTriggers: async () => {
+        set({ loadingTriggers: true });
+        try {
+          const triggersFromApi = await getTriggers();
+          set({ triggers: triggersFromApi || [], loadingTriggers: false });
+        } catch (error) {
+          console.error('Error fetching triggers:', error);
+          set({ loadingTriggers: false });
+        }
+      },
+
+      /**
+       * Crea un nuevo trigger, lo añade al store y lo devuelve.
+       */
+      createNewTrigger: async (triggerData) => {
+        try {
+          const newTrigger = await createTrigger(triggerData);
+          set((state) => ({
+            triggers: [...state.triggers, newTrigger],
+          }));
+          return newTrigger;
+        } catch (error) {
+          console.error('Error creating trigger:', error);
+          throw error; // Lanza el error para que el modal lo atrape
+        }
+      },
+
+      /**
+       * Actualiza un trigger en el store.
+       */
+      updateTrigger: async (triggerId, updateData) => {
+        try {
+          // 1. Llama a la API para guardar los cambios
+          await updateTriggerAPI(triggerId, updateData);
+
+          // 2. ¡LA SOLUCIÓN! Vuelve a llamar a fetchTriggers
+          //    Usamos get() para llamar a otra acción dentro del store.
+          await get().fetchTriggers();
+
+        } catch (error) {
+          console.error('Error updating trigger:', error);
+          throw error; // Lanza el error para que el modal lo atrape
+        }
+      },
     }),
     {
       name: "orvex-chat-storage",

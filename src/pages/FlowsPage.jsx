@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
-import { Plus, Edit2, Trash2, UploadCloud, Loader2 } from 'lucide-react';
+import { Plus, Edit2, Trash2, UploadCloud, Loader2, Zap } from 'lucide-react';
 import { useChatStore } from '../store/chatStore';
 import { publishFlow } from '../services/flowService';
 import ConfirmationModal from '../components/ConfirmationModal';
@@ -137,6 +137,15 @@ const handlePublish = async (flow) => {
         <main className="flex-1 p-6">
           <div className="flex justify-between items-center mb-6">
             <h1 className="text-3xl font-semibold text-gray-900">Gestor de Flujos</h1>
+            <div className='flex justify-between items-center gap-3'>
+               <button
+                onClick={() => navigate('/triggers')}
+                className="flex items-center gap-2 bg-gray-700 text-white px-4 py-2 rounded-md hover:bg-gray-800 transition-colors"
+                title="Gestionar Triggers"
+              >
+                <Zap size={18} />
+                Triggers
+              </button>
             <button
               onClick={() => setIsCreateModalOpen(true)}
               className="flex items-center gap-2 bg-blue-600 text-white px-4 py-2 rounded-md hover:bg-blue-700 transition-colors"
@@ -144,6 +153,9 @@ const handlePublish = async (flow) => {
               <Plus size={20} />
               Crear flujo
             </button>
+
+            </div>
+           
           </div>
 
           {loadingFlows ? (
