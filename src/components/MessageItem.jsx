@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useChatStore } from '../store/chatStore';
 import TemplateMessage from './TemplateMessage';
 import AudioPlayer from './AudioPlayer';
+import { FaClipboardList } from 'react-icons/fa';
 
 export default function MessageItem({ message }) {
   const isAgent = message.from === "IA" || message.from === "agent";
@@ -63,17 +64,31 @@ export default function MessageItem({ message }) {
         );
 
       case 'respflow':
+        // Mantenemos la lógica de parsing que ya funciona
         const formattedRespFlow = message.text
           .replace(/✅ \*(.*?)\*/g, '<br><strong>✅ $1</strong>')
           .replace(/👤 \*(.*?)\*/g, '<br><strong>👤 $1</strong>')
+          // Damos un mejor color al separador <hr>
+          .replace(/----------------------------------/g, '<hr class="my-2 border-t border-indigo-400/50">')
           .replace(/\*([^:]+):\*/g, '<strong>$1:</strong>')
-          .replace(/----------------------------------/g, '<hr class="my-2 border-t border-gray-400 opacity-50">')
           .trim();
+        
         return (
-          <p
-            className="text-sm leading-relaxed whitespace-pre-line px-2"
-            dangerouslySetInnerHTML={{ __html: formattedRespFlow.split('\n').join('<br>') }}
-          />
+          // 1. Tarjeta interior: color más claro (indigo-500) que la burbuja (indigo-600)
+          <div className="bg-indigo-500 rounded-lg p-3 shadow-inner w-full max-w-xs">
+            
+            {/* 2. Encabezado profesional (como pediste) */}
+            <div className="flex items-center gap-2 mb-2 border-b border-indigo-400/50 pb-2">
+              <FaClipboardList className="text-indigo-200" size={16} />
+              <h4 className="text-sm font-semibold text-white">Resumen de la Interacción</h4>
+            </div>
+            
+            {/* 3. Contenido parseado (con mejor color de texto) */}
+            <p
+              className="text-sm leading-relaxed whitespace-pre-line px-1 text-indigo-100"
+              dangerouslySetInnerHTML={{ __html: formattedRespFlow }}
+            />
+          </div>
         );
 
       default:
