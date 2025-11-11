@@ -50,11 +50,11 @@ const determineNodeType = (screen) => {
   const form = screen.layout.children.find((c) => c.type === "Form");
   if (!form || !form.children) return "screenNode"; // Default
 
-  // 1. Signature de ConfirmationNode
-  const hasCompleteAction = form.children.some(
-    (c) => c.type === "Footer" && c["on-click-action"]?.name === "complete"
+  // 1. Signature de ConfirmationNode: Buscar el TextBody con el dato dinámico único
+  const hasDynamicDetails = form.children.some(
+    (c) => c.type === "TextBody" && c.text === "${data.details}" // <-- FIX CLAVE
   );
-  if (hasCompleteAction) return "confirmationNode";
+  if (hasDynamicDetails) return "confirmationNode";
 
   // 2. Signature de CatalogNode
   const hasCatalogSelection = form.children.some(
