@@ -109,12 +109,15 @@ export default function FlowScreenNode({ data, id }) {
                         name="text"
                         value={component.text || ''}
                         onChange={handleComponentChange}
+                        // ✅ LÓGICA DE AUTO-EXPANSIÓN
                         onInput={(e) => {
                             e.target.style.height = 'auto'; // Resetea la altura
                             e.target.style.height = (e.target.scrollHeight) + 'px'; // Ajusta la altura al contenido
                         }}
                         placeholder="Escribe el texto aquí..."
-                        className={`${textInputClasses} min-h-[80px] overflow-y-hidden resize-none`}
+                        // ✅ CAMBIO CLAVE: Se aplica el nuevo estilo con min/max-height y scroll
+                        className={`w-full border border-gray-200 rounded p-1.5 text-sm min-h-[100px] max-h-[500px] overflow-y-auto resize-none`}
+                        rows={4}
                     />
 
                     {/* --- ✅ INICIO DE CAMBIO DE COLOR --- */}
@@ -357,7 +360,8 @@ const handleChange = (e) => {
             </div>
              <button
               onClick={() => data.openPreviewModal(data)}
-              className="text-xs text-center text-gray-500 hover:text-blue-600 mt-2 block w-full cursor-pointer"
+              className="w-full bg-white text-blue-600 border border-blue-400 py-2.5 rounded-lg font-semibold text-sm hover:bg-blue-50 transition-colors flex items-center justify-center gap-2 mt-2"
+              title="Vista Previa"
             >
               Vista Previa
             </button>

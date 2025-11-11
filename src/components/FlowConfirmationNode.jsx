@@ -10,7 +10,7 @@ const bodyClasses = "p-4 space-y-4";
 const footerClasses = "bg-gray-50 border-t border-gray-200 py-2.5 px-4 rounded-b-xl";
 const footerInputClasses = "editable-field footer-input w-full bg-red-600 text-white border-2 border-red-700 p-2.5 rounded-lg font-bold text-center placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-red-400";
 const textInputClasses = "w-full border border-gray-300 rounded p-1.5 text-sm bg-white";
-const textAreaClasses = "w-full border border-gray-300 rounded p-1.5 text-sm min-h-[60px] resize-none bg-white";
+const textAreaClasses = "w-full border border-gray-300 rounded p-1.5 text-sm min-h-[100px] max-h-[500px] overflow-y-auto resize-none bg-white";
 const clickableIconClasses = "clickable-icon p-1 text-gray-500 hover:text-black cursor-pointer";
 // --- Fin Estilos ---
 
@@ -103,7 +103,8 @@ export default function FlowConfirmationNode({ data, id }) {
           </div>
           <button
             onClick={() => data.openPreviewModal({ ...data, type: 'confirmationNode' })} // Pasa el tipo para el modal
-            className="text-xs text-center text-gray-500 hover:text-blue-600 mt-2 block w-full cursor-pointer"
+            className="w-full bg-white text-blue-600 border border-blue-400 py-2.5 rounded-lg font-semibold text-sm hover:bg-blue-50 transition-colors flex items-center justify-center gap-2 mt-2"
+              title="Vista Previa"
           >
             Vista Previa
           </button>
