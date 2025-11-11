@@ -7,7 +7,8 @@ import {
   FaUser,
   FaSignOutAlt,
   FaThLarge,
-  FaPlusSquare
+  FaPlusSquare,
+  FaProjectDiagram
 } from "react-icons/fa";
 import logo from "../assets/logoOnly.png";
 
@@ -75,6 +76,15 @@ export default function MainSidebar() {
             }`}
           >
             <FaPlusSquare size={24} />
+          </button>
+          <button
+            onClick={() => navigate('/flows')}
+            title="Flujos"
+            className={`p-3 rounded-xl transition-transform transform hover:scale-110 ${
+              currentPath === '/flows' ? 'bg-red-600 text-white' : 'hover:bg-red-600 hover:text-white'
+            }`}
+          >
+            <FaProjectDiagram size={24} />
           </button>
 
         </nav>

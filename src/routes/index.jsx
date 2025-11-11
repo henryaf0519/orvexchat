@@ -8,6 +8,9 @@ import ContactsPage from '../pages/ContactsPage';
 import ProtectedRoute from '../components/ProtectedRoute';
 import ButtonsPage from '../pages/ButtonsPage';
 import TemplatesPage from '../pages/TemplatesPage';
+import FlowEditorPage from '../pages/FlowEditorPage';
+import FlowsPage from '../pages/FlowsPage';
+import TriggersPage from '../pages/TriggersPage';
 import App from '../app';
 
 export const router = createBrowserRouter([
@@ -64,6 +67,30 @@ export const router = createBrowserRouter([
         element: (
           <ProtectedRoute>
             <TemplatesPage />
+          </ProtectedRoute>
+        )
+      },
+      {
+        path: 'flows',
+        element: (
+          <ProtectedRoute>
+            <FlowsPage />
+          </ProtectedRoute>
+        )
+      },
+      {
+        path: 'flows/:flowId',
+        element: (
+          <ProtectedRoute>
+            <FlowEditorPage />
+          </ProtectedRoute>
+        )
+      },
+      {
+        path: 'triggers',
+        element: (
+          <ProtectedRoute>
+            <TriggersPage />
           </ProtectedRoute>
         )
       }

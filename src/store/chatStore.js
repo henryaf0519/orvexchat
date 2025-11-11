@@ -3,6 +3,12 @@
 import { create } from "zustand";
 import { persist, createJSONStorage } from "zustand/middleware";
 import {
+  getFlows, // <--- La que trae todos
+  getFlowById,
+  createFlow as createFlowAPI,
+  deleteFlow as deleteFlowAPI
+} from '../services/flowService';
+import {
   getChats,
   getMessages,
   sendMessage as sendMessageAPI,
@@ -15,6 +21,11 @@ import {
   deleteSchedule,
   getContacts
 } from "../services/reminderService";
+import {
+  getTriggers,
+  createTrigger,
+  updateTrigger as updateTriggerAPI
+} from '../services/flowTriggerService';
 
 const sortConversations = (conversations) => {
   return conversations.sort((a, b) => {
@@ -42,6 +53,12 @@ export const useChatStore = create(
       schedules: [],
       loadingSchedules: false,
       companyId: null,
+      flows: [],
+      loadingFlows: false,
+      currentEditingFlow: null,
+      loadingCurrentFlow: false,
+      triggers: [],
+      loadingTriggers: false, 
 
       setAuthData: (data) => {
         set({
@@ -220,6 +237,126 @@ export const useChatStore = create(
         set((state) => ({
           schedules: state.schedules.filter((s) => s.scheduleId !== scheduleId),
         }));
+      },
+      fetchFlows: async () => {
+        set({ loadingFlows: true });
+        try {
+          // Y aquí llama a 'getFlows' del servicio
+          const flowsFromApi = await getFlows(); 
+          set({ flows: flowsFromApi || [], loadingFlows: false });
+        } catch (error) {
+          console.error('Error fetching flows:', error);
+          set({ loadingFlows: false });
+        }
+      },
+      createNewFlow: async (name) => {
+        try {
+          const newFlow = await createFlowAPI(name);
+          set((state) => ({
+            flows: [...state.flows, newFlow],
+          }));
+          return newFlow;
+        } catch (error) {
+          console.error('Error creating flow:', error);
+          throw error;
+        }
+      },
+
+      // Esta acción llama a 'deleteFlowAPI'
+      deleteFlow: async (flowId) => {
+        try {
+          console.log('Deleting flow with ID:', flowId);
+          await deleteFlowAPI(flowId);
+          set((state) => ({
+            flows: state.flows.filter((f) => f.id !== flowId),
+          }));
+        } catch (error) {
+          console.error('Error deleting flow:', error);
+          throw error; // Lanza el error para que el toast lo atrape
+        }
+      },
+
+      fetchFlowById: async (flowId) => {
+        set({ loadingCurrentFlow: true, currentEditingFlow: null });
+        
+        // 1. Obtener la data mínima del flujo desde el estado local (la lista)
+        const existingFlow = get().flows.find(f => f.id === flowId); 
+
+        try {
+          // 2. Intentar llamar a la API (Esto falla para flujos nuevos)
+          const flowDetails = await getFlowById(flowId);
+          
+          const combinedFlowData = {
+            ...existingFlow, 
+            ...flowDetails,
+          };
+
+          set({ currentEditingFlow: combinedFlowData, loadingCurrentFlow: false });
+        } catch (error) {
+          // 3. Si la API falla, manejar el error
+          console.error('Error fetching flow by ID:', error);
+          
+          // 4. Si tenemos la data mínima del flujo (nombre, ID, etc.), la usamos
+          if (existingFlow) {
+              set({ 
+                  currentEditingFlow: existingFlow, 
+                  loadingCurrentFlow: false 
+              });
+              console.warn(`[FlowStore] Fallback exitoso: La API falló, cargando editor con datos mínimos.`);
+              return; // Salir exitosamente
+          }
+          
+          // 5. Si no tenemos ni la data mínima, el error es grave, lo re-lanza o lo muestra
+          set({ loadingCurrentFlow: false });
+        }
+      },
+      
+      clearCurrentEditingFlow: () => {
+        set({ currentEditingFlow: null });
+      },
+      fetchTriggers: async () => {
+        set({ loadingTriggers: true });
+        try {
+          const triggersFromApi = await getTriggers();
+          set({ triggers: triggersFromApi || [], loadingTriggers: false });
+        } catch (error) {
+          console.error('Error fetching triggers:', error);
+          set({ loadingTriggers: false });
+        }
+      },
+
+      /**
+       * Crea un nuevo trigger, lo añade al store y lo devuelve.
+       */
+      createNewTrigger: async (triggerData) => {
+        try {
+          const newTrigger = await createTrigger(triggerData);
+          set((state) => ({
+            triggers: [...state.triggers, newTrigger],
+          }));
+          return newTrigger;
+        } catch (error) {
+          console.error('Error creating trigger:', error);
+          throw error; // Lanza el error para que el modal lo atrape
+        }
+      },
+
+      /**
+       * Actualiza un trigger en el store.
+       */
+      updateTrigger: async (triggerId, updateData) => {
+        try {
+          // 1. Llama a la API para guardar los cambios
+          await updateTriggerAPI(triggerId, updateData);
+
+          // 2. ¡LA SOLUCIÓN! Vuelve a llamar a fetchTriggers
+          //    Usamos get() para llamar a otra acción dentro del store.
+          await get().fetchTriggers();
+
+        } catch (error) {
+          console.error('Error updating trigger:', error);
+          throw error; // Lanza el error para que el modal lo atrape
+        }
       },
     }),
     {
