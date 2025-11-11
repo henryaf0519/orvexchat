@@ -196,6 +196,16 @@ export default function FlowFormNode({ data, id }) {
             />
             <FaPen className="edit-icon" size={12} style={{color: 'white', opacity: 0.7, right: '15px'}}/>
           </div>
+         <button
+            onClick={(e) => {
+              e.stopPropagation();
+              data.removeEdge(id, `${id}-source`); // Llama a la función removeEdge para el handle principal
+            }}
+            className="text-xs text-center text-red-500 hover:text-red-600 mt-2 block w-full cursor-pointer"
+            title="Desconectar nodo siguiente"
+          >
+            Desconectar Siguiente
+          </button>
           <button
             onClick={() => data.openPreviewModal({ ...data, type: 'formNode' })} // Pasa el tipo para el modal
             className="text-xs text-center text-gray-500 hover:text-blue-600 mt-2 block w-full cursor-pointer"

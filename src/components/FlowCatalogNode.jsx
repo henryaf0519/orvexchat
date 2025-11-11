@@ -178,22 +178,46 @@ export default function FlowCatalogNode({ data, id }) {
                     className={inputClasses}
                  />
             </div>
-             {(data.radioOptions || []).map((opt, index) => (
+             {(data.radioOptions || []).map((opt, index) => {
+                const handleId = `${id}-catalog-option-${index}`;
+                return (
                 <div key={opt.id || index} className="flex items-center py-1 gap-1 relative pl-1">
                     <span className="text-gray-400 mr-1">•</span>
-                    <input
-                        value={opt.title || ''}
-                        onChange={(e) => updateRadioOption(index, 'title', e.target.value)} // Pasa 'title' como field
-                        placeholder={`Texto Opción ${index + 1}`}
-                        className="flex-1 border border-gray-200 rounded p-1 text-sm bg-white"
-                    />
+                    {/* ... input de título ... */}
+
+                    {/* [NUEVO BOTÓN] para opciones de Catálogo */}
+                    <button 
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          data.removeEdge(id, handleId); // Llama a la función removeEdge
+                        }}
+                        className="z-10 text-gray-500 hover:text-red-500 p-1.5"
+                        title="Desconectar"
+                        style={{
+                            position: 'absolute',
+                            right: '48px', // Ajustado para no chocar con el handle
+                            top: '50%',
+                            transform: 'translateY(-50%)',
+                            backgroundColor: 'white',
+                            borderRadius: '50%',
+                            border: '1px solid #ddd',
+                            width: '20px',
+                            height: '20px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center'
+                        }}
+                    >
+                        <FaTimes size={10} />
+                    </button>
+                    
                     <button onClick={() => removeRadioOption(index)} className={`${clickableIconClasses} !text-red-500`} title="Eliminar opción">
                         <FaTrash size={12}/>
                     </button>
-                    {/* Handle opcional si quieres conectar opciones individualmente */}
-                    <Handle type="source" position={Position.Right} id={`${id}-catalog-option-${index}`} className="custom-handle" style={{ top: '50%', transform: 'translateY(-50%)', right: '-32px' }} />
+                    {/* Handle para conectar */}
+                    <Handle type="source" position={Position.Right} id={handleId} className="custom-handle" style={{ top: '50%', transform: 'translateY(-50%)', right: '-32px' }} />
                 </div>
-            ))}
+            )})}
              <button onClick={addRadioOption} className="text-xs text-blue-600 mt-2 cursor-pointer flex items-center gap-1 hover:text-blue-800">
                 <FaPlus size={10}/> Añadir Opción
             </button>

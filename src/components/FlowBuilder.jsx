@@ -338,6 +338,7 @@ const FlowBuilder = ({ flowData, flowId }) => {
   const userData = useChatStore((state) => state.userData);
   const defaultPhoneNumber =
     userData && userData.PK ? userData.PK.replace("USER#", "") : "573001234567";
+    
 
   // --- (Lógica de onConnect, updateNodeData, deleteNode, etc. sin cambios) ---
   const onConnect = useCallback(
@@ -415,6 +416,16 @@ const FlowBuilder = ({ flowData, flowId }) => {
     [setEdges, setNodes]
   );
 
+  const   removeEdge = useCallback((sourceNodeId, sourceHandleId) => {
+    setEdges((eds) => eds.filter((edge) => 
+        !(edge.source === sourceNodeId && edge.sourceHandle === sourceHandleId)
+    ));
+    toast.success('Conexión eliminada');
+  }, [setEdges]);
+
+
+
+
   const updateNodeData = (nodeId, newData) => {
     setNodes((nds) =>
       nds.map((node) =>
@@ -467,6 +478,7 @@ const FlowBuilder = ({ flowData, flowId }) => {
       updateNodeData: updateNodeData,
       openPreviewModal: openPreviewModal,
       deleteNode: deleteNode,
+      removeEdge: removeEdge, 
     },
   });
 
