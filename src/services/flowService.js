@@ -52,10 +52,14 @@ export const createFlow = async (name) => {
 /**
  * Actualiza un flujo (PATCH /flow/:flowId)
  */
-export const updateFlowJson = async (flowId, flowJsonString) => {
+export const updateFlowJson = async (flowId, flowJsonString, navigationMapString) => {
+  console.log("Updating flow with:", {flowId, flowJsonString, navigationMapString});
   const response = await apiFetch(`/flow/${flowId}/assets`, {
     method: 'PUT',
-    body: JSON.stringify({ flowJson: flowJsonString }),
+    body: JSON.stringify({ 
+      flowJson: flowJsonString,       // El JSON para Meta
+      navigationMap: navigationMapString // El JSON para tu Backend
+    }),
   });
 
   if (!response.ok) {

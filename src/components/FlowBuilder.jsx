@@ -168,16 +168,22 @@ const reconstructNodeData = (screen, nodeType) => {
   }
 };
 
-const parseJsonToElements = (flowJson) => {
+const parseJsonToElements = (flowJson, navMap) => {
   if (!flowJson || !flowJson.screens || !flowJson.routing_model) {
     console.warn("JSON de flujo inválido o vacío. Empezando tablero limpio.");
     return { initialNodes: [], initialEdges: [] };
   }
 
+  // Imprime el navMap para depurar
+  console.log(
+    "parseJsonToElements está usando este navigationMap (plano):",
+    navMap
+  );
+
   const { screens, routing_model } = flowJson;
   const screenMap = new Map(screens.map((s) => [s.id, s]));
 
-  // 1. Crear Nodos
+  // 1. Crear Nodos (Esto no cambia)
   const initialNodes = screens.map((screen, index) => {
     const nodeType = determineNodeType(screen);
     const nodeData = reconstructNodeData(screen, nodeType);
@@ -195,106 +201,127 @@ const parseJsonToElements = (flowJson) => {
     };
   });
 
-  // 2. Crear Ejes (Con la lógica de handles que implementamos)
+  // 2. Crear Ejes (Edges) - ✅ LÓGICA CORREGIDA PARA EL NAVMAP PLANO
   const initialEdges = [];
-  for (const [sourceId, targets] of Object.entries(routing_model)) {
-    const sourceNode = initialNodes.find((n) => n.id === sourceId);
-    if (!sourceNode || !screenMap.has(sourceId)) continue;
 
-    let connectionsHandled = false;
+  // --- Parte 1: Procesar Opciones desde el navMap plano ---
+  if (navMap && typeof navMap === "object") {
+    console.log("Generando conexiones de OPCIONES desde navMap plano:", navMap);
 
-    if (sourceNode.type === "screenNode") {
-      const radioCompIndex = sourceNode.data.components.findIndex(
-        (c) => c.type === "RadioButtonsGroup"
-      );
+    for (const [optionId, navData] of Object.entries(navMap)) {
+      const targetScreenId = navData.pantalla; // ej: "UBICACION"
 
-      if (radioCompIndex !== -1) {
-        const radioComponent = sourceNode.data.components[radioCompIndex];
-
-        targets.forEach((targetId) => {
-          if (!screenMap.has(targetId)) return;
-          const optionIndex = (radioComponent.options || []).findIndex(
-            (opt) => opt.id === targetId
-          );
-
-          if (optionIndex !== -1) {
-            const handleId = `${sourceId}-component-${radioCompIndex}-option-${optionIndex}`;
-            initialEdges.push({
-              id: `edge_${sourceId}_${handleId}_${targetId}`,
-              source: sourceId,
-              target: targetId,
-              sourceHandle: handleId,
-              markerEnd: { type: MarkerType.ArrowClosed },
-              type: "smoothstep",
-            });
-          } else {
-            initialEdges.push({
-              id: `edge_${sourceId}_${targetId}`,
-              source: sourceId,
-              target: targetId,
-              markerEnd: { type: MarkerType.ArrowClosed },
-              type: "smoothstep",
-            });
-          }
-        });
-        connectionsHandled = true;
+      if (!targetScreenId || !screenMap.has(targetScreenId)) {
+        console.warn(
+          `(navMap) Destino '${targetScreenId}' no encontrado para la opción '${optionId}'`
+        );
+        continue;
       }
-    }
 
-    if (sourceNode.type === "catalogNode") {
-      const catalogOptions = sourceNode.data.radioOptions || [];
+      // Buscar el nodo y handle de origen para esta 'optionId'
+      let sourceNodeId = null;
+      let sourceHandleId = null;
 
-      if (catalogOptions.length > 0) {
-        targets.forEach((targetId) => {
-          if (!screenMap.has(targetId)) return;
-          const optionIndex = catalogOptions.findIndex(
-            (opt) => opt.id === targetId
-          );
-
-          if (optionIndex !== -1) {
-            const handleId = `${sourceId}-catalog-option-${optionIndex}`;
-            initialEdges.push({
-              id: `edge_${sourceId}_${handleId}_${targetId}`,
-              source: sourceId,
-              target: targetId,
-              sourceHandle: handleId,
-              markerEnd: { type: MarkerType.ArrowClosed },
-              type: "smoothstep",
-            });
-          } else {
-            initialEdges.push({
-              id: `edge_${sourceId}_${targetId}`,
-              source: sourceId,
-              target: targetId,
-              markerEnd: { type: MarkerType.ArrowClosed },
-              type: "smoothstep",
-            });
-          }
-        });
-        connectionsHandled = true;
-      }
-    }
-
-    if (!connectionsHandled) {
-      targets.forEach((targetId) => {
-        if (screenMap.has(targetId)) {
-          initialEdges.push({
-            id: `edge_${sourceId}_${targetId}`,
-            source: sourceId,
-            target: targetId,
-            markerEnd: { type: MarkerType.ArrowClosed },
-            type: "smoothstep",
+      // Iterar sobre todos los nodos para encontrar el origen de esta opción
+      for (const node of initialNodes) {
+        // Buscar en screenNode (RadioButtonsGroup)
+        if (node.type === "screenNode" && node.data.components) {
+          node.data.components.forEach((comp, compIndex) => {
+            if (comp.type === "RadioButtonsGroup" && comp.options) {
+              const optIndex = comp.options.findIndex(
+                (opt) => opt.id === optionId
+              );
+              if (optIndex !== -1) {
+                sourceNodeId = node.id;
+                sourceHandleId = `${node.id}-component-${compIndex}-option-${optIndex}`;
+              }
+            }
           });
         }
-      });
+        // Buscar en catalogNode
+        else if (node.type === "catalogNode" && node.data.radioOptions) {
+          const optIndex = node.data.radioOptions.findIndex(
+            (opt) => opt.id === optionId
+          );
+          if (optIndex !== -1) {
+            sourceNodeId = node.id;
+            sourceHandleId = `${node.id}-catalog-option-${optIndex}`;
+          }
+        }
+        if (sourceNodeId) break; // Dejar de buscar si ya lo encontramos
+      }
+
+      // Si se encontró, crear la 'edge' con handle
+      if (sourceNodeId && sourceHandleId) {
+        console.log(
+          `(navMap) Creando Edge: Handle '${sourceHandleId}' -> Target '${targetScreenId}'`
+        );
+        initialEdges.push({
+          id: `edge_${sourceHandleId}_${targetScreenId}`,
+          source: sourceNodeId,
+          target: targetScreenId,
+          sourceHandle: sourceHandleId, // <-- El handle de la opción
+          markerEnd: { type: MarkerType.ArrowClosed },
+          type: "smoothstep",
+        });
+      } else {
+        console.warn(
+          `(navMap) No se pudo encontrar el nodo/handle de origen para la opción '${optionId}'`
+        );
+      }
     }
+  } else {
+    console.warn(
+      "navigationMap no está definido o no es un objeto. Saltando conexiones de opciones."
+    );
   }
 
+  // --- Parte 2: Procesar Footers desde el routing_model (de Meta) ---
+  console.log(
+    "Generando conexiones de FOOTER desde routing_model:",
+    routing_model
+  );
+
+  for (const [sourceScreenId, targetScreenIds] of Object.entries(
+    routing_model
+  )) {
+    const sourceNode = initialNodes.find((n) => n.id === sourceScreenId);
+
+    // Si no se encuentra el nodo, o es un tipo que ya manejamos con navMap, saltarlo.
+    if (
+      !sourceNode ||
+      sourceNode.type === "screenNode" ||
+      sourceNode.type === "catalogNode"
+    ) {
+      continue;
+    }
+
+    // Si estamos aquí, es un nodo tipo 'formNode' (o 'confirmationNode' sin salidas)
+    if (sourceNode.type === "formNode") {
+      const targetId = targetScreenIds[0]; // formNode solo tiene una salida
+
+      if (targetId && screenMap.has(targetId)) {
+        console.log(
+          `(routing_model) Creando Edge de Footer: Nodo '${sourceScreenId}' -> Target '${targetId}'`
+        );
+        initialEdges.push({
+          id: `edge_${sourceScreenId}_footer_${targetId}`,
+          source: sourceScreenId,
+          target: targetId,
+          sourceHandle: `${sourceScreenId}-source`, // Handle genérico del footer de formNode
+          markerEnd: { type: MarkerType.ArrowClosed },
+          type: "smoothstep",
+        });
+      }
+    }
+    // (ConfirmationNode no tiene salidas, así que no se hace nada)
+  }
+
+  console.log("Edges finales creados:", initialEdges);
   return { initialNodes, initialEdges };
 };
 
 const FlowBuilder = ({ flowData, flowId }) => {
-  console.log("FlowBuilder renderizado con flowId:", flowId, "y flowData:",  flowData);
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
 
@@ -457,11 +484,6 @@ const FlowBuilder = ({ flowData, flowId }) => {
             id: "textbody_1",
             text: "¡Hola! 👋 Escribe aquí tu mensaje de bienvenida.",
           },
-          {
-            type: "RadioButtonsGroup",
-            id: "radiobuttonsgroup_1",
-            options: [],
-          },
         ],
         footer_label: "Continuar",
       },
@@ -524,8 +546,10 @@ const FlowBuilder = ({ flowData, flowId }) => {
       Object.keys(flowData.flow_json).length > 0
     ) {
       console.log("Cargando flujo existente desde JSON...");
+
       const { initialNodes, initialEdges } = parseJsonToElements(
-        flowData.flow_json
+        flowData.flow_json, // El JSON de Meta
+        flowData.navigation // El JSON de tu Backend (DEBE VENIR DEL BACKEND)
       );
       const nodesWithFunctions = initialNodes.map(injectNodeFunctions);
       setNodes(nodesWithFunctions);
@@ -546,31 +570,163 @@ const FlowBuilder = ({ flowData, flowId }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [flowData]);
 
-  const generateFlowJson = () => {
-    const routing_model = {};
+  const generateFlows = () => {
+    console.log("--- [INICIO] generateFlows ---");
+
+    const metaFlow = {
+      version: "7.2",
+      data_api_version: "3.0",
+      routing_model: {},
+      screens: [],
+    };
+    const navigationMap = {};
 
     const idLookup = new Map();
     nodes.forEach((n, index) => {
-      const jsonScreenID = n.id.startsWith("node_")
-        ? formatTitleToID(n.data.title, index)
-        : n.id;
+      const jsonScreenID = formatTitleToID(n.data.title, index);
       idLookup.set(n.id, jsonScreenID);
     });
+
+    console.log("Nodos (nodes):", nodes);
+    console.log("Conexiones (edges):", edges);
+    console.log("Mapa de IDs (idLookup):", idLookup);
 
     const screens = nodes.map((node, index) => {
       const jsonScreenID = idLookup.get(node.id);
       const outgoingEdges = edges.filter((e) => e.source === node.id);
-      const nodeRoutes = outgoingEdges
-        .map((edge) => idLookup.get(edge.target))
-        .filter(Boolean);
 
-      routing_model[jsonScreenID] = [...new Set(nodeRoutes)];
+      console.log(
+        `\n[Procesando Pantalla]: ${jsonScreenID} (Tipo: ${node.type})`
+      );
+      console.log(
+        ` -> Conexiones salientes (edges) encontradas:`,
+        outgoingEdges
+      );
 
       let screenChildren = [];
       let screenTerminal = false;
 
-      if (node.type === "catalogNode") {
+      const allDestinations = new Set();
+
+      // ✅ CAMBIO 1: Definir el nombre dinámico para el payload
+      // Usará el ID de la pantalla en minúsculas, ej: "menu"
+      const dynamicName = jsonScreenID.toLowerCase();
+
+      if (node.type === "screenNode") {
+        console.log(` -> [screenNode] Procesando componentes...`);
+        const formPayload = {};
+        const formChildren = [];
+
+        (node.data.components || []).forEach((component, compIndex) => {
+          if (component.type === "RadioButtonsGroup") {
+            console.log(
+              `   -> [RadioButtonsGroup] Encontrado en índice ${compIndex}. Procesando ${
+                component.options?.length || 0
+              } opciones.`
+            );
+
+            // ✅ CAMBIO 2: Usar el nombre dinámico en el payload
+            // Ej: formPayload["menu"] = "${form.menu}";
+            formPayload[dynamicName] = `\${form.${dynamicName}}`;
+
+            const dataSource = (component.options || []).map(
+              (option, optIndex) => {
+                const handleId = `${node.id}-component-${compIndex}-option-${optIndex}`;
+                console.log(
+                  `     -> Buscando conexión para Handle: ${handleId} (Opción ID: ${option.id})`
+                );
+
+                const connectedEdge = outgoingEdges.find(
+                  (e) => e.sourceHandle === handleId
+                );
+
+                if (connectedEdge) {
+                  const targetScreenId = idLookup.get(connectedEdge.target);
+                  if (targetScreenId) {
+                    console.log(
+                      `       -> ¡CONEXIÓN ENCONTRADA! ID: ${option.id} -> Destino: ${targetScreenId}`
+                    );
+                    // Llenamos el navigationMap plano (esto ya estaba bien)
+                    navigationMap[option.id] = {
+                      pantalla: targetScreenId,
+                      valor: option.title || "",
+                    };
+                    allDestinations.add(targetScreenId);
+                  } else {
+                    console.warn(
+                      `       -> ADVERTENCIA: Conexión encontrada pero 'target' no está en idLookup. Target: ${connectedEdge.target}`
+                    );
+                  }
+                } else {
+                  console.log(`       -> (Sin conexión para esta opción)`);
+                }
+                return { id: option.id, title: option.title };
+              }
+            );
+
+            formChildren.push({
+              type: "RadioButtonsGroup",
+              label: component.label || "Selecciona una opción:",
+
+              // ✅ CAMBIO 3: Usar el nombre dinámico en el componente
+              // Ej: name: "menu"
+              name: dynamicName,
+
+              "data-source": dataSource,
+              required: true,
+            });
+          } else if (component.type === "TextBody") {
+            formChildren.push({ type: "TextBody", text: component.text || "" });
+          } else if (component.type === "Image") {
+            const imgComp = {
+              type: "Image",
+              src: component.src ? component.src.split(",")[1] : null,
+              height: 250,
+              "scale-type": "cover",
+            };
+            if (imgComp.src) formChildren.push(imgComp);
+          } else if (component.type === "TextInput") {
+            if (component.name) {
+              formPayload[component.name] = `\${form.${component.name}}`;
+            }
+            formChildren.push({
+              type: "TextInput",
+              name: component.name || `input_${compIndex}`,
+              label: component.label || "",
+              required: true,
+            });
+          }
+        });
+
+        const footerEdge = outgoingEdges.find(
+          (edge) => edge.sourceHandle === `${node.id}-footer-source`
+        );
+        if (footerEdge) {
+          const footerTargetId = idLookup.get(footerEdge.target);
+          if (footerTargetId) {
+            console.log(
+              `   -> [Footer] Conexión encontrada. __DEFAULT__ -> ${footerTargetId}`
+            );
+            allDestinations.add(footerTargetId);
+            // (El 'navigationMap' plano no soporta __DEFAULT__, lo cual está bien)
+          }
+        }
+
+        formChildren.push({
+          type: "Footer",
+          label: node.data.footer_label || "Continuar",
+          // El 'formPayload' ya contiene la clave dinámica (ej: "menu")
+          "on-click-action": { name: "data_exchange", payload: formPayload },
+        });
+        screenChildren.push({
+          type: "Form",
+          name: `${dynamicName}_form`, // Ej: "menu_form"
+          children: formChildren,
+        });
+      } else if (node.type === "catalogNode") {
+        console.log(` -> [catalogNode] Procesando...`);
         const catalogFormChildren = [];
+
         if (node.data.introText) {
           catalogFormChildren.push({
             type: "TextBody",
@@ -597,46 +753,73 @@ const FlowBuilder = ({ flowData, flowId }) => {
             });
           }
         });
+
         const radioDataSource = (node.data.radioOptions || []).map(
-          (opt, index) => ({
-            id: opt.id || `cat_opt_${index + 1}`, // Usamos el ID de la opción (que es el ID de destino)
-            title: opt.title || `Opción ${index + 1}`,
-          })
+          (opt, optIndex) => {
+            const handleId = `${node.id}-catalog-option-${optIndex}`;
+            console.log(
+              `     -> Buscando conexión para Handle: ${handleId} (Opción ID: ${opt.id})`
+            );
+
+            const connectedEdge = outgoingEdges.find(
+              (e) => e.sourceHandle === handleId
+            );
+            if (connectedEdge) {
+              const targetScreenId = idLookup.get(connectedEdge.target);
+              if (targetScreenId) {
+                console.log(
+                  `       -> ¡CONEXIÓN ENCONTRADA! ID: ${opt.id} -> Destino: ${targetScreenId}`
+                );
+                // Llenamos el navigationMap plano (esto ya estaba bien)
+                navigationMap[opt.id] = {
+                  pantalla: targetScreenId,
+                  valor: opt.title || "",
+                };
+                allDestinations.add(targetScreenId);
+              }
+            } else {
+              console.log(`       -> (Sin conexión para esta opción)`);
+            }
+            return {
+              id: opt.id || `cat_opt_${optIndex + 1}`,
+              title: opt.title || `Opción ${optIndex + 1}`,
+            };
+          }
         );
+
         if (radioDataSource.length > 0) {
           catalogFormChildren.push({
             type: "RadioButtonsGroup",
             label: node.data.radioLabel || "Selecciona:",
-            name: "catalog_selection",
+            // ✅ CAMBIO 3 (bis): Usar nombre dinámico en Catalog
+            name: dynamicName, // Ej: "catalogo_productos"
             "data-source": radioDataSource,
             required: true,
           });
         }
+
         catalogFormChildren.push({
           type: "Footer",
           label: node.data.footer_label || "Continuar",
+          // ✅ CAMBIO 4: Usar nombre dinámico en el payload del Footer de Catalog
           "on-click-action": {
             name: "data_exchange",
-            payload: { catalog_selection: `\${form.catalog_selection}` },
+            // Ej: "payload": { "catalogo_productos": "${form.catalogo_productos}" }
+            payload: { [dynamicName]: `\${form.${dynamicName}}` },
           },
         });
         screenChildren.push({
           type: "Form",
-          name: `${jsonScreenID.toLowerCase()}_catalog_form`,
+          name: `${dynamicName}_catalog_form`,
           children: catalogFormChildren,
         });
-        screenTerminal = !(radioDataSource.length > 0 && nodeRoutes.length > 0);
       } else if (node.type === "formNode") {
+        console.log(` -> [formNode] Procesando...`);
         const formPayload = {};
         const formChildren = [];
-
         if (node.data.introText) {
-          formChildren.push({
-            type: "TextBody",
-            text: node.data.introText,
-          });
+          formChildren.push({ type: "TextBody", text: node.data.introText });
         }
-
         (node.data.components || []).forEach((component) => {
           if (component.type === "TextInput" && component.name) {
             formPayload[component.name] = `\${form.${component.name}}`;
@@ -661,6 +844,21 @@ const FlowBuilder = ({ flowData, flowId }) => {
             });
           }
         });
+
+        const footerEdge = outgoingEdges.find(
+          (e) => e.sourceHandle === `${node.id}-source`
+        );
+        if (footerEdge) {
+          const targetScreenId = idLookup.get(footerEdge.target);
+          if (targetScreenId) {
+            console.log(
+              `   -> [Footer] Conexión encontrada. -> ${targetScreenId}`
+            );
+            allDestinations.add(targetScreenId);
+          }
+        }
+
+        // El 'formPayload' aquí solo contiene los TextInputs, lo cual es correcto.
         formChildren.push({
           type: "Footer",
           label: node.data.footer_label || "Continuar",
@@ -668,16 +866,16 @@ const FlowBuilder = ({ flowData, flowId }) => {
         });
         screenChildren.push({
           type: "Form",
-          name: `${jsonScreenID.toLowerCase()}_form`,
+          name: `${dynamicName}_form`,
           children: formChildren,
         });
-        screenTerminal = nodeRoutes.length === 0;
       } else if (node.type === "confirmationNode") {
-        routing_model[jsonScreenID] = [];
+        console.log(` -> [confirmationNode] Procesando. (Terminal)`);
         screenTerminal = true;
+        metaFlow.routing_model[jsonScreenID] = [];
         screenChildren.push({
           type: "Form",
-          name: `${jsonScreenID.toLowerCase()}_form`,
+          name: `${dynamicName}_form`,
           children: [
             {
               type: "TextHeading",
@@ -693,93 +891,45 @@ const FlowBuilder = ({ flowData, flowId }) => {
             {
               type: "Footer",
               label: node.data.footer_label || "Finalizar",
-              "on-click-action": { name: "complete" },
+              "on-click-action": {
+                name: "data_exchange", // <-- ACUERDO: Usar data_exchange
+                payload: {
+                  // CLAVE: El payload que activa tu lógica de guardado
+                  flow_completed: "true",
+                  screen: jsonScreenID,
+                },
+              },
             },
           ],
         });
-      } else {
-        // screenNode
-        const formPayload = {};
-        const formChildren = [];
-        (node.data.components || []).forEach((component, compIndex) => {
-          let jsonComponent = null;
-          switch (component.type) {
-            case "TextBody":
-              jsonComponent = { type: "TextBody", text: component.text || "" };
-              break;
-            case "Image":
-              jsonComponent = {
-                type: "Image",
-                src: component.src ? component.src.split(",")[1] : null,
-                height: 250,
-                "scale-type": "cover",
-              };
-              if (!jsonComponent.src) jsonComponent = null;
-              break;
-            case "TextInput":
-              if (component.name) {
-                formPayload[component.name] = `\${form.${component.name}}`;
-              }
-              jsonComponent = {
-                type: "TextInput",
-                name: component.name || `input_${compIndex}`,
-                label: component.label || "",
-                required: true,
-              };
-              break;
-            case "RadioButtonsGroup": {
-              formPayload["selection"] = `\${form.selection}`;
-
-              
-              const optionEdges = outgoingEdges.filter(edge => 
-                edge.sourceHandle && edge.sourceHandle.startsWith(`${node.id}-option-`)
-              );
-
-              
-              const dataSource = (component.options || []).map((option, optIndex) => {
-                
-               
-                const targetScreenId = nodeRoutes[optIndex]; 
-                
-                return {
-                  id: targetScreenId || `ERROR_ID_${optIndex + 1}`, 
-                  title: option.title,
-                };
-              });
-              jsonComponent = {
-                type: "RadioButtonsGroup",
-                label: "Selecciona una opción:",
-                name: "selection",
-                "data-source": dataSource,
-                required: true,
-              };
-              break;
-            }
-          }
-          if (jsonComponent) {
-            formChildren.push(jsonComponent);
-          }
-        });
-        formChildren.push({
-          type: "Footer",
-          label: node.data.footer_label || "Continuar",
-          "on-click-action": { name: "data_exchange", payload: formPayload },
-        });
-        screenChildren.push({
-          type: "Form",
-          name: `${jsonScreenID.toLowerCase()}_form`,
-          children: formChildren,
-        });
-        screenTerminal = nodeRoutes.length === 0;
       }
+
+      // --- ASIGNACIÓN FINAL DE RUTAS ---
+
+      metaFlow.routing_model[jsonScreenID] = Array.from(allDestinations);
+
+      // (Esta asignación al 'navigationMap' plano ya no es anidada, está bien)
+
+      screenTerminal = allDestinations.size === 0;
+
+      if (node.type === "confirmationNode") {
+        screenTerminal = true;
+        metaFlow.routing_model[jsonScreenID] = [];
+      }
+
+      console.log(
+        ` -> [FIN Pantalla ${jsonScreenID}] Routing Model (Meta):`,
+        Array.from(allDestinations)
+      );
+
+      // --- FIN DE LA LÓGICA DE NODOS ---
 
       const finalDataBlock =
         node.type === "confirmationNode"
           ? {
               details: {
                 type: "string",
-                __example__:
-                  "Name: John Doe\nEmail: john@example.com\nPhone: 123456789\n\nA free skin care consultation, please",
+                __example__: "Name: John Doe\nEmail: john@example.com...",
               },
             }
           : undefined;
@@ -796,30 +946,49 @@ const FlowBuilder = ({ flowData, flowId }) => {
       };
     });
 
-    const finalJson = {
-      version: "7.2",
-      data_api_version: "3.0",
-      routing_model,
-      screens,
-    };
+    metaFlow.screens = screens;
 
-    return finalJson;
+    console.log("\n--- [FINAL] generateFlows ---");
+    console.log(
+      "JSON Final para Meta (metaFlowJson):",
+      JSON.stringify(metaFlow, null, 2)
+    );
+    console.log(
+      "JSON Final para Backend (navigationMapJson):",
+      JSON.stringify(navigationMap, null, 2)
+    );
+
+    return {
+      metaFlowJson: metaFlow,
+      navigationMapJson: navigationMap, // Este es el mapa plano
+    };
   };
 
+  // ✅ 'handleSave' AHORA ENVÍA AMBOS JSONS
   const handleSave = async () => {
     setIsSaving(true);
     toast.info("Guardando flujo...");
 
     try {
-      const newFlowJson = generateFlowJson();
-      setFlowJson(newFlowJson);
+      // 1. Genera ambos JSONs
+      const { metaFlowJson, navigationMapJson } = generateFlows();
+
+      setFlowJson(metaFlowJson); // Actualiza la vista previa del JSON en el UI (el de Meta)
+
       if (!flowId) {
         toast.error("No se ha podido identificar el ID del flujo.");
         setIsSaving(false);
         return;
       }
-      const jsonString = JSON.stringify(newFlowJson);
-      await updateFlowJson(flowId, jsonString);
+
+      // 2. Convierte ambos a string
+      const jsonString = JSON.stringify(metaFlowJson);
+      const navMapString = JSON.stringify(navigationMapJson);
+
+      // 3. Envía AMBOS al servicio
+      // (Asegúrate de que tu servicio 'updateFlowJson' acepte el tercer argumento)
+      await updateFlowJson(flowId, jsonString, navMapString);
+
       toast.success("¡Flujo guardado con éxito!");
     } catch (error) {
       console.error("Error al guardar el flujo:", error);
@@ -935,7 +1104,7 @@ const FlowBuilder = ({ flowData, flowId }) => {
         */}
         <div>
           <input
-          disabled={true}
+            disabled={true}
             value={flowName}
             onChange={(e) => setFlowName(e.target.value)}
             placeholder="Nombre del Flujo"

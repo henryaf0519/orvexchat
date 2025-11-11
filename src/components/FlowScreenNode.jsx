@@ -54,16 +54,18 @@ export default function FlowScreenNode({ data, id }) {
           data.updateNodeData(nodeId, { ...data, components: newComponents });
       };
 
-      const handleOptionChange = (optionIndex, value) => {
+      const handleOptionChange = (optionIndex, newTitle) => {
           const newComponents = [...(data.components || [])];
           const newOptions = [...(component.options || [])];
-          newOptions[optionIndex] = { ...newOptions[optionIndex], title: value };
+          newOptions[optionIndex] = { ...newOptions[optionIndex], title: newTitle };
           newComponents[index] = { ...component, options: newOptions };
           data.updateNodeData(nodeId, { ...data, components: newComponents });
       };
 
       const addOption = () => {
-          const newOption = { id: `option_${(component.options?.length || 0) + 1}`, title: '' };
+          // Genera un ID único basado en el timestamp
+          const newId = `opcion_${Date.now()}`; 
+          const newOption = { id: newId, title: '' }; // El ID ya está asignado
           const newComponents = [...(data.components || [])];
           newComponents[index] = { ...component, options: [...(component.options || []), newOption] };
           data.updateNodeData(id, { ...data, components: newComponents });
@@ -169,21 +171,33 @@ export default function FlowScreenNode({ data, id }) {
                   </div>
               )
           case 'RadioButtonsGroup':
-              return (
+             return (
                    <div>
                       <span className={componentHeaderClasses}>Opciones de Respuesta</span>
                       {(component.options || []).map((opt, optIndex) => (
-                          <div key={optIndex} className="relative flex items-center py-1 gap-1">
-                             <input type="radio" name={`radio_group_${nodeId}_${index}`} className="mr-1.5"/>
-                             <input
-                                value={opt.title}
-                                onChange={(e) => handleOptionChange(optIndex, e.target.value)}
-                                placeholder="Texto de la opción"
-                                className="flex-1 border border-gray-100 rounded p-1"
-                             />
-                             <button onClick={() => removeOption(optIndex)} className="clickable-icon text-red-500 z-10" style={{ padding: '4px' }}>
+                          <div key={opt.id} className="relative flex items-center py-2 gap-2 border-b border-gray-100">
+                             <input type="radio" name={`radio_group_${nodeId}_${index}`} className="ml-1 flex-shrink-0" disabled/>
+                             
+                             <div className="flex-1 space-y-1.5">
+                                <input
+                                  value={opt.title}
+                                  // Modificado para solo enviar el título
+                                  onChange={(e) => handleOptionChange(optIndex, e.target.value)}
+                                  placeholder="Texto de la opción (ej: Mantenimiento)"
+                                  className="w-full border border-gray-200 rounded p-1.5 text-sm"
+                                />
+                                
+                                {/* El input del ID está OCULTO. El cliente no lo ve. */}
+                                {/* <input type="hidden" value={opt.id} /> */}
+                                
+                                {/* Opcional: Mostrar el ID pero deshabilitado, para depuración */}
+                                <p className="text-xs text-gray-400 font-mono pl-1">ID: {opt.id}</p>
+                             </div>
+
+                             <button onClick={() => removeOption(optIndex)} className="clickable-icon text-red-500 z-10 self-center" style={{ padding: '4px' }} title="Eliminar opción">
                                 <FaTrash size={12}/>
                              </button>
+                             {/* Este es el 'Handle' para conectar la opción a otra pantalla */}
                              <Handle type="source" position={Position.Right} id={`${nodeId}-component-${index}-option-${optIndex}`} className="custom-handle" style={{ top: '50%', transform: 'translateY(-50%)' }} />
                           </div>
                       ))}
@@ -192,7 +206,6 @@ export default function FlowScreenNode({ data, id }) {
                       </button>
                   </div>
               )
-           // --- ✅ INICIO RENDER COMPONENTE IMAGEN ---
           case 'Image':
               return (
                   <div>

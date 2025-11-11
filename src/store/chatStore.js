@@ -278,9 +278,14 @@ export const useChatStore = create(
 
       fetchFlowById: async (flowId) => {
         set({ loadingCurrentFlow: true, currentEditingFlow: null });
+        
+        // 1. Obtener la data mínima del flujo desde el estado local (la lista)
+        const existingFlow = get().flows.find(f => f.id === flowId); 
+
         try {
-          const existingFlow = get().flows.find(f => f.id === flowId);
+          // 2. Intentar llamar a la API (Esto falla para flujos nuevos)
           const flowDetails = await getFlowById(flowId);
+          
           const combinedFlowData = {
             ...existingFlow, 
             ...flowDetails,
@@ -288,7 +293,20 @@ export const useChatStore = create(
 
           set({ currentEditingFlow: combinedFlowData, loadingCurrentFlow: false });
         } catch (error) {
+          // 3. Si la API falla, manejar el error
           console.error('Error fetching flow by ID:', error);
+          
+          // 4. Si tenemos la data mínima del flujo (nombre, ID, etc.), la usamos
+          if (existingFlow) {
+              set({ 
+                  currentEditingFlow: existingFlow, 
+                  loadingCurrentFlow: false 
+              });
+              console.warn(`[FlowStore] Fallback exitoso: La API falló, cargando editor con datos mínimos.`);
+              return; // Salir exitosamente
+          }
+          
+          // 5. Si no tenemos ni la data mínima, el error es grave, lo re-lanza o lo muestra
           set({ loadingCurrentFlow: false });
         }
       },
