@@ -11,6 +11,8 @@ const bodyClasses = "p-4 space-y-4 max-h-[400px] overflow-y-auto";
 const footerClasses = "bg-gray-50 border-t border-gray-200 py-2.5 px-4 rounded-b-xl";
 const footerInputClasses = "editable-field footer-input w-full bg-green-500 text-white border-2 border-green-600 p-2.5 rounded-lg font-bold text-center placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-green-400";
 const textInputClasses = "w-full border border-gray-300 rounded p-1.5 text-sm bg-white";
+// ✅ NUEVA CONSTANTE (copiada de FlowFormNode)
+const textAreaClasses = "w-full border border-gray-300 rounded p-1.5 text-sm min-h-[100px] max-h-[500px] overflow-y-auto resize-none bg-white";
 const clickableIconClasses = "clickable-icon p-1 text-gray-500 hover:text-black cursor-pointer";
 const componentHeaderClasses = "text-sm font-semibold text-gray-700 mb-1 block";
 // --- Fin Estilos ---
@@ -25,6 +27,28 @@ const daysOfWeek = [
   { label: 'S', value: 6 },
 ];
 
+/**
+ * ✅ FUNCIÓN CORREGIDA (para la Vista Previa)
+ * Transforma los datos de este nodo (config) a un formato que PreviewModal entiende (componentes).
+ */
+const transformDataForPreview = (nodeData) => {
+  const { config, ...rest } = nodeData;
+  return {
+    ...rest,
+    type: 'formNode', // Finge ser un formNode
+    introText: config?.introText || '', // Pasa el nuevo texto introductorio
+    components: [
+      // ✅ Envía un 'Dropdown' como lo espera PreviewModal.jsx
+      {
+        type: 'Dropdown', 
+        label: config?.labelDate || 'Selecciona la fecha',
+        // No necesita 'options' de ejemplo, PreviewModal solo dibuja el contenedor del Dropdown
+      }
+    ]
+  };
+};
+
+
 export default function FlowAppointmentNode({ data, id }) {
   
   // Setea los valores por defecto si no existen
@@ -32,7 +56,8 @@ export default function FlowAppointmentNode({ data, id }) {
     daysAvailable: [1, 2, 3, 4, 5], // L-V
     intervalMinutes: 60,
     daysToShow: 30,
-    labelDate: "Selecciona la fecha"
+    labelDate: "Selecciona la fecha",
+    introText: "" // ✅ Añadido
   };
 
   // Función genérica para actualizar data (title, footer_label)
@@ -102,6 +127,23 @@ export default function FlowAppointmentNode({ data, id }) {
         {/* Cuerpo (Editor de configuración) */}
         <div className={bodyClasses}>
             
+            {/* ✅ NUEVO CAMPO: TEXTO INTRODUCTORIO */}
+            <div>
+                 <label className={componentHeaderClasses}>Texto Introductorio</label>
+                 <textarea
+                    name="introText"
+                    value={config.introText || ''}
+                    onChange={(e) => updateConfig('introText', e.target.value)}
+                    onInput={(e) => { 
+                        e.target.style.height = 'auto'; 
+                        e.target.style.height = (e.target.scrollHeight) + 'px';
+                    }}
+                    placeholder="Escribe una descripción para esta pantalla..."
+                    className={textAreaClasses} // Usa la nueva constante
+                    rows={4}
+                 />
+            </div>
+
             <div>
                  <label className={componentHeaderClasses}>Etiqueta del Selector</label>
                  <input
@@ -169,8 +211,9 @@ export default function FlowAppointmentNode({ data, id }) {
             <FaPen className="edit-icon" size={12} style={{color: 'white', opacity: 0.7, right: '15px'}}/>
           </div>
           
+          {/* ✅ El onClick ahora transforma los datos para el preview */}
           <button
-            onClick={() => data.openPreviewModal({ ...data, type: 'appointmentNode' })}
+            onClick={() => data.openPreviewModal(transformDataForPreview(data))}
             className="w-full bg-white text-blue-600 border border-blue-400 py-2.5 rounded-lg font-semibold text-sm hover:bg-blue-50 transition-colors flex items-center justify-center gap-2 mt-2"
             title="Vista Previa de la Pantalla"
           >

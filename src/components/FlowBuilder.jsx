@@ -33,7 +33,7 @@ const nodeTypes = {
   catalogNode: FlowCatalogNode,
   formNode: FlowFormNode,
   confirmationNode: FlowConfirmationNode,
-  appointmentNode: FlowAppointmentNode // <-- REGISTRADO
+  appointmentNode: FlowAppointmentNode, // <-- REGISTRADO
 };
 
 // --- (La lógica de formatTitleToID no cambia) ---
@@ -90,15 +90,18 @@ const reconstructNodeData = (screen, nodeType) => {
 
   try {
     switch (nodeType) {
-      // ✅ CASO AÑADIDO
       case "appointmentNode":
         const dropdown = form.children.find((c) => c.type === "Dropdown");
+        const introText = form.children.find(
+          (c) => c.type === "TextBody"
+        )?.text;
         return {
           ...baseData,
-          // 'config' se cargará desde el navMap en parseJsonToElements
           config: {
+            // (config se carga desde navMap más adelante)
             labelDate: dropdown?.label || "Selecciona la fecha",
-          }
+            introText: introText || "",
+          },
         };
 
       case "confirmationNode":
@@ -202,27 +205,36 @@ const parseJsonToElements = (flowJson, navMap) => {
 
   // 1. Crear Nodos
   const initialNodes = screens.map((screen, index) => {
-    
     // ✅ 2. LÓGICA DE TIPO MEJORADA
     let nodeType;
-    if (screenConfig && screenConfig[screen.id] && screenConfig[screen.id].type) {
-        // Usar el tipo guardado en el navigationMap (preferido)
-        nodeType = screenConfig[screen.id].type;
-        console.log(`Tipo para '${screen.id}' cargado desde navMap: ${nodeType}`);
+    if (
+      screenConfig &&
+      screenConfig[screen.id] &&
+      screenConfig[screen.id].type
+    ) {
+      // Usar el tipo guardado en el navigationMap (preferido)
+      nodeType = screenConfig[screen.id].type;
+      console.log(`Tipo para '${screen.id}' cargado desde navMap: ${nodeType}`);
     } else {
-        // Fallback a la detección de contenido (para flujos antiguos sin __SCREEN_CONFIG__)
-        nodeType = determineNodeType(screen);
-        console.warn(`Tipo para '${screen.id}' no encontrado en navMap. Detectando por contenido: ${nodeType}`);
+      // Fallback a la detección de contenido (para flujos antiguos sin __SCREEN_CONFIG__)
+      nodeType = determineNodeType(screen);
+      console.warn(
+        `Tipo para '${screen.id}' no encontrado en navMap. Detectando por contenido: ${nodeType}`
+      );
     }
     // ✅ FIN DE LA LÓGICA MEJORADA
 
     let nodeData = reconstructNodeData(screen, nodeType); // 'nodeType' ahora es correcto
 
     // Fusionar la configuración (para appointmentNode)
-    if (screenConfig && screenConfig[screen.id] && screenConfig[screen.id].config) {
-      nodeData.config = { 
-        ...nodeData.config, 
-        ...screenConfig[screen.id].config 
+    if (
+      screenConfig &&
+      screenConfig[screen.id] &&
+      screenConfig[screen.id].config
+    ) {
+      nodeData.config = {
+        ...nodeData.config,
+        ...screenConfig[screen.id].config,
       };
       console.log(`Configuración cargada para ${screen.id}:`, nodeData.config);
     }
@@ -248,11 +260,10 @@ const parseJsonToElements = (flowJson, navMap) => {
     console.log("Generando conexiones de OPCIONES desde navMap plano:", navMap);
 
     for (const [optionId, navData] of Object.entries(navMap)) {
-      
       // ✅ 3. ASEGURARSE DE SALTAR LA CLAVE DE CONFIGURACIÓN
-      if (optionId === '__SCREEN_CONFIG__') continue; 
-      
-      const targetScreenId = navData.pantalla; 
+      if (optionId === "__SCREEN_CONFIG__") continue;
+
+      const targetScreenId = navData.pantalla;
 
       if (!targetScreenId || !screenMap.has(targetScreenId)) {
         console.warn(
@@ -289,16 +300,16 @@ const parseJsonToElements = (flowJson, navMap) => {
             sourceHandleId = `${node.id}-catalog-option-${optIndex}`;
           }
         }
-        if (sourceNodeId) break; 
+        if (sourceNodeId) break;
       }
-      
+
       if (sourceNodeId && sourceHandleId) {
         // ... (código para crear el edge)
         initialEdges.push({
           id: `edge_${sourceHandleId}_${targetScreenId}`,
           source: sourceNodeId,
           target: targetScreenId,
-          sourceHandle: sourceHandleId, 
+          sourceHandle: sourceHandleId,
           markerEnd: { type: MarkerType.ArrowClosed },
           type: "smoothstep",
         });
@@ -332,8 +343,11 @@ const parseJsonToElements = (flowJson, navMap) => {
 
     // Nodos con 1 sola salida de Footer (formNode, appointmentNode)
     // ✅ 4. ASEGURARSE DE INCLUIR 'appointmentNode' AQUÍ
-    if (sourceNode.type === "formNode" || sourceNode.type === "appointmentNode") {
-      const targetId = targetScreenIds[0]; 
+    if (
+      sourceNode.type === "formNode" ||
+      sourceNode.type === "appointmentNode"
+    ) {
+      const targetId = targetScreenIds[0];
 
       if (targetId && screenMap.has(targetId)) {
         console.log(
@@ -356,7 +370,6 @@ const parseJsonToElements = (flowJson, navMap) => {
   return { initialNodes, initialEdges };
 };
 
-
 const FlowBuilder = ({ flowData, flowId }) => {
   const [nodes, setNodes, onNodesChange] = useNodesState([]);
   const [edges, setEdges, onEdgesChange] = useEdgesState([]);
@@ -374,7 +387,6 @@ const FlowBuilder = ({ flowData, flowId }) => {
   const userData = useChatStore((state) => state.userData);
   const defaultPhoneNumber =
     userData && userData.PK ? userData.PK.replace("USER#", "") : "573001234567";
-    
 
   // --- (Lógica de onConnect, updateNodeData, deleteNode, etc. NO cambia) ---
   const onConnect = useCallback(
@@ -452,15 +464,21 @@ const FlowBuilder = ({ flowData, flowId }) => {
     [setEdges, setNodes]
   );
 
-  const  removeEdge = useCallback((sourceNodeId, sourceHandleId) => {
-    setEdges((eds) => eds.filter((edge) => 
-        !(edge.source === sourceNodeId && edge.sourceHandle === sourceHandleId)
-    ));
-    toast.success('Conexión eliminada');
-  }, [setEdges]);
-
-
-
+  const removeEdge = useCallback(
+    (sourceNodeId, sourceHandleId) => {
+      setEdges((eds) =>
+        eds.filter(
+          (edge) =>
+            !(
+              edge.source === sourceNodeId &&
+              edge.sourceHandle === sourceHandleId
+            )
+        )
+      );
+      toast.success("Conexión eliminada");
+    },
+    [setEdges]
+  );
 
   const updateNodeData = (nodeId, newData) => {
     setNodes((nds) =>
@@ -515,12 +533,12 @@ const FlowBuilder = ({ flowData, flowId }) => {
       updateNodeData: updateNodeData,
       openPreviewModal: openPreviewModal,
       deleteNode: deleteNode,
-      removeEdge: removeEdge, 
+      removeEdge: removeEdge,
     },
   });
 
   // --- FUNCIONES 'add...' ---
-  
+
   // ✅ NUEVA FUNCIÓN
   const addAppointmentNode = () => {
     const newNode = {
@@ -530,8 +548,10 @@ const FlowBuilder = ({ flowData, flowId }) => {
       data: {
         title: "Agendar Cita",
         footer_label: "Continuar",
-        config: { // Configuración por defecto
+        config: {
+
           labelDate: "Selecciona la fecha",
+          introText: "Por favor, selecciona una fecha disponible.",
           daysAvailable: [1, 2, 3, 4, 5],
           intervalMinutes: 60,
           daysToShow: 30,
@@ -621,8 +641,8 @@ const FlowBuilder = ({ flowData, flowId }) => {
 
       // ✅ 'navigation' ahora es el JSON Híbrido
       const { initialNodes, initialEdges } = parseJsonToElements(
-        flowData.flow_json, 
-        flowData.navigation 
+        flowData.flow_json,
+        flowData.navigation
       );
       const nodesWithFunctions = initialNodes.map(injectNodeFunctions);
       setNodes(nodesWithFunctions);
@@ -637,8 +657,6 @@ const FlowBuilder = ({ flowData, flowId }) => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [flowData]);
 
-
-  // --- 'generateFlows' ACTUALIZADO ---
   const generateFlows = () => {
     console.log("--- [INICIO] generateFlows (V2 Híbrido) ---");
 
@@ -648,14 +666,14 @@ const FlowBuilder = ({ flowData, flowId }) => {
       routing_model: {},
       screens: [],
     };
-    
+
     // 1. Mapa plano para navegación (como lo lee tu backend)
     const navigationMap = {};
     // 2. Mapa de configuración de pantallas (la nueva parte)
     const screenConfigMap = {
       __SCREEN_CONFIG__: {
-        SCREENS: {}
-      }
+        SCREENS: {},
+      },
     };
 
     const idLookup = new Map();
@@ -668,227 +686,238 @@ const FlowBuilder = ({ flowData, flowId }) => {
     console.log("Conexiones (edges):", edges);
     console.log("Mapa de IDs (idLookup):", idLookup);
 
-    const screens = nodes.map((node, index) => {
-      const jsonScreenID = idLookup.get(node.id);
-      const outgoingEdges = edges.filter((e) => e.source === node.id);
+    const screens = nodes
+      .map((node, index) => {
+        const jsonScreenID = idLookup.get(node.id);
+        const outgoingEdges = edges.filter((e) => e.source === node.id);
 
-      console.log(
-        `\n[Procesando Pantalla]: ${jsonScreenID} (Tipo: ${node.type})`
-      );
-      
-      // Poblar el screenConfigMap
-      screenConfigMap.__SCREEN_CONFIG__.SCREENS[jsonScreenID] = {
-          type: node.type,
-          dataSourceTrigger: null // Default
-      };
+        console.log(
+          `\n[Procesando Pantalla]: ${jsonScreenID} (Tipo: ${node.type})`
+        );
 
-      let screenChildren = [];
-      let screenTerminal = false;
-      const allDestinations = new Set();
-      const dynamicName = jsonScreenID.toLowerCase();
-
-      if (node.type === "screenNode") {
-        console.log(` -> [screenNode] Procesando componentes...`);
-        const formPayload = {};
-        const formChildren = [];
-
-        (node.data.components || []).forEach((component, compIndex) => {
-          if (component.type === "RadioButtonsGroup") {
-            // ... (código existente de RadioButtonsGroup)
-            formPayload[dynamicName] = `\${form.${dynamicName}}`;
-
-            const dataSource = (component.options || []).map(
-              (option, optIndex) => {
-                const handleId = `${node.id}-component-${compIndex}-option-${optIndex}`;
-                // ... (código existente para buscar connectedEdge)
-                const connectedEdge = outgoingEdges.find(
-                  (e) => e.sourceHandle === handleId
-                );
-                if (connectedEdge) {
-                  const targetScreenId = idLookup.get(connectedEdge.target);
-                  if (targetScreenId) {
-                    // ✅ ESTO SE MANTIENE: Poblar el mapa plano
-                    navigationMap[option.id] = {
-                      pantalla: targetScreenId,
-                      valor: option.title || "",
-                    };
-                    allDestinations.add(targetScreenId);
-                  } 
-                  // ... (else/warn)
-                } 
-                // ... (else)
-                return { id: option.id, title: option.title };
-              }
-            );
-            // ... (código existente para añadir RadioButtonsGroup a formChildren)
-            formChildren.push({
-              type: "RadioButtonsGroup",
-              label: component.label || "Selecciona una opción:",
-              name: dynamicName,
-              "data-source": dataSource,
-              required: true,
-            });
-          } 
-          // ... (resto de 'else if' para TextBody, Image, TextInput)
-          else if (component.type === "TextBody") { /* ... */ }
-          else if (component.type === "Image") { /* ... */ }
-          else if (component.type === "TextInput") { /* ... */ }
-        });
-        
-        // ... (código existente para footerEdge)
-
-        formChildren.push({
-          type: "Footer",
-          label: node.data.footer_label || "Continuar",
-          "on-click-action": { name: "data_exchange", payload: formPayload },
-        });
-        screenChildren.push({
-          type: "Form",
-          name: `${dynamicName}_form`,
-          children: formChildren,
-        });
-
-      } else if (node.type === "catalogNode") {
-        console.log(` -> [catalogNode] Procesando...`);
-        // ... (código existente para catalogNode,
-        //      incluyendo su lógica de 'navigationMap[opt.id] = ...')
-        
-      // ✅ CASO AÑADIDO
-      } else if (node.type === "appointmentNode") {
-        console.log(` -> [appointmentNode] Procesando...`);
-        
-        // 1. Poblar el screenConfigMap
+        // Poblar el screenConfigMap
         screenConfigMap.__SCREEN_CONFIG__.SCREENS[jsonScreenID] = {
+          type: node.type,
+          dataSourceTrigger: null, // Default
+        };
+
+        let screenChildren = [];
+        let screenTerminal = false;
+        const allDestinations = new Set();
+        const dynamicName = jsonScreenID.toLowerCase();
+
+        if (node.type === "screenNode") {
+          console.log(` -> [screenNode] Procesando componentes...`);
+          const formPayload = {};
+          const formChildren = [];
+
+          (node.data.components || []).forEach((component, compIndex) => {
+            if (component.type === "RadioButtonsGroup") {
+              // ... (código existente de RadioButtonsGroup)
+              formPayload[dynamicName] = `\${form.${dynamicName}}`;
+
+              const dataSource = (component.options || []).map(
+                (option, optIndex) => {
+                  const handleId = `${node.id}-component-${compIndex}-option-${optIndex}`;
+                  // ... (código existente para buscar connectedEdge)
+                  const connectedEdge = outgoingEdges.find(
+                    (e) => e.sourceHandle === handleId
+                  );
+                  if (connectedEdge) {
+                    const targetScreenId = idLookup.get(connectedEdge.target);
+                    if (targetScreenId) {
+                      // ✅ ESTO SE MANTIENE: Poblar el mapa plano
+                      navigationMap[option.id] = {
+                        pantalla: targetScreenId,
+                        valor: option.title || "",
+                      };
+                      allDestinations.add(targetScreenId);
+                    }
+                    // ... (else/warn)
+                  }
+                  // ... (else)
+                  return { id: option.id, title: option.title };
+                }
+              );
+              // ... (código existente para añadir RadioButtonsGroup a formChildren)
+              formChildren.push({
+                type: "RadioButtonsGroup",
+                label: component.label || "Selecciona una opción:",
+                name: dynamicName,
+                "data-source": dataSource,
+                required: true,
+              });
+            }
+            // ... (resto de 'else if' para TextBody, Image, TextInput)
+            else if (component.type === "TextBody") {
+              /* ... */
+            } else if (component.type === "Image") {
+              /* ... */
+            } else if (component.type === "TextInput") {
+              /* ... */
+            }
+          });
+
+          // ... (código existente para footerEdge)
+
+          formChildren.push({
+            type: "Footer",
+            label: node.data.footer_label || "Continuar",
+            "on-click-action": { name: "data_exchange", payload: formPayload },
+          });
+          screenChildren.push({
+            type: "Form",
+            name: `${dynamicName}_form`,
+            children: formChildren,
+          });
+        } else if (node.type === "catalogNode") {
+          console.log(` -> [catalogNode] Procesando...`);
+          // ... (código existente para catalogNode,
+          //      incluyendo su lógica de 'navigationMap[opt.id] = ...')
+
+          // ✅ CASO AÑADIDO
+        } else if (node.type === "appointmentNode") {
+
+          // 1. Poblar el screenConfigMap
+          screenConfigMap.__SCREEN_CONFIG__.SCREENS[jsonScreenID] = {
             type: node.type,
             dataSourceTrigger: "fetch_available_dates", // Disparador
-            config: node.data.config || {} // La config de la UI
-        };
-        
-        // 2. Construir el JSON de Meta
-        const footerEdge = outgoingEdges.find((e) => e.sourceHandle === `${node.id}-source`);
-        // Usar un fallback por si no se conecta, aunque debería estarlo
-        const nextScreenId = footerEdge ? idLookup.get(footerEdge.target) : jsonScreenID; 
-        if(footerEdge) allDestinations.add(idLookup.get(footerEdge.target));
+            config: node.data.config || {}, // La config de la UI
+          };
 
-        screenChildren.push({
+          // 2. Construir el JSON de Meta
+          const footerEdge = outgoingEdges.find(
+            (e) => e.sourceHandle === `${node.id}-source`
+          );
+          // Usar un fallback por si no se conecta, aunque debería estarlo
+          const nextScreenId = footerEdge
+            ? idLookup.get(footerEdge.target)
+            : jsonScreenID;
+          if (footerEdge) allDestinations.add(idLookup.get(footerEdge.target));
+
+          screenChildren.push({
             type: "Form",
             name: "appointment_form",
             children: [
-                {
-                    type: "Dropdown",
-                    label: node.data.config?.labelDate || "Date", // Usar el label del nodo
-                    name: "date",
-                    "data-source": "${data.date}",
-                    required: true, // Asumimos true
-                    enabled: true,  // Asumimos true
-                    "on-select-action": {
-                        "name": "data_exchange",
-                        "payload": {
-                            "trigger": "date_selected",
-                            "date": "${form.date}"
-                        }
-                    }
+              {
+                    type: "TextBody",
+                    text: node.data.config?.introText || "Selecciona una fecha disponible." 
+              },
+              {
+                type: "Dropdown",
+                label: node.data.config?.labelDate || "Date", // Usar el label del nodo
+                name: "date",
+                "data-source": "${data.date}",
+                required: true, // Asumimos true
+                enabled: true, // Asumimos true
+                "on-select-action": {
+                  name: "data_exchange",
+                  payload: {
+                    trigger: "date_selected",
+                    date: "${form.date}",
+                  },
                 },
-                {
-                    type: "Footer",
-                    label: node.data.footer_label || "Continue",
-                    "on-click-action": {
-                        "name": "navigate", // Ojo: Este nodo usa 'navigate' no 'data_exchange' en el footer
-                        "next": {
-                            "type": "screen",
-                            "name": nextScreenId 
-                        },
-                        "payload": {
-                            "date": "${form.date}"
-                        }
-                    }
-                }
-            ]
-        });
-        
-        // El 'data' block para el JSON de Meta
-        metaFlow.screens.push({
-          id: jsonScreenID,
-          title: node.data.title || "Appointment",
-          terminal: screenTerminal,
-          // ✅ AÑADIDO: El bloque 'data' que Meta espera
-          data: {
-            "date": {
-                "type": "array",
-                "items": {
-                    "type": "object",
-                    "properties": {
-                        "id": { "type": "string" },
-                        "title": { "type": "string" }
-                    }
+              },
+              {
+                type: "Footer",
+                label: node.data.footer_label || "Continue",
+                "on-click-action": {
+                  name: "navigate", // Ojo: Este nodo usa 'navigate' no 'data_exchange' en el footer
+                  next: {
+                    type: "screen",
+                    name: nextScreenId,
+                  },
+                  payload: {
+                    date: "${form.date}",
+                  },
                 },
-                "__example__": [
-                    { "id": "2024-01-01", "title": "Mon Jan 01 2024" }
-                ]
+              },
+            ],
+          });
+
+          // El 'data' block para el JSON de Meta
+          metaFlow.screens.push({
+            id: jsonScreenID,
+            title: node.data.title || "Appointment",
+            terminal: screenTerminal,
+            // ✅ AÑADIDO: El bloque 'data' que Meta espera
+            data: {
+              date: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    id: { type: "string" },
+                    title: { type: "string" },
+                  },
+                },
+                __example__: [{ id: "2024-01-01", title: "Mon Jan 01 2024" }],
+              },
+              is_date_enabled: {
+                type: "boolean",
+                __example__: true,
+              },
             },
-            "is_date_enabled": {
-                "type": "boolean",
-                "__example__": true
-            }
-          },
-          layout: {
-            type: "SingleColumnLayout",
-            children: screenChildren,
-          },
-        });
-        
-        // Continuar al siguiente 'map' (saltar el 'return' de abajo)
+            layout: {
+              type: "SingleColumnLayout",
+              children: screenChildren,
+            },
+          });
+
+          // Continuar al siguiente 'map' (saltar el 'return' de abajo)
+          metaFlow.routing_model[jsonScreenID] = Array.from(allDestinations);
+          console.log(
+            ` -> [FIN Pantalla ${jsonScreenID}] Routing Model (Meta):`,
+            Array.from(allDestinations)
+          );
+          return null; // Devolver null para filtrar este resultado del 'map' de 'screens'
+        } else if (node.type === "formNode") {
+          console.log(` -> [formNode] Procesando...`);
+          // ... (código existente de formNode)
+        } else if (node.type === "confirmationNode") {
+          console.log(` -> [confirmationNode] Procesando. (Terminal)`);
+          // ... (código existente de confirmationNode)
+        }
+
+        // --- ASIGNACIÓN FINAL DE RUTAS ---
         metaFlow.routing_model[jsonScreenID] = Array.from(allDestinations);
+        screenTerminal = allDestinations.size === 0;
+        if (node.type === "confirmationNode") {
+          screenTerminal = true;
+          metaFlow.routing_model[jsonScreenID] = [];
+        }
         console.log(
           ` -> [FIN Pantalla ${jsonScreenID}] Routing Model (Meta):`,
           Array.from(allDestinations)
         );
-        return null; // Devolver null para filtrar este resultado del 'map' de 'screens'
+        // --- FIN DE LA LÓGICA DE NODOS ---
 
-      } else if (node.type === "formNode") {
-        console.log(` -> [formNode] Procesando...`);
-        // ... (código existente de formNode)
-      } else if (node.type === "confirmationNode") {
-        console.log(` -> [confirmationNode] Procesando. (Terminal)`);
-        // ... (código existente de confirmationNode)
-      }
+        const finalDataBlock =
+          node.type === "confirmationNode"
+            ? {
+                /* ... (código existente) ... */
+              }
+            : undefined;
 
-      // --- ASIGNACIÓN FINAL DE RUTAS ---
-      metaFlow.routing_model[jsonScreenID] = Array.from(allDestinations);
-      screenTerminal = allDestinations.size === 0;
-      if (node.type === "confirmationNode") {
-        screenTerminal = true;
-        metaFlow.routing_model[jsonScreenID] = [];
-      }
-      console.log(
-        ` -> [FIN Pantalla ${jsonScreenID}] Routing Model (Meta):`,
-        Array.from(allDestinations)
-      );
-      // --- FIN DE LA LÓGICA DE NODOS ---
-
-      const finalDataBlock =
-        node.type === "confirmationNode"
-          ? { /* ... (código existente) ... */ }
-          : undefined;
-
-      return {
-        id: jsonScreenID,
-        title: node.data.title || "Pantalla sin Título",
-        terminal: screenTerminal,
-        data: finalDataBlock,
-        layout: {
-          type: "SingleColumnLayout",
-          children: screenChildren,
-        },
-      };
-    }).filter(Boolean); // <-- Filtrar los 'null' (del appointmentNode)
+        return {
+          id: jsonScreenID,
+          title: node.data.title || "Pantalla sin Título",
+          terminal: screenTerminal,
+          data: finalDataBlock,
+          layout: {
+            type: "SingleColumnLayout",
+            children: screenChildren,
+          },
+        };
+      })
+      .filter(Boolean); // <-- Filtrar los 'null' (del appointmentNode)
 
     metaFlow.screens = screens.concat(metaFlow.screens); // Añadir las pantallas procesadas
 
     // ✅ CAMBIO FINAL: Fusionar ambos mapas
     const finalNavigationMap = {
-        ...navigationMap,           // El mapa plano
-        ...screenConfigMap          // El mapa de configuración
+      ...navigationMap, // El mapa plano
+      ...screenConfigMap, // El mapa de configuración
     };
 
     console.log("\n--- [FINAL] generateFlows ---");
@@ -916,7 +945,7 @@ const FlowBuilder = ({ flowData, flowId }) => {
       // 1. Genera ambos JSONs
       const { metaFlowJson, navigationMapJson } = generateFlows();
 
-      setFlowJson(metaFlowJson); 
+      setFlowJson(metaFlowJson);
 
       if (!flowId) {
         // ... (error)
@@ -925,7 +954,7 @@ const FlowBuilder = ({ flowData, flowId }) => {
       // 2. Convierte ambos a string
       const jsonString = JSON.stringify(metaFlowJson);
       // ✅ USA EL NUEVO MAPA HÍBRIDO
-      const navMapString = JSON.stringify(navigationMapJson); 
+      const navMapString = JSON.stringify(navigationMapJson);
 
       // 3. Envía AMBOS al servicio
       await updateFlowJson(flowId, jsonString, navMapString);
@@ -940,10 +969,15 @@ const FlowBuilder = ({ flowData, flowId }) => {
   };
 
   // --- (handleSendTest y resto de handlers NO cambian) ---
-  const handleSendTest = async () => { /* ... (código existente) ... */ };
-  const handleInstructionsConfirm = () => { /* ... (código existente) ... */ };
-  const handleConfirmSendTest = async (to) => { /* ... (código existente) ... */ };
-
+  const handleSendTest = async () => {
+    /* ... (código existente) ... */
+  };
+  const handleInstructionsConfirm = () => {
+    /* ... (código existente) ... */
+  };
+  const handleConfirmSendTest = async (to) => {
+    /* ... (código existente) ... */
+  };
 
   // --- 3. Variables dinámicas para el estilo del panel ---
   const panelWidth = isPanelOpen ? "250px" : "0px";
@@ -959,7 +993,7 @@ const FlowBuilder = ({ flowData, flowId }) => {
       }}
     >
       {/* --- Panel Izquierdo (Controles) --- */}
-   <div
+      <div
         style={{
           width: panelWidth,
           padding: panelPadding,
@@ -988,9 +1022,9 @@ const FlowBuilder = ({ flowData, flowId }) => {
               marginBottom: "20px",
             }}
           />
-          
+
           {/* --- BOTONES CON ESTILOS COMPLETOS RESTAURADOS --- */}
-          
+
           <button
             onClick={addScreenNode}
             style={{
@@ -1005,7 +1039,7 @@ const FlowBuilder = ({ flowData, flowId }) => {
           >
             + Añadir Menú
           </button>
-          
+
           <button
             onClick={addCatalogNode}
             style={{
@@ -1021,7 +1055,7 @@ const FlowBuilder = ({ flowData, flowId }) => {
           >
             + Añadir Catálogo
           </button>
-          
+
           <button
             onClick={addFormNode}
             style={{
@@ -1126,7 +1160,7 @@ const FlowBuilder = ({ flowData, flowId }) => {
       {/* --- Área Central: Canvas (NO cambia) --- */}
       <div style={{ flex: 1, background: "#fcfcfc", position: "relative" }}>
         <ToastContainer
-          // ... (props existentes)
+        // ... (props existentes)
         />
         <ReactFlow
           nodes={nodes}
@@ -1151,7 +1185,7 @@ const FlowBuilder = ({ flowData, flowId }) => {
       >
         <h3>JSON del Flujo</h3>
         <pre
-          // ... (estilos existentes)
+        // ... (estilos existentes)
         >
           {JSON.stringify(flowJson, null, 2)}
         </pre>
@@ -1169,12 +1203,12 @@ const FlowBuilder = ({ flowData, flowId }) => {
         )}
       {isTestModalOpen && (
         <InputModal
-          // ... (props existentes)
+        // ... (props existentes)
         />
       )}
       {isInstructionsModalOpen && (
         <FlowInstructionsModal
-          // ... (props existentes)
+        // ... (props existentes)
         />
       )}
     </div>
