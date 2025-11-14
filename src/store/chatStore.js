@@ -59,6 +59,7 @@ export const useChatStore = create(
       loadingCurrentFlow: false,
       triggers: [],
       loadingTriggers: false, 
+      googleAuthStatus: null,
 
       setAuthData: (data) => {
         set({
@@ -66,7 +67,12 @@ export const useChatStore = create(
           accessToken: data.accessToken,
           isAuthenticated: !!data.accessToken,
           companyId: data.userData?.number_id,
+          googleAuthStatus: data.userData?.hasGoogleAuth ? 'connected' : null,
         });
+      },
+
+      setGoogleAuthStatus: (status) => {
+        set({ googleAuthStatus: status });
       },
 
       setTemplates: (templatesArray) => {
@@ -368,6 +374,7 @@ export const useChatStore = create(
         accessToken: state.accessToken,
         templates: state.templates,
         companyId: state.companyId,
+        googleAuthStatus: state.googleAuthStatus,
       }),
       onRehydrateStorage: () => (state) => {
       },

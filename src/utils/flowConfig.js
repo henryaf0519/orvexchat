@@ -39,8 +39,10 @@ export const NODE_DEFAULTS = {
       startTime: "08:00",
       endTime: "17:00",
       breakTimes: [
-        { id: 1, start: "13:00", end: "14:00" }
-      ]
+        { id: 1, start: "13:00", end: "14:00" },
+        
+      ],
+      tool: 'none',
     },
   },
   confirmationNode: {

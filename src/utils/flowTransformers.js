@@ -62,7 +62,8 @@ export const reconstructNodeData = (screen, nodeType) => {
             // ✅ Defaults nuevos (Horarios y Tiempos Muertos)
             startTime: "08:00",
             endTime: "17:00",
-            breakTimes: [] 
+            breakTimes: [],
+            tool: 'none'
           },
         };
 
