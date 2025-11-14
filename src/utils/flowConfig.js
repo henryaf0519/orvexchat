@@ -36,6 +36,11 @@ export const NODE_DEFAULTS = {
       daysAvailable: [1, 2, 3, 4, 5],
       intervalMinutes: 60,
       daysToShow: 30,
+      startTime: "08:00",
+      endTime: "17:00",
+      breakTimes: [
+        { id: 1, start: "13:00", end: "14:00" }
+      ]
     },
   },
   confirmationNode: {

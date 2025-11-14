@@ -1,21 +1,23 @@
 // src/components/FlowAppointmentNode.jsx
 
-import React, { useState } from 'react';
+import React from 'react';
 import { Handle, Position } from 'reactflow';
-import { FaTrash, FaPen, FaTimes, FaCalendarAlt, FaEye } from 'react-icons/fa';
+// ✅ --- ÍCONOS AÑADIDOS ---
+import { FaTrash, FaPen, FaTimes, FaCalendarAlt, FaEye, FaPlus } from 'react-icons/fa'; 
 
-// --- Estilos ---
+// --- Estilos (sin cambios) ---
 const nodeClasses = "relative bg-white border border-purple-400 rounded-xl w-[350px] shadow-lg font-sans";
 const headerClasses = "flex items-center justify-between bg-purple-50 border-b border-purple-300 py-2.5 px-4 rounded-t-xl font-semibold relative";
-const bodyClasses = "p-4 space-y-4 max-h-[400px] overflow-y-auto";
+const bodyClasses = "p-4 space-y-4 max-h-[700px] overflow-y-auto"; // <-- AHORA CON SCROLL
 const footerClasses = "bg-gray-50 border-t border-gray-200 py-2.5 px-4 rounded-b-xl";
 const footerInputClasses = "editable-field footer-input w-full bg-green-500 text-white border-2 border-green-600 p-2.5 rounded-lg font-bold text-center placeholder-white/70 focus:outline-none focus:ring-2 focus:ring-green-400";
 const textInputClasses = "w-full border border-gray-300 rounded p-1.5 text-sm bg-white";
-// ✅ NUEVA CONSTANTE (copiada de FlowFormNode)
 const textAreaClasses = "w-full border border-gray-300 rounded p-1.5 text-sm min-h-[100px] max-h-[500px] overflow-y-auto resize-none bg-white";
 const clickableIconClasses = "clickable-icon p-1 text-gray-500 hover:text-black cursor-pointer";
 const componentHeaderClasses = "text-sm font-semibold text-gray-700 mb-1 block";
-// --- Fin Estilos ---
+// ✅ --- NUEVO ESTILO ---
+const smallInputClasses = "w-full border border-gray-300 rounded p-1 text-sm bg-white";
+
 
 const daysOfWeek = [
   { label: 'D', value: 0 },
@@ -27,22 +29,17 @@ const daysOfWeek = [
   { label: 'S', value: 6 },
 ];
 
-/**
- * ✅ FUNCIÓN CORREGIDA (para la Vista Previa)
- * Transforma los datos de este nodo (config) a un formato que PreviewModal entiende (componentes).
- */
 const transformDataForPreview = (nodeData) => {
+  // ... (función sin cambios)
   const { config, ...rest } = nodeData;
   return {
     ...rest,
-    type: 'formNode', // Finge ser un formNode
-    introText: config?.introText || '', // Pasa el nuevo texto introductorio
+    type: 'formNode', 
+    introText: config?.introText || '',
     components: [
-      // ✅ Envía un 'Dropdown' como lo espera PreviewModal.jsx
       {
         type: 'Dropdown', 
         label: config?.labelDate || 'Selecciona la fecha',
-        // No necesita 'options' de ejemplo, PreviewModal solo dibuja el contenedor del Dropdown
       }
     ]
   };
@@ -51,26 +48,28 @@ const transformDataForPreview = (nodeData) => {
 
 export default function FlowAppointmentNode({ data, id }) {
   
-  // Setea los valores por defecto si no existen
-  const config = data.config || {
-    daysAvailable: [1, 2, 3, 4, 5], // L-V
+  // Setea los valores por defecto si no existen (importante para flujos antiguos)
+  const config = {
+    daysAvailable: [1, 2, 3, 4, 5],
     intervalMinutes: 60,
     daysToShow: 30,
     labelDate: "Selecciona la fecha",
-    introText: "" // ✅ Añadido
+    introText: "",
+    startTime: "08:00",
+    endTime: "17:00",
+    breakTimes: [],
+    ...data.config, // Sobrescribe con lo que venga de 'data'
   };
 
-  // Función genérica para actualizar data (title, footer_label)
   const handleChange = (e) => {
+    // ... (sin cambios)
     const { name, value } = e.target;
     data.updateNodeData(id, { ...data, [name]: value });
   };
 
-  // Función para actualizar el objeto data.config
   const updateConfig = (key, value) => {
-    // Si el valor es un número, asegúrate de guardarlo como número
+    // ... (sin cambios)
     const numericValue = ['intervalMinutes', 'daysToShow'].includes(key) ? parseInt(value, 10) : value;
-    
     data.updateNodeData(id, {
       ...data,
       config: {
@@ -80,8 +79,8 @@ export default function FlowAppointmentNode({ data, id }) {
     });
   };
 
-  // Manejador para los botones de días
   const toggleDay = (dayValue) => {
+    // ... (sin cambios)
     const currentDays = config.daysAvailable || [];
     let newDays;
     if (currentDays.includes(dayValue)) {
@@ -92,9 +91,31 @@ export default function FlowAppointmentNode({ data, id }) {
     updateConfig('daysAvailable', newDays);
   };
 
+  // --- ✅ NUEVAS FUNCIONES PARA TIEMPOS MUERTOS ---
+  const addBreakTime = () => {
+    const newBreak = { id: Date.now(), start: "12:00", end: "13:00" };
+    const newBreaks = [...(config.breakTimes || []), newBreak];
+    updateConfig('breakTimes', newBreaks);
+  };
+
+  const updateBreakTime = (index, field, value) => {
+    const newBreaks = [...config.breakTimes];
+    if(newBreaks[index]) {
+      newBreaks[index] = { ...newBreaks[index], [field]: value };
+      updateConfig('breakTimes', newBreaks);
+    }
+  };
+
+  const removeBreakTime = (index) => {
+    const newBreaks = config.breakTimes.filter((_, i) => i !== index);
+    updateConfig('breakTimes', newBreaks);
+  };
+  // --- FIN DE NUEVAS FUNCIONES ---
+
   return (
     <>
       <style>{`
+        /* ... (estilos de handles sin cambios) ... */
         .custom-handle { width: 24px; height: 24px; background: #edf2f7; border: 2px solid #a0aec0; border-radius: 50%; transition: all 0.2s ease; display: flex; align-items: center; justify-content: center; }
         .custom-handle:hover { transform: scale(1.15); background: #48bb78; border-color: #2f855a; }
         .editable-container:hover .edit-icon { display: inline-block; }
@@ -103,20 +124,13 @@ export default function FlowAppointmentNode({ data, id }) {
       `}</style>
 
       <div className={nodeClasses}>
-        {/* Handle de entrada (target) */}
         <Handle type="target" position={Position.Left} className="custom-handle" style={{left: '-32px'}} id={`${id}-target`}/>
 
-        {/* Cabecera */}
         <div className={headerClasses}>
+          {/* ... (cabecera sin cambios) ... */}
           <div className="editable-container flex-1 relative flex items-center">
             <FaCalendarAlt className="mr-2 text-purple-600" />
-            <input
-              name="title"
-              value={data.title || ''}
-              onChange={handleChange}
-              placeholder="Título de Cita..."
-              className="editable-field flex-grow bg-transparent focus:outline-none font-semibold text-gray-800"
-            />
+            <input name="title" value={data.title || ''} onChange={handleChange} placeholder="Título de Cita..." className="editable-field flex-grow bg-transparent focus:outline-none font-semibold text-gray-800" />
             <FaPen className="edit-icon" size={12}/>
           </div>
           <button onClick={() => data.deleteNode(id)} className={clickableIconClasses} title="Eliminar pantalla">
@@ -124,22 +138,17 @@ export default function FlowAppointmentNode({ data, id }) {
           </button>
         </div>
 
-        {/* Cuerpo (Editor de configuración) */}
+        {/* --- ✅ CUERPO MODIFICADO --- */}
         <div className={bodyClasses}>
             
-            {/* ✅ NUEVO CAMPO: TEXTO INTRODUCTORIO */}
             <div>
                  <label className={componentHeaderClasses}>Texto Introductorio</label>
                  <textarea
                     name="introText"
                     value={config.introText || ''}
                     onChange={(e) => updateConfig('introText', e.target.value)}
-                    onInput={(e) => { 
-                        e.target.style.height = 'auto'; 
-                        e.target.style.height = (e.target.scrollHeight) + 'px';
-                    }}
                     placeholder="Escribe una descripción para esta pantalla..."
-                    className={textAreaClasses} // Usa la nueva constante
+                    className={textAreaClasses}
                     rows={4}
                  />
             </div>
@@ -157,11 +166,10 @@ export default function FlowAppointmentNode({ data, id }) {
 
             <div>
                 <label className={componentHeaderClasses}>Días Disponibles</label>
+                {/* ... (selector de días sin cambios) ... */}
                 <div className="flex justify-between gap-1 p-2 bg-gray-100 rounded-lg">
                     {daysOfWeek.map(day => (
-                        <button
-                            key={day.value}
-                            onClick={() => toggleDay(day.value)}
+                        <button key={day.value} onClick={() => toggleDay(day.value)}
                             className={`font-bold w-9 h-9 rounded-full text-sm transition-colors ${
                                 config.daysAvailable.includes(day.value) 
                                 ? 'bg-purple-600 text-white' 
@@ -176,42 +184,67 @@ export default function FlowAppointmentNode({ data, id }) {
 
              <div className="grid grid-cols-2 gap-4">
                 <div>
-                    <label className={componentHeaderClasses}>Intervalo (minutos)</label>
-                    <input
-                        type="number"
-                        step="15"
-                        value={config.intervalMinutes} 
-                        onChange={(e) => updateConfig('intervalMinutes', e.target.value)}
-                        className={textInputClasses} 
-                    />
+                    <label className={componentHeaderClasses}>Intervalo (min)</label>
+                    <input type="number" step="15" value={config.intervalMinutes} onChange={(e) => updateConfig('intervalMinutes', e.target.value)} className={textInputClasses} />
                 </div>
                 <div>
                     <label className={componentHeaderClasses}>Rango (días)</label>
-                    <input
-                        type="number"
-                        step="1"
-                        value={config.daysToShow} 
-                        onChange={(e) => updateConfig('daysToShow', e.target.value)}
-                        className={textInputClasses} 
-                    />
+                    <input type="number" step="1" value={config.daysToShow} onChange={(e) => updateConfig('daysToShow', e.target.value)} className={textInputClasses} />
                 </div>
              </div>
-        </div>
 
-        {/* Pie de Página (Botón de envío) */}
+             {/* --- ✅ NUEVO: RANGO DE HORAS GENERAL --- */}
+             <div className="p-3 bg-gray-50 rounded-lg border border-gray-200">
+                <label className={componentHeaderClasses}>Horario General</label>
+                <div className="grid grid-cols-2 gap-4">
+                    <div>
+                        <label className="text-xs font-medium text-gray-500">Hora Inicio</label>
+                        <input type="time" value={config.startTime} onChange={(e) => updateConfig('startTime', e.target.value)} className={smallInputClasses} />
+                    </div>
+                    <div>
+                        <label className="text-xs font-medium text-gray-500">Hora Fin</label>
+                        <input type="time" value={config.endTime} onChange={(e) => updateConfig('endTime', e.target.value)} className={smallInputClasses} />
+                    </div>
+                </div>
+             </div>
+             {/* --- FIN RANGO DE HORAS --- */}
+
+
+             {/* --- ✅ NUEVO: TIEMPOS MUERTOS (BREAKS) --- */}
+             <div>
+                <label className={componentHeaderClasses}>Tiempos Muertos (Ej. Almuerzo)</label>
+                <div className="space-y-2">
+                    {(config.breakTimes || []).map((breakTime, index) => (
+                        <div key={breakTime.id} className="flex items-center gap-2 p-2 bg-gray-100 rounded">
+                            <div className="flex-1">
+                                <label className="text-xs font-medium text-gray-500">Inicio</label>
+                                <input type="time" value={breakTime.start} onChange={(e) => updateBreakTime(index, 'start', e.target.value)} className={smallInputClasses} />
+                            </div>
+                            <div className="flex-1">
+                                <label className="text-xs font-medium text-gray-500">Fin</label>
+                                <input type="time" value={breakTime.end} onChange={(e) => updateBreakTime(index, 'end', e.target.value)} className={smallInputClasses} />
+                            </div>
+                            <button onClick={() => removeBreakTime(index)} className="text-red-500 hover:text-red-700 self-end p-2">
+                                <FaTrash size={14} />
+                            </button>
+                        </div>
+                    ))}
+                </div>
+                <button onClick={addBreakTime} className="text-xs text-blue-600 mt-2 cursor-pointer flex items-center gap-1 hover:text-blue-800">
+                    <FaPlus size={10}/> Añadir tiempo muerto
+                </button>
+             </div>
+             {/* --- FIN TIEMPOS MUERTOS --- */}
+
+        </div>
+        {/* --- FIN CUERPO MODIFICADO --- */}
+
         <div className={footerClasses}>
+          {/* ... (footer sin cambios) ... */}
           <div className="editable-container relative">
-            <input
-              name="footer_label"
-              value={data.footer_label || 'Continuar'}
-              onChange={handleChange}
-              placeholder="Texto del botón final..."
-              className={footerInputClasses}
-            />
+            <input name="footer_label" value={data.footer_label || 'Continuar'} onChange={handleChange} placeholder="Texto del botón final..." className={footerInputClasses} />
             <FaPen className="edit-icon" size={12} style={{color: 'white', opacity: 0.7, right: '15px'}}/>
           </div>
-          
-          {/* ✅ El onClick ahora transforma los datos para el preview */}
           <button
             onClick={() => data.openPreviewModal(transformDataForPreview(data))}
             className="w-full bg-white text-blue-600 border border-blue-400 py-2.5 rounded-lg font-semibold text-sm hover:bg-blue-50 transition-colors flex items-center justify-center gap-2 mt-2"
@@ -221,7 +254,6 @@ export default function FlowAppointmentNode({ data, id }) {
           </button>
         </div>
         
-        {/* Handle de salida (source) */}
         <Handle type="source" position={Position.Right} className="custom-handle" id={`${id}-source`}/>
       </div>
     </>

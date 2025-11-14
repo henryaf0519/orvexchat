@@ -15,14 +15,14 @@ import { useFlowGraph } from "../../hooks/useFlowGraph";
 import { parseJsonToElements, generateMetaFlowJson } from "../../utils/flowTransformers";
 
 // Modales y Nodos
-import PreviewModal from "../PreviewModal";
-import InputModal from "../InputModal";
-import FlowInstructionsModal from "../FlowInstructionsModal";
-import FlowScreenNode from "../FlowScreenNode";
-import FlowCatalogNode from "../FlowCatalogNode";
-import FlowFormNode from "../FlowFormNode";
-import FlowConfirmationNode from "../FlowConfirmationNode";
-import FlowAppointmentNode from "../FlowAppointmentNode";
+import PreviewModal from "./PreviewModal";
+import InputModal from "./InputModal";
+import FlowInstructionsModal from "./FlowInstructionsModal";
+import FlowScreenNode from "./FlowScreenNode";
+import FlowCatalogNode from "./FlowCatalogNode";
+import FlowFormNode from "./FlowFormNode";
+import FlowConfirmationNode from "./FlowConfirmationNode";
+import FlowAppointmentNode from "./FlowAppointmentNode";
 
 const nodeTypes = {
   screenNode: FlowScreenNode,

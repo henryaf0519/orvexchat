@@ -1,4 +1,3 @@
-// src/utils/flowTransformers.js
 import { MarkerType } from "reactflow";
 
 // --- Funciones Auxiliares ---
@@ -54,8 +53,16 @@ export const reconstructNodeData = (screen, nodeType) => {
         return {
           ...baseData,
           config: {
+            // Defaults antiguos
             labelDate: dropdown?.label || "Selecciona la fecha",
             introText: introText || "",
+            daysAvailable: [1, 2, 3, 4, 5],
+            intervalMinutes: 60,
+            daysToShow: 30,
+            // ✅ Defaults nuevos (Horarios y Tiempos Muertos)
+            startTime: "08:00",
+            endTime: "17:00",
+            breakTimes: [] 
           },
         };
 
@@ -137,22 +144,26 @@ export const parseJsonToElements = (flowJson, navMap) => {
 
   const { screens, routing_model } = flowJson;
   const screenMap = new Map(screens.map((s) => [s.id, s]));
+
+  // Extraemos la configuración híbrida
   const screenConfig = navMap ? navMap.__SCREEN_CONFIG__?.SCREENS : {};
+  console.log("Usando Screen Config:", screenConfig);
 
   const initialNodes = screens.map((screen, index) => {
     let nodeType;
     if (screenConfig && screenConfig[screen.id] && screenConfig[screen.id].type) {
       nodeType = screenConfig[screen.id].type;
     } else {
-      nodeType = determineNodeType(screen);
+      nodeType = determineNodeType(screen); 
     }
 
     let nodeData = reconstructNodeData(screen, nodeType);
 
+    // Fusiona la config guardada sobre los defaults
     if (screenConfig && screenConfig[screen.id] && screenConfig[screen.id].config) {
       nodeData.config = {
-        ...nodeData.config,
-        ...screenConfig[screen.id].config,
+        ...nodeData.config, // Defaults de reconstructNodeData
+        ...screenConfig[screen.id].config, // Sobrescribe con lo guardado (incluyendo breakTimes)
       };
     }
 
@@ -162,7 +173,6 @@ export const parseJsonToElements = (flowJson, navMap) => {
       position: { x: 250 + index * 400, y: 100 },
       data: {
         ...nodeData,
-        // Estas funciones vacías se reemplazarán en el componente con injectNodeFunctions
         updateNodeData: () => {},
         openPreviewModal: () => {},
         deleteNode: () => {},
@@ -174,7 +184,7 @@ export const parseJsonToElements = (flowJson, navMap) => {
 
   if (navMap && typeof navMap === "object") {
     for (const [optionId, navData] of Object.entries(navMap)) {
-      if (optionId === "__SCREEN_CONFIG__") continue;
+      if (optionId === "__SCREEN_CONFIG__") continue; // Ignora la config
 
       const targetScreenId = navData.pantalla;
       if (!targetScreenId || !screenMap.has(targetScreenId)) continue;
@@ -263,9 +273,10 @@ export const generateMetaFlowJson = (nodes, edges) => {
       const jsonScreenID = idLookup.get(node.id);
       const outgoingEdges = edges.filter((e) => e.source === node.id);
 
+      // Configuración base
       screenConfigMap.__SCREEN_CONFIG__.SCREENS[jsonScreenID] = {
         type: node.type,
-        dataSourceTrigger: null,
+        dataSourceTrigger: null, 
       };
 
       let screenChildren = [];
@@ -276,7 +287,6 @@ export const generateMetaFlowJson = (nodes, edges) => {
       if (node.type === "screenNode") {
         const formPayload = {};
         const formChildren = [];
-
         (node.data.components || []).forEach((component, compIndex) => {
           if (component.type === "RadioButtonsGroup") {
             formPayload[dynamicName] = `\${form.${dynamicName}}`;
@@ -292,13 +302,7 @@ export const generateMetaFlowJson = (nodes, edges) => {
               }
               return { id: option.id, title: option.title };
             });
-            formChildren.push({
-              type: "RadioButtonsGroup",
-              label: component.label || "Selecciona una opción:",
-              name: dynamicName,
-              "data-source": dataSource,
-              required: true,
-            });
+            formChildren.push({ type: "RadioButtonsGroup", label: component.label || "Selecciona:", name: dynamicName, "data-source": dataSource, required: true });
           } else if (component.type === "TextBody") {
             formChildren.push({ type: "TextBody", text: component.text });
           } else if (component.type === "Image") {
@@ -306,22 +310,13 @@ export const generateMetaFlowJson = (nodes, edges) => {
               const base64Content = component.src.split(",")[1];
               formChildren.push({ type: "Image", src: base64Content });
             }
-          } else if (component.type === "TextInput") {
-             // Opcional: Manejar inputs simples si los añades a screenNode
           }
         });
-
-        formChildren.push({
-          type: "Footer",
-          label: node.data.footer_label || "Continuar",
-          "on-click-action": { name: "data_exchange", payload: formPayload },
-        });
+        formChildren.push({ type: "Footer", label: node.data.footer_label || "Continuar", "on-click-action": { name: "data_exchange", payload: formPayload } });
         screenChildren.push({ type: "Form", name: `${dynamicName}_form`, children: formChildren });
 
       } else if (node.type === "catalogNode") {
-          // Lógica de Catálogo
           screenChildren.push({ type: "TextBody", text: node.data.introText || "" });
-          // ... Lógica simplificada para catálogo (similar a screenNode para opciones)
           const dataSource = (node.data.radioOptions || []).map((opt, optIndex) => {
               const handleId = `${node.id}-catalog-option-${optIndex}`;
               const connectedEdge = outgoingEdges.find((e) => e.sourceHandle === handleId);
@@ -334,31 +329,20 @@ export const generateMetaFlowJson = (nodes, edges) => {
               }
               return { id: opt.id, title: opt.title };
           });
-          screenChildren.push({
-              type: "RadioButtonsGroup",
-              label: node.data.radioLabel || "Selecciona:",
-              name: "catalog_selection",
-              "data-source": dataSource,
-              required: true
-          });
-          screenChildren.push({
-              type: "Footer",
-              label: node.data.footer_label || "Seleccionar",
-              "on-click-action": { name: "data_exchange", payload: { selected: "${form.catalog_selection}" } }
-          });
+          screenChildren.push({ type: "RadioButtonsGroup", label: node.data.radioLabel || "Selecciona:", name: "catalog_selection", "data-source": dataSource, required: true });
+          screenChildren.push({ type: "Footer", label: node.data.footer_label || "Seleccionar", "on-click-action": { name: "data_exchange", payload: { selected: "${form.catalog_selection}" } } });
           screenChildren = [{ type: "Form", name: `${dynamicName}_catalog_form`, children: screenChildren }];
 
       } else if (node.type === "appointmentNode") {
+        // ✅ GUARDA LA CONFIG COMPLETA (incluye startTime, endTime, breakTimes)
         screenConfigMap.__SCREEN_CONFIG__.SCREENS[jsonScreenID] = {
           type: node.type,
           dataSourceTrigger: "fetch_available_dates",
-          config: node.data.config || {},
+          config: node.data.config || {}, 
         };
-
         const footerEdge = outgoingEdges.find((e) => e.sourceHandle === `${node.id}-source`);
         const nextScreenId = footerEdge ? idLookup.get(footerEdge.target) : jsonScreenID;
         if (footerEdge) allDestinations.add(idLookup.get(footerEdge.target));
-
         screenChildren.push({
           type: "Form",
           name: "appointment_form",
@@ -386,8 +370,6 @@ export const generateMetaFlowJson = (nodes, edges) => {
             },
           ],
         });
-        
-        // Retornamos estructura especial para appointment con el bloque 'data'
         metaFlow.routing_model[jsonScreenID] = Array.from(allDestinations);
         return {
             id: jsonScreenID,
@@ -403,38 +385,24 @@ export const generateMetaFlowJson = (nodes, edges) => {
       } else if (node.type === "formNode") {
         const formChildren = [];
         if(node.data.introText) formChildren.push({ type: "TextBody", text: node.data.introText });
-        
         (node.data.components || []).forEach((comp) => {
              formChildren.push({ type: "TextInput", label: comp.label, name: comp.name, required: comp.required, "input-type": "text" });
         });
-
         const footerEdge = outgoingEdges.find((e) => e.sourceHandle === `${node.id}-source`);
         const nextScreenId = footerEdge ? idLookup.get(footerEdge.target) : null;
         if (nextScreenId) allDestinations.add(nextScreenId);
-
-        // Los Forms suelen usar 'navigate' si no intercambian datos, o data_exchange si validan
-        // Simplificaremos usando navigate si hay destino
         const action = nextScreenId 
             ? { name: "navigate", next: { type: "screen", name: nextScreenId }, payload: formChildren.reduce((acc, curr) => ({...acc, [curr.name]: `\${form.${curr.name}}`}), {}) }
             : { name: "data_exchange", payload: {} };
-
-        formChildren.push({
-            type: "Footer",
-            label: node.data.footer_label || "Enviar",
-            "on-click-action": action
-        });
+        formChildren.push({ type: "Footer", label: node.data.footer_label || "Enviar", "on-click-action": action });
         screenChildren.push({ type: "Form", name: `${dynamicName}_form`, children: formChildren });
 
       } else if (node.type === "confirmationNode") {
         screenTerminal = true;
         screenChildren.push({ type: "TextHeading", text: node.data.headingText || "" });
-        screenChildren.push({ type: "TextBody", text: "${data.details}" }); // Dato fijo
+        screenChildren.push({ type: "TextBody", text: "${data.details}" });
         screenChildren.push({ type: "TextBody", text: node.data.bodyText || "" });
-        screenChildren.push({
-            type: "Footer",
-            label: node.data.footer_label || "Finalizar",
-            "on-click-action": { name: "complete", payload: {} }
-        });
+        screenChildren.push({ type: "Footer", label: node.data.footer_label || "Finalizar", "on-click-action": { name: "complete", payload: {} } });
         screenChildren = [{ type: "Form", name: "confirmation_form", children: screenChildren }];
       }
 
@@ -447,14 +415,19 @@ export const generateMetaFlowJson = (nodes, edges) => {
         terminal: screenTerminal,
         layout: { type: "SingleColumnLayout", children: screenChildren },
       };
-    }).filter(Boolean);
+    }).filter(Boolean); 
 
   metaFlow.screens = screens;
 
   const finalNavigationMap = {
-    ...navigationMap,
-    ...screenConfigMap,
+    ...navigationMap,      
+    ...screenConfigMap,    
   };
 
-  return { metaFlowJson: metaFlow, navigationMapJson: finalNavigationMap };
+  console.log("JSON Híbrido Final (para AWS):", JSON.stringify(finalNavigationMap, null, 2));
+
+  return { 
+      metaFlowJson: metaFlow, 
+      navigationMapJson: finalNavigationMap
+  };
 };

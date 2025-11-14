@@ -1,9 +1,9 @@
 import React from 'react';
 import { X, AlertTriangle } from 'lucide-react'; // <-- Importar ícono de alerta
-import { useChatStore } from '../store/chatStore';
+import { useChatStore } from '../../store/chatStore';
 
 // Asegúrate de que esta ruta sea correcta para tu nueva imagen (verificar.jpg)
-import metaExtremoImage from '../assets/verificar.jpg'; 
+import metaExtremoImage from '../../assets/verificar.jpg'; 
 
 export default function FlowInstructionsModal({ flowName, onConfirm, onClose, test }) {
   console.log("FlowInstructionsModal renderizado con metaFlowId:", flowName);
