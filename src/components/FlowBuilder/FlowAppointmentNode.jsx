@@ -74,6 +74,7 @@ export default function FlowAppointmentNode({ data, id }) {
     startTime: "08:00",
     endTime: "17:00",
     breakTimes: [],
+    appointmentDescription: "Cita agendada",
     tool: "none",
     ...data.config,
   };
@@ -287,6 +288,25 @@ export default function FlowAppointmentNode({ data, id }) {
               rows={4}
             />{" "}
           </div>{" "}
+          <div>
+            <label className={componentHeaderClasses}>
+              Descripción de la Cita
+            </label>
+            <textarea
+              name="appointmentDescription"
+              value={config.appointmentDescription || ""}
+              onChange={(e) =>
+                updateConfig("appointmentDescription", e.target.value)
+              }
+              placeholder="Ej: Cita de demostración de producto"
+              className={textAreaClasses} // Reutilizamos la clase de textarea
+              rows={2}
+            />
+            <p className="text-xs text-gray-500 mt-1 px-1">
+              Este texto se usará como título/descripción en el evento de Google
+              Calendar.
+            </p>
+          </div>
           <div>
             <label className={componentHeaderClasses}>
               Etiqueta del Selector

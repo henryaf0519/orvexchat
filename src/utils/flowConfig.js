@@ -38,6 +38,7 @@ export const NODE_DEFAULTS = {
       daysToShow: 30,
       startTime: "08:00",
       endTime: "17:00",
+      appointmentDescription: "Cita agendada",
       breakTimes: [
         { id: 1, start: "13:00", end: "14:00" },
         
