@@ -6,10 +6,7 @@ export const formatTitleToID = (title, index) => {
   if (!title || title.trim() === "") {
     return `PANTALLA_SIN_TITULO_${index + 1}`;
   }
-  return title
-    .trim()
-    .toUpperCase()
-    .replace(/\s+/g, "_");
+  return title.trim().toUpperCase().replace(/\s+/g, "_");
 };
 
 export const determineNodeType = (screen) => {
@@ -49,7 +46,9 @@ export const reconstructNodeData = (screen, nodeType) => {
     switch (nodeType) {
       case "appointmentNode":
         const dropdown = form.children.find((c) => c.type === "Dropdown");
-        const introText = form.children.find((c) => c.type === "TextBody")?.text;
+        const introText = form.children.find(
+          (c) => c.type === "TextBody"
+        )?.text;
         return {
           ...baseData,
           config: {
@@ -63,70 +62,88 @@ export const reconstructNodeData = (screen, nodeType) => {
             startTime: "08:00",
             endTime: "17:00",
             breakTimes: [],
-            tool: 'none'
+            tool: "none",
           },
         };
 
       case "confirmationNode":
         return {
           ...baseData,
-          headingText: form.children.find((c) => c.type === "TextHeading")?.text || "",
-          bodyText: form.children.find((c) => c.type === "TextBody" && c.text !== "${data.details}")?.text || "",
+          headingText:
+            form.children.find((c) => c.type === "TextHeading")?.text || "",
+          bodyText:
+            form.children.find(
+              (c) => c.type === "TextBody" && c.text !== "${data.details}"
+            )?.text || "",
           footer_label: footer?.label || "Finalizar",
         };
 
       case "catalogNode":
         return {
           ...baseData,
-          introText: form.children.find((c) => c.type === "TextBody")?.text || "",
+          introText:
+            form.children.find((c) => c.type === "TextBody")?.text || "",
           products: [],
-          radioLabel: form.children.find((c) => c.type === "RadioButtonsGroup")?.label || "",
-          radioOptions: form.children.find((c) => c.type === "RadioButtonsGroup")?.["data-source"].map((opt) => ({
-            id: opt.id,
-            title: opt.title,
-          })) || [],
+          radioLabel:
+            form.children.find((c) => c.type === "RadioButtonsGroup")?.label ||
+            "",
+          radioOptions:
+            form.children
+              .find((c) => c.type === "RadioButtonsGroup")
+              ?.["data-source"].map((opt) => ({
+                id: opt.id,
+                title: opt.title,
+              })) || [],
         };
 
       case "formNode":
         return {
           ...baseData,
-          introText: form.children.find((c) => c.type === "TextBody")?.text || "",
-          components: form.children.filter((c) => c.type === "TextInput").map((c, i) => ({
-            type: "TextInput",
-            id: `input_${i}`,
-            label: c.label,
-            name: c.name,
-            required: c.required,
-          })) || [],
+          introText:
+            form.children.find((c) => c.type === "TextBody")?.text || "",
+          components:
+            form.children
+              .filter((c) => c.type === "TextInput")
+              .map((c, i) => ({
+                type: "TextInput",
+                id: `input_${i}`,
+                label: c.label,
+                name: c.name,
+                required: c.required,
+              })) || [],
         };
 
       case "screenNode":
       default:
         return {
           ...baseData,
-          components: form.children.filter((c) => c.type !== "Footer").map((c, i) => {
-            if (c.type === "Image") {
-              return {
-                type: "Image",
-                id: `image_${i}`,
-                src: c.src ? `data:image/png;base64,${c.src}` : null,
-              };
-            }
-            if (c.type === "TextBody") {
-              return { type: "TextBody", id: `textbody_${i}`, text: c.text };
-            }
-            if (c.type === "RadioButtonsGroup") {
-              return {
-                type: "RadioButtonsGroup",
-                id: `radio_${i}`,
-                options: c["data-source"].map((opt) => ({
-                  id: opt.id,
-                  title: opt.title,
-                })) || [],
-              };
-            }
-            return null;
-          }).filter(Boolean),
+          components: form.children
+            .filter((c) => c.type !== "Footer")
+            .map((c, i) => {
+              if (c.type === "Image") {
+                return {
+                  type: "Image",
+                  id: `image_${i}`,
+                  src: c.src ? `data:image/png;base64,${c.src}` : null,
+                };
+              }
+              if (c.type === "TextBody") {
+                return { type: "TextBody", id: `textbody_${i}`, text: c.text };
+              }
+              if (c.type === "RadioButtonsGroup") {
+                return {
+                  type: "RadioButtonsGroup",
+                  id: `radio_${i}`,
+                  options:
+                    c["data-source"].map((opt) => ({
+                      id: opt.id,
+                      title: opt.title,
+                    })) || [],
+                };
+              }
+              return null;
+            })
+            .filter(Boolean),
         };
     }
   } catch (error) {
@@ -152,16 +169,24 @@ export const parseJsonToElements = (flowJson, navMap) => {
 
   const initialNodes = screens.map((screen, index) => {
     let nodeType;
-    if (screenConfig && screenConfig[screen.id] && screenConfig[screen.id].type) {
+    if (
+      screenConfig &&
+      screenConfig[screen.id] &&
+      screenConfig[screen.id].type
+    ) {
       nodeType = screenConfig[screen.id].type;
     } else {
-      nodeType = determineNodeType(screen); 
+      nodeType = determineNodeType(screen);
     }
 
     let nodeData = reconstructNodeData(screen, nodeType);
 
     // Fusiona la config guardada sobre los defaults
-    if (screenConfig && screenConfig[screen.id] && screenConfig[screen.id].config) {
+    if (
+      screenConfig &&
+      screenConfig[screen.id] &&
+      screenConfig[screen.id].config
+    ) {
       nodeData.config = {
         ...nodeData.config, // Defaults de reconstructNodeData
         ...screenConfig[screen.id].config, // Sobrescribe con lo guardado (incluyendo breakTimes)
@@ -197,7 +222,9 @@ export const parseJsonToElements = (flowJson, navMap) => {
         if (node.type === "screenNode" && node.data.components) {
           node.data.components.forEach((comp, compIndex) => {
             if (comp.type === "RadioButtonsGroup" && comp.options) {
-              const optIndex = comp.options.findIndex((opt) => opt.id === optionId);
+              const optIndex = comp.options.findIndex(
+                (opt) => opt.id === optionId
+              );
               if (optIndex !== -1) {
                 sourceNodeId = node.id;
                 sourceHandleId = `${node.id}-component-${compIndex}-option-${optIndex}`;
@@ -205,7 +232,9 @@ export const parseJsonToElements = (flowJson, navMap) => {
             }
           });
         } else if (node.type === "catalogNode" && node.data.radioOptions) {
-          const optIndex = node.data.radioOptions.findIndex((opt) => opt.id === optionId);
+          const optIndex = node.data.radioOptions.findIndex(
+            (opt) => opt.id === optionId
+          );
           if (optIndex !== -1) {
             sourceNodeId = node.id;
             sourceHandleId = `${node.id}-catalog-option-${optIndex}`;
@@ -227,11 +256,21 @@ export const parseJsonToElements = (flowJson, navMap) => {
     }
   }
 
-  for (const [sourceScreenId, targetScreenIds] of Object.entries(routing_model)) {
+  for (const [sourceScreenId, targetScreenIds] of Object.entries(
+    routing_model
+  )) {
     const sourceNode = initialNodes.find((n) => n.id === sourceScreenId);
-    if (!sourceNode || sourceNode.type === "screenNode" || sourceNode.type === "catalogNode") continue;
+    if (
+      !sourceNode ||
+      sourceNode.type === "screenNode" ||
+      sourceNode.type === "catalogNode"
+    )
+      continue;
 
-    if (sourceNode.type === "formNode" || sourceNode.type === "appointmentNode") {
+    if (
+      sourceNode.type === "formNode" ||
+      sourceNode.type === "appointmentNode"
+    ) {
       const targetId = targetScreenIds[0];
       if (targetId && screenMap.has(targetId)) {
         initialEdges.push({
@@ -270,14 +309,15 @@ export const generateMetaFlowJson = (nodes, edges) => {
     idLookup.set(n.id, jsonScreenID);
   });
 
-  const screens = nodes.map((node, index) => {
+  const screens = nodes
+    .map((node, index) => {
       const jsonScreenID = idLookup.get(node.id);
       const outgoingEdges = edges.filter((e) => e.source === node.id);
 
       // Configuración base
       screenConfigMap.__SCREEN_CONFIG__.SCREENS[jsonScreenID] = {
         type: node.type,
-        dataSourceTrigger: null, 
+        dataSourceTrigger: null,
       };
 
       let screenChildren = [];
@@ -291,19 +331,32 @@ export const generateMetaFlowJson = (nodes, edges) => {
         (node.data.components || []).forEach((component, compIndex) => {
           if (component.type === "RadioButtonsGroup") {
             formPayload[dynamicName] = `\${form.${dynamicName}}`;
-            const dataSource = (component.options || []).map((option, optIndex) => {
-              const handleId = `${node.id}-component-${compIndex}-option-${optIndex}`;
-              const connectedEdge = outgoingEdges.find((e) => e.sourceHandle === handleId);
-              if (connectedEdge) {
-                const targetScreenId = idLookup.get(connectedEdge.target);
-                if (targetScreenId) {
-                  navigationMap[option.id] = { pantalla: targetScreenId, valor: option.title || "" };
-                  allDestinations.add(targetScreenId);
+            const dataSource = (component.options || []).map(
+              (option, optIndex) => {
+                const handleId = `${node.id}-component-${compIndex}-option-${optIndex}`;
+                const connectedEdge = outgoingEdges.find(
+                  (e) => e.sourceHandle === handleId
+                );
+                if (connectedEdge) {
+                  const targetScreenId = idLookup.get(connectedEdge.target);
+                  if (targetScreenId) {
+                    navigationMap[option.id] = {
+                      pantalla: targetScreenId,
+                      valor: option.title || "",
+                    };
+                    allDestinations.add(targetScreenId);
+                  }
                 }
+                return { id: option.id, title: option.title };
               }
-              return { id: option.id, title: option.title };
+            );
+            formChildren.push({
+              type: "RadioButtonsGroup",
+              label: component.label || "Selecciona:",
+              name: dynamicName,
+              "data-source": dataSource,
+              required: true,
             });
-            formChildren.push({ type: "RadioButtonsGroup", label: component.label || "Selecciona:", name: dynamicName, "data-source": dataSource, required: true });
           } else if (component.type === "TextBody") {
             formChildren.push({ type: "TextBody", text: component.text });
           } else if (component.type === "Image") {
@@ -313,42 +366,84 @@ export const generateMetaFlowJson = (nodes, edges) => {
             }
           }
         });
-        formChildren.push({ type: "Footer", label: node.data.footer_label || "Continuar", "on-click-action": { name: "data_exchange", payload: formPayload } });
-        screenChildren.push({ type: "Form", name: `${dynamicName}_form`, children: formChildren });
-
+        formChildren.push({
+          type: "Footer",
+          label: node.data.footer_label || "Continuar",
+          "on-click-action": { name: "data_exchange", payload: formPayload },
+        });
+        screenChildren.push({
+          type: "Form",
+          name: `${dynamicName}_form`,
+          children: formChildren,
+        });
       } else if (node.type === "catalogNode") {
-          screenChildren.push({ type: "TextBody", text: node.data.introText || "" });
-          const dataSource = (node.data.radioOptions || []).map((opt, optIndex) => {
-              const handleId = `${node.id}-catalog-option-${optIndex}`;
-              const connectedEdge = outgoingEdges.find((e) => e.sourceHandle === handleId);
-              if (connectedEdge) {
-                  const targetScreenId = idLookup.get(connectedEdge.target);
-                  if (targetScreenId) {
-                      navigationMap[opt.id] = { pantalla: targetScreenId, valor: opt.title || "" };
-                      allDestinations.add(targetScreenId);
-                  }
+        screenChildren.push({
+          type: "TextBody",
+          text: node.data.introText || "",
+        });
+        const dataSource = (node.data.radioOptions || []).map(
+          (opt, optIndex) => {
+            const handleId = `${node.id}-catalog-option-${optIndex}`;
+            const connectedEdge = outgoingEdges.find(
+              (e) => e.sourceHandle === handleId
+            );
+            if (connectedEdge) {
+              const targetScreenId = idLookup.get(connectedEdge.target);
+              if (targetScreenId) {
+                navigationMap[opt.id] = {
+                  pantalla: targetScreenId,
+                  valor: opt.title || "",
+                };
+                allDestinations.add(targetScreenId);
               }
-              return { id: opt.id, title: opt.title };
-          });
-          screenChildren.push({ type: "RadioButtonsGroup", label: node.data.radioLabel || "Selecciona:", name: "catalog_selection", "data-source": dataSource, required: true });
-          screenChildren.push({ type: "Footer", label: node.data.footer_label || "Seleccionar", "on-click-action": { name: "data_exchange", payload: { selected: "${form.catalog_selection}" } } });
-          screenChildren = [{ type: "Form", name: `${dynamicName}_catalog_form`, children: screenChildren }];
-
+            }
+            return { id: opt.id, title: opt.title };
+          }
+        );
+        screenChildren.push({
+          type: "RadioButtonsGroup",
+          label: node.data.radioLabel || "Selecciona:",
+          name: "catalog_selection",
+          "data-source": dataSource,
+          required: true,
+        });
+        screenChildren.push({
+          type: "Footer",
+          label: node.data.footer_label || "Seleccionar",
+          "on-click-action": {
+            name: "data_exchange",
+            payload: { selected: "${form.catalog_selection}" },
+          },
+        });
+        screenChildren = [
+          {
+            type: "Form",
+            name: `${dynamicName}_catalog_form`,
+            children: screenChildren,
+          },
+        ];
       } else if (node.type === "appointmentNode") {
         // ✅ GUARDA LA CONFIG COMPLETA (incluye startTime, endTime, breakTimes)
         screenConfigMap.__SCREEN_CONFIG__.SCREENS[jsonScreenID] = {
           type: node.type,
           dataSourceTrigger: "fetch_available_dates",
-          config: node.data.config || {}, 
+          config: node.data.config || {},
         };
-        const footerEdge = outgoingEdges.find((e) => e.sourceHandle === `${node.id}-source`);
-        const nextScreenId = footerEdge ? idLookup.get(footerEdge.target) : jsonScreenID;
+        const footerEdge = outgoingEdges.find(
+          (e) => e.sourceHandle === `${node.id}-source`
+        );
+        const nextScreenId = footerEdge
+          ? idLookup.get(footerEdge.target)
+          : jsonScreenID;
         if (footerEdge) allDestinations.add(idLookup.get(footerEdge.target));
         screenChildren.push({
           type: "Form",
           name: "appointment_form",
           children: [
-            { type: "TextBody", text: node.data.config?.introText || "Selecciona una fecha." },
+            {
+              type: "TextBody",
+              text: node.data.config?.introText || "Selecciona una fecha.",
+            },
             {
               type: "Dropdown",
               label: node.data.config?.labelDate || "Date",
@@ -373,62 +468,146 @@ export const generateMetaFlowJson = (nodes, edges) => {
         });
         metaFlow.routing_model[jsonScreenID] = Array.from(allDestinations);
         return {
-            id: jsonScreenID,
-            title: node.data.title || "Appointment",
-            terminal: screenTerminal,
-            data: {
-                date: { type: "array", items: { type: "object", properties: { id: { type: "string" }, title: { type: "string" } } }, __example__: [] },
-                is_date_enabled: { type: "boolean", __example__: true }
+          id: jsonScreenID,
+          title: node.data.title || "Appointment",
+          terminal: screenTerminal,
+          data: {
+            date: {
+              type: "array",
+              items: {
+                type: "object",
+                properties: {
+                  id: { type: "string" },
+                  title: { type: "string" },
+                },
+              },
+              __example__: [],
             },
-            layout: { type: "SingleColumnLayout", children: screenChildren }
+            is_date_enabled: { type: "boolean", __example__: true },
+          },
+          layout: { type: "SingleColumnLayout", children: screenChildren },
         };
-
       } else if (node.type === "formNode") {
         const formChildren = [];
-        if(node.data.introText) formChildren.push({ type: "TextBody", text: node.data.introText });
+        
+        if (node.data.introText) {
+          formChildren.push({ type: "TextBody", text: node.data.introText });
+        }
+        
         (node.data.components || []).forEach((comp) => {
-             formChildren.push({ type: "TextInput", label: comp.label, name: comp.name, required: comp.required, "input-type": "text" });
+             formChildren.push({ 
+                type: "TextInput", 
+                label: comp.label, 
+                name: comp.name, 
+                required: comp.required, 
+                "input-type": "text" 
+            });
         });
-        const footerEdge = outgoingEdges.find((e) => e.sourceHandle === `${node.id}-source`);
-        const nextScreenId = footerEdge ? idLookup.get(footerEdge.target) : null;
-        if (nextScreenId) allDestinations.add(nextScreenId);
-        const action = nextScreenId 
-            ? { name: "navigate", next: { type: "screen", name: nextScreenId }, payload: formChildren.reduce((acc, curr) => ({...acc, [curr.name]: `\${form.${curr.name}}`}), {}) }
-            : { name: "data_exchange", payload: {} };
-        formChildren.push({ type: "Footer", label: node.data.footer_label || "Enviar", "on-click-action": action });
-        screenChildren.push({ type: "Form", name: `${dynamicName}_form`, children: formChildren });
 
-      } else if (node.type === "confirmationNode") {
+        // 1. Construye el payload (esto ya estaba bien)
+        const formPayload = formChildren
+          .filter((c) => c.type === "TextInput")
+          .reduce((acc, curr) => {
+            if (curr.name) {
+              acc[curr.name] = `\${form.${curr.name}}`;
+            }
+            return acc;
+          }, {});
+
+        // ========== INICIO DE LA CORRECCIÓN ==========
+
+        // 2. Define la acción del footer *SIEMPRE* como data_exchange
+        const action = {
+          name: "data_exchange",
+          payload: formPayload,
+        };
+
+        // 3. AÚN NECESITAMOS registrar la navegación en el routing_model,
+        //    aunque el botón no la ejecute directamente.
+        const footerEdge = outgoingEdges.find(
+          (e) => e.sourceHandle === `${node.id}-source`
+        );
+        const nextScreenId = footerEdge
+          ? idLookup.get(footerEdge.target)
+          : null;
+          
+        if (nextScreenId) {
+            allDestinations.add(nextScreenId);
+        }
+        // ========== FIN DE LA CORRECCIÓN ==========
+
+        // 4. Añade el Footer con la acción corregida
+        formChildren.push({
+          type: "Footer",
+          label: node.data.footer_label || "Enviar",
+          "on-click-action": action, // <-- 'action' ahora SIEMPRE es 'data_exchange'
+        });
+        
+        screenChildren.push({
+          type: "Form",
+          name: `${dynamicName}_form`,
+          children: formChildren,
+        });
+
+      }
+       else if (node.type === "confirmationNode") {
+        const finalPayload = {
+          flow_completed: "true",
+          screen: jsonScreenID,
+        };
         screenTerminal = true;
-        screenChildren.push({ type: "TextHeading", text: node.data.headingText || "" });
+        screenChildren.push({
+          type: "TextHeading",
+          text: node.data.headingText || "",
+        });
         screenChildren.push({ type: "TextBody", text: "${data.details}" });
-        screenChildren.push({ type: "TextBody", text: node.data.bodyText || "" });
-        screenChildren.push({ type: "Footer", label: node.data.footer_label || "Finalizar", "on-click-action": { name: "complete", payload: {} } });
-        screenChildren = [{ type: "Form", name: "confirmation_form", children: screenChildren }];
+        screenChildren.push({
+          type: "TextBody",
+          text: node.data.bodyText || "",
+        });
+        screenChildren.push({
+          type: "Footer",
+          label: node.data.footer_label || "Finalizar",
+          "on-click-action": { name: "data_exchange", payload: finalPayload },
+        });
+        screenChildren = [
+          { type: "Form", name: "confirmation_form", children: screenChildren },
+        ];
       }
 
       metaFlow.routing_model[jsonScreenID] = Array.from(allDestinations);
-      if (node.type === "confirmationNode") metaFlow.routing_model[jsonScreenID] = [];
+      if (node.type === "confirmationNode")
+        metaFlow.routing_model[jsonScreenID] = [];
 
       return {
         id: jsonScreenID,
         title: node.data.title || "Screen",
         terminal: screenTerminal,
+        data: {
+          details: {
+            type: "string",
+            __example__: "Name: John Doe\nEmail: john@example.com...",
+          },
+        },
         layout: { type: "SingleColumnLayout", children: screenChildren },
       };
-    }).filter(Boolean); 
+    })
+    .filter(Boolean);
 
   metaFlow.screens = screens;
 
   const finalNavigationMap = {
-    ...navigationMap,      
-    ...screenConfigMap,    
+    ...navigationMap,
+    ...screenConfigMap,
   };
 
-  console.log("JSON Híbrido Final (para AWS):", JSON.stringify(finalNavigationMap, null, 2));
+  console.log(
+    "JSON Híbrido Final (para AWS):",
+    JSON.stringify(finalNavigationMap, null, 2)
+  );
 
-  return { 
-      metaFlowJson: metaFlow, 
-      navigationMapJson: finalNavigationMap
+  return {
+    metaFlowJson: metaFlow,
+    navigationMapJson: finalNavigationMap,
   };
 };
