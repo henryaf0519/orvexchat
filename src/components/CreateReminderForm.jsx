@@ -44,9 +44,9 @@ export default function CreateReminderForm() {
     };
     fetchContacts();
     
-    // ✅ IMPORTANTE: Llamamos a fetchStages solo al montar (sin dependencias que causen bucle)
+    // ✅ IMPORTANTE: Llamamos a fetchStages solo al montar
     fetchStages(); 
-  }, []); // <--- Array vacío para evitar bucles infinitos
+  }, []); 
   
   const clearError = (fieldName) => {
     if (errors[fieldName]) {
@@ -109,6 +109,7 @@ export default function CreateReminderForm() {
       setFormData(prev => ({ ...prev, selectedStageId: null, phoneNumbers: [] }));
   };
 
+  // ✅ RESTAURADO: Lógica para los días
   const handleDayChange = (day) => {
     setFormData((prev) => {
       const newDays = prev.recurringDays.includes(day)
@@ -150,13 +151,6 @@ export default function CreateReminderForm() {
     // Determinar si es envío dinámico
     const isDynamic = !!formData.selectedStageId;
 
-    // 🕵️‍♂️ LOG CRÍTICO: Verifica qué está saliendo aquí
-    console.log("PREPARANDO ENVÍO - Estado actual:", {
-        isDynamic,
-        selectedStageId: formData.selectedStageId,
-        manualCount: formData.phoneNumbers.length
-    });
-
     const schedulePayload = {
       name: formData.name,
       templateName: selectedTemplate.name,
@@ -167,7 +161,7 @@ export default function CreateReminderForm() {
       
       // ✅ Lógica del Backend
       targetType: isDynamic ? 'dynamic_stage' : 'static_list',
-      targetStageId: isDynamic ? formData.selectedStageId : null, // Aquí va el ID
+      targetStageId: isDynamic ? formData.selectedStageId : null, 
       phoneNumbers: isDynamic ? [] : formData.phoneNumbers,
     };
   
@@ -188,6 +182,10 @@ export default function CreateReminderForm() {
           scheduleType: "once", sendAt: "", recurringDays: [], recurringTime: "09:00" 
       });
       setSelectedTemplate(null);
+      // Limpiar el select visualmente
+      const templateSelect = document.getElementById('template');
+      if (templateSelect) templateSelect.value = "";
+      
     } catch (err) {
        setNotification({ show: true, message: err.message, type: 'error' });
     } finally {
@@ -196,7 +194,15 @@ export default function CreateReminderForm() {
   };
 
   // Helpers visuales
-  const daysOfWeek = [{l:"L",v:1},{l:"M",v:2},{l:"X",v:3},{l:"J",v:4},{l:"V",v:5},{l:"S",v:6},{l:"D",v:0}];
+  const daysOfWeek = [
+      { label: "L", value: 1, title: "Lunes" }, 
+      { label: "M", value: 2, title: "Martes" },
+      { label: "X", value: 3, title: "Miércoles" }, 
+      { label: "J", value: 4, title: "Jueves" },
+      { label: "V", value: 5, title: "Viernes" }, 
+      { label: "S", value: 6, title: "Sábado" },
+      { label: "D", value: 0, title: "Domingo" }
+  ];
   
   const hexToRgba = (hex, alpha) => {
     let r=0,g=0,b=0;
@@ -235,14 +241,14 @@ export default function CreateReminderForm() {
             {/* Nombre Campaña */}
             <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Nombre Campaña</label>
-                <input type="text" name="name" value={formData.name} onChange={handleChange} className="w-full px-4 py-2 bg-gray-50 border rounded-lg" />
+                <input type="text" name="name" id="name" value={formData.name} onChange={handleChange} className={`w-full px-4 py-2 bg-gray-50 border rounded-lg ${errors.name ? 'border-red-500 ring-1 ring-red-500' : ''}`} />
             </div>
             
             {/* Selector Destinatarios */}
             <div className="relative">
                 <label className="block text-sm font-medium text-gray-700 mb-1">Destinatarios (CRM)</label>
                 <button type="button" onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                        className={`w-full flex items-center justify-between px-4 py-2 bg-gray-50 border rounded-lg text-left ${errors.phoneNumbers ? 'border-red-500' : 'border-gray-300'}`}>
+                        className={`w-full flex items-center justify-between px-4 py-2 bg-gray-50 border rounded-lg text-left ${errors.phoneNumbers ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-300'}`}>
                     <span className="truncate text-sm">{getSelectedLabel()}</span>
                     <FaChevronDown className="text-gray-500" />
                 </button>
@@ -306,7 +312,7 @@ export default function CreateReminderForm() {
             {/* Selección de Plantilla */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">Plantilla</label>
-              <select id="template" onChange={handleTemplateChange} defaultValue="" className="w-full px-4 py-2 bg-gray-50 border rounded-lg">
+              <select id="template" onChange={handleTemplateChange} defaultValue="" className={`w-full px-4 py-2 bg-gray-50 border rounded-lg ${errors.template ? 'border-red-500 ring-1 ring-red-500' : ''}`}>
                 <option value="" disabled>-- Selecciona --</option>
                 {approvedTemplates.map(t => (<option key={t.id} value={t.name}>{t.name}</option>))}
               </select>
@@ -319,11 +325,38 @@ export default function CreateReminderForm() {
                     <button type="button" onClick={() => setFormData(f=>({...f, scheduleType:"once"}))} className={`w-1/2 py-1 text-sm rounded ${formData.scheduleType==="once"?"bg-white shadow":"text-gray-500"}`}>Una vez</button>
                     <button type="button" onClick={() => setFormData(f=>({...f, scheduleType:"recurring"}))} className={`w-1/2 py-1 text-sm rounded ${formData.scheduleType==="recurring"?"bg-white shadow":"text-gray-500"}`}>Recurrente</button>
                 </div>
+                
+                {/* ✅ RESTAURADO: UI COMPLETA DE RECURRENCIA */}
                 {formData.scheduleType === 'once' ? (
-                    <input type="datetime-local" value={formData.sendAt} onChange={handleChange} name="sendAt" className="w-full px-3 py-2 border rounded-lg text-sm" />
+                    <input type="datetime-local" value={formData.sendAt} onChange={handleChange} name="sendAt" className={`w-full px-3 py-2 border rounded-lg text-sm ${errors.sendAt ? 'border-red-500 ring-1 ring-red-500' : ''}`} />
                 ) : (
-                   <div className="text-sm text-gray-500">Configura los días y hora... (simplificado)</div> 
-                   // (Aquí iría el resto de tu UI de recurrencia, la dejé simplificada para no extender demasiado el código, puedes mantener la tuya)
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 animate-fade-in bg-gray-50 p-3 rounded-lg border border-gray-200">
+                        <div>
+                            <label className="block text-xs font-bold text-gray-500 mb-2 uppercase">Días de envío</label>
+                            <div className={`flex flex-wrap gap-1 ${errors.recurringDays ? 'border border-red-500 p-1 rounded' : ''}`}>
+                                {daysOfWeek.map((day) => (
+                                    <button 
+                                        type="button" 
+                                        key={day.value} 
+                                        onClick={() => handleDayChange(day.value)} 
+                                        className={`w-8 h-8 rounded-full font-bold text-xs transition-all ${formData.recurringDays.includes(day.value) ? "bg-red-600 text-white shadow-md scale-110" : "bg-white text-gray-600 border border-gray-200 hover:bg-gray-100"}`}
+                                    >
+                                        {day.label}
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+                        <div>
+                            <label className="block text-xs font-bold text-gray-500 mb-2 uppercase">Hora</label>
+                            <input 
+                                type="time" 
+                                name="recurringTime" 
+                                value={formData.recurringTime} 
+                                onChange={handleChange} 
+                                className="w-full px-3 py-1.5 bg-white border border-gray-300 rounded text-sm focus:ring-2 focus:ring-red-500 focus:outline-none" 
+                            />
+                        </div>
+                    </div>
                 )}
             </div>
           </div>
@@ -335,8 +368,9 @@ export default function CreateReminderForm() {
         </div>
 
         <div className="mt-6 flex justify-end">
-          <button type="submit" disabled={loading} className="bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700 disabled:opacity-50 flex items-center gap-2">
-            {loading ? <FaSpinner className="animate-spin"/> : <FaPaperPlane/>} Programar
+          <button type="submit" disabled={loading} className="bg-red-600 text-white px-6 py-2 rounded-lg hover:bg-red-700 disabled:opacity-50 flex items-center gap-2 shadow-lg transition-transform active:scale-95">
+            {loading ? <FaSpinner className="animate-spin"/> : <FaPaperPlane/>} 
+            {formData.scheduleType === 'once' ? 'Programar Envío' : 'Crear Campaña Recurrente'}
           </button>
         </div>
       </form>
