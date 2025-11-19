@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { FaTrash, FaPlus, FaSave, FaTimes, FaLock, FaPalette } from 'react-icons/fa'; // Agregamos FaPalette
+import { FaTrash, FaPlus, FaSave, FaTimes, FaLock } from 'react-icons/fa';
 import { useChatStore } from '../store/chatStore';
 
 export default function StagesSettingsModal({ onClose }) {
@@ -15,26 +15,44 @@ export default function StagesSettingsModal({ onClose }) {
   };
 
   const handleDelete = (index) => {
-    console.log(index)
     const updated = localStages.filter((_, i) => i !== index);
     setLocalStages(updated);
   };
 
   const handleAdd = () => {
-    const newId = `custom_${Date.now()}`;
     setLocalStages([
       ...localStages,
       { 
-        id: newId, 
-        name: "Nueva Etapa", 
-        color: "#000000", // Default negro, el usuario lo cambiará
+        id: `temp_${Date.now()}`, 
+        name: "", 
+        color: "#000000", 
         isSystem: false 
       }
     ]);
   };
 
   const handleSave = () => {
-    saveStages(localStages);
+    // ✅ LÓGICA AGRESIVA: REGENERAR SIEMPRE EL ID
+    const processedStages = localStages.map(stage => {
+      // 1. Si es del sistema, NO la tocamos (son sagradas)
+      if (stage.isSystem) return stage;
+
+      // 2. Para TODAS las demás (nuevas o viejas), forzamos el ID igual al nombre
+      // Ejemplo: "Venta VIP" -> "venta_vip"
+      const cleanId = stage.name
+        .trim()
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '_') // Espacios y símbolos a guión bajo
+        .replace(/^_+|_+$/g, '');   // Quitar guiones extra
+
+      // Si el nombre está vacío, usamos un fallback, si no, usamos el ID generado
+      const finalId = cleanId || `stage_${Date.now()}`;
+      
+      // Devolvemos la etapa con el ID actualizado
+      return { ...stage, id: finalId };
+    });
+
+    saveStages(processedStages);
     onClose();
   };
 
@@ -50,44 +68,41 @@ export default function StagesSettingsModal({ onClose }) {
           </button>
         </div>
 
-        {/* Body Scrollable */}
+        {/* Body */}
         <div className="p-6 overflow-y-auto flex-1 bg-white">
           <div className="space-y-3">
             <div className="grid grid-cols-12 gap-4 text-xs font-semibold text-gray-500 uppercase mb-2 px-2">
               <div className="col-span-6">Nombre de la Etapa</div>
-              <div className="col-span-4 text-center">Color Personalizado</div>
+              <div className="col-span-4 text-center">Color</div>
               <div className="col-span-2 text-center">Acción</div>
             </div>
 
             {localStages.map((stage, index) => (
-              <div key={stage.id} className="grid grid-cols-12 gap-4 items-center p-3 border rounded-lg hover:bg-gray-50 transition-colors shadow-sm">
+              <div key={index} className="grid grid-cols-12 gap-4 items-center p-3 border rounded-lg hover:bg-gray-50 transition-colors shadow-sm">
                 
                 {/* Input Nombre */}
                 <div className="col-span-6">
                   <input 
                     type="text" 
                     value={stage.name} 
+                    placeholder="Nombre de la etapa"
                     onChange={(e) => handleChange(index, 'name', e.target.value)}
                     disabled={stage.isSystem}
                     className={`w-full px-3 py-2 border rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 ${stage.isSystem ? 'bg-gray-100 text-gray-500 cursor-not-allowed font-semibold' : 'bg-white'}`}
                   />
+                  {/* Feedback visual del cambio de ID */}
                 </div>
 
-                {/* ✅ COLOR PICKER MEJORADO */}
+                {/* Color Picker */}
                 <div className="col-span-4 flex justify-center">
                     <div className="relative flex items-center gap-2 group cursor-pointer">
-                        {/* Visualizador del color */}
                         <div 
                             className="w-8 h-8 rounded-full border-2 border-gray-200 shadow-inner"
                             style={{ backgroundColor: stage.color }}
                         ></div>
-                        
-                        {/* Input Hexadecimal visible */}
                         <span className="text-xs font-mono text-gray-500 uppercase group-hover:text-gray-800">
                             {stage.color}
                         </span>
-
-                        {/* El input real (invisible pero clickeable sobre el área) */}
                         <input
                             type="color"
                             value={stage.color}
@@ -132,10 +147,10 @@ export default function StagesSettingsModal({ onClose }) {
             onClick={handleSave}
             className="px-4 py-2 bg-blue-600 text-white rounded-lg font-medium hover:bg-blue-700 flex items-center gap-2 shadow-md transition-transform active:scale-95"
           >
-            <FaSave /> Guardar Cambios
+            <FaSave /> Forzar Actualización de IDs
           </button>
         </div>
       </div>
     </div>
   );
-}
+} 

@@ -24,6 +24,7 @@ export const getStages = async () => {
  * Body: { stages: [...] }
  */
 export const updateStages = async (stagesArray) => {
+  console.log('Updating stages:', stagesArray);
   const response = await apiFetch(BASE_ENDPOINT, {
     method: 'POST',
     body: JSON.stringify({ stages: stagesArray }), // Envolvemos en el objeto "stages" según tu curl

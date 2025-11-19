@@ -377,41 +377,41 @@ export const useChatStore = create(
           throw error; // Lanza el error para que el modal lo atrape
         }
       },
-     fetchStages: async () => {
+      fetchStages: async () => {
         set({ loadingStages: true });
         try {
+          // 1. Llamamos siempre a la API para tener datos frescos
           const apiStages = await getStages();
-          
-          // Si el backend devuelve datos, los usamos. Si no, usamos defaults.
+
+          // 2. Si la API responde con datos, SOBRESCRIBIMOS los defaults
           if (apiStages && apiStages.length > 0) {
             set({ stages: apiStages, loadingStages: false });
+            console.log("Etapas actualizadas desde API:", apiStages);
           } else {
-            console.log("El backend no retornó etapas, usando defaults.");
-            set({ stages: DEFAULT_STAGES, loadingStages: false });
+            // Solo si la API devuelve vacío, mantenemos lo que hay o defaults
+            console.warn("API devolvió 0 etapas, manteniendo actuales.");
+            set({ loadingStages: false });
           }
         } catch (error) {
-          console.error("Error fetching stages from API:", error);
-          // En caso de error, mantenemos lo que haya en local o defaults para no romper la UI
-          const current = get().stages;
-          if (!current || current.length === 0) {
-             set({ stages: DEFAULT_STAGES, loadingStages: false });
-          } else {
-             set({ loadingStages: false });
-          }
+          console.error(
+            "Error al cargar etapas, usando caché/defaults:",
+            error
+          );
+          set({ loadingStages: false });
         }
       },
       saveStages: async (newStages) => {
         // 1. Actualización optimista (UI update instantáneo)
-        set({ stages: newStages }); 
-        
+        set({ stages: newStages });
+
         try {
           console.log("Guardando etapas en backend...", newStages);
           await updateStages(newStages);
-          // Opcional: Podrías hacer un fetchStages() aquí para asegurar sincronía, 
+          // Opcional: Podrías hacer un fetchStages() aquí para asegurar sincronía,
           // pero usualmente no es necesario si el backend guarda lo que envías.
         } catch (error) {
           console.error("Error guardando etapas en el backend:", error);
-          // Aquí podrías implementar un rollback si quisieras ser estricto, 
+          // Aquí podrías implementar un rollback si quisieras ser estricto,
           // o mostrar un toast de error en la UI.
         }
       },
