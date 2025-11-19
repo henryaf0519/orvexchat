@@ -188,6 +188,7 @@ export default function FlowScreenNode({ data, id }) {
                             <input
                               value={opt.title} // <--- CORRECCIÓN CLAVE: Esto restaura el nombre de la opción
                               // Modificado para solo enviar el título
+                              maxLength={30}
                               onChange={(e) => handleOptionChange(optIndex, e.target.value)}
                               placeholder="Texto de la opción (ej: Mantenimiento)"
                               className="w-full border border-gray-200 rounded p-1.5 text-sm"
