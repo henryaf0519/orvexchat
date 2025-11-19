@@ -32,10 +32,8 @@ export default function KanbanBoard() {
 
   // Cargamos etapas al montar si no existen
   useEffect(() => {
-    if (!stages || stages.length === 0) {
-        fetchStages();
-    }
-  }, [fetchStages, stages]);
+      fetchStages();
+  }, [fetchStages]);
 
   useEffect(() => {
     if (!companyId || !stages || stages.length === 0) return;

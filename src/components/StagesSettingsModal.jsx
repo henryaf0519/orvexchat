@@ -15,6 +15,7 @@ export default function StagesSettingsModal({ onClose }) {
   };
 
   const handleDelete = (index) => {
+    console.log(index)
     const updated = localStages.filter((_, i) => i !== index);
     setLocalStages(updated);
   };

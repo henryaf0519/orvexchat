@@ -43,11 +43,12 @@ export default function CreateReminderForm() {
       }
     };
     fetchContacts();
+    fetchStages();
     
     if (!stages || stages.length === 0) {
         fetchStages();
     }
-  }, [stages, fetchStages]);
+  }, [fetchStages]);
   
   const clearError = (fieldName) => {
     if (errors[fieldName]) {

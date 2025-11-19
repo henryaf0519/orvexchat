@@ -6,8 +6,8 @@ import {
   getFlows, // <--- La que trae todos
   getFlowById,
   createFlow as createFlowAPI,
-  deleteFlow as deleteFlowAPI
-} from '../services/flowService';
+  deleteFlow as deleteFlowAPI,
+} from "../services/flowService";
 import {
   getChats,
   getMessages,
@@ -19,13 +19,15 @@ import {
   getSchedules,
   createSchedule,
   deleteSchedule,
-  getContacts
+  getContacts,
 } from "../services/reminderService";
 import {
   getTriggers,
   createTrigger,
-  updateTrigger as updateTriggerAPI
-} from '../services/flowTriggerService';
+  updateTrigger as updateTriggerAPI,
+} from "../services/flowTriggerService";
+
+import { getStages, updateStages } from "../services/crmService";
 
 const sortConversations = (conversations) => {
   return conversations.sort((a, b) => {
@@ -66,7 +68,7 @@ export const useChatStore = create(
       currentEditingFlow: null,
       loadingCurrentFlow: false,
       triggers: [],
-      loadingTriggers: false, 
+      loadingTriggers: false,
       googleAuthStatus: null,
       stages: DEFAULT_STAGES,
       loadingStages: false,
@@ -77,7 +79,7 @@ export const useChatStore = create(
           accessToken: data.accessToken,
           isAuthenticated: !!data.accessToken,
           companyId: data.userData?.number_id,
-          googleAuthStatus: data.userData?.hasGoogleAuth ? 'connected' : null,
+          googleAuthStatus: data.userData?.hasGoogleAuth ? "connected" : null,
         });
       },
 
@@ -135,13 +137,15 @@ export const useChatStore = create(
         if (isHumanControl) {
           const lastMessage = messages[messages.length - 1];
           set({
-            isSendDisabled: lastMessage ? (lastMessage.from === "agent" || lastMessage.from === "IA") : false,
+            isSendDisabled: lastMessage
+              ? lastMessage.from === "agent" || lastMessage.from === "IA"
+              : false,
           });
         } else {
           set({ isSendDisabled: true });
         }
       },
-      
+
       handleNewNotification: (data) => {
         const { conversationId, message } = data;
         const companyId = get().companyId;
@@ -190,7 +194,7 @@ export const useChatStore = create(
           SK: `MESSAGE#${new Date().toISOString()}`,
         };
         get().addMessageToHistory(newMessage);
-        
+
         // Deshabilita el input inmediatamente después de enviar
         set({ isSendDisabled: true });
       },
@@ -201,11 +205,14 @@ export const useChatStore = create(
         try {
           await updateChatModeAPI(chatId, newMode);
 
-          if (newMode === 'humano') {
+          if (newMode === "humano") {
             const history = get().currentChatHistory;
-            const lastMessage = history.length > 0 ? history[history.length - 1] : null;
+            const lastMessage =
+              history.length > 0 ? history[history.length - 1] : null;
             // La caja de texto estará deshabilitada si el último mensaje fue de un agente.
-            const shouldBeDisabled = lastMessage ? lastMessage.from === 'agent' || lastMessage.from === 'IA' : false;
+            const shouldBeDisabled = lastMessage
+              ? lastMessage.from === "agent" || lastMessage.from === "IA"
+              : false;
             set({ isSendDisabled: shouldBeDisabled });
           } else {
             set({ isSendDisabled: true });
@@ -226,11 +233,15 @@ export const useChatStore = create(
           (c) => c.id === get().selectedConversationId
         );
         // Habilita el input si estamos en modo humano y el mensaje NO es de un agente o IA.
-        if (selectedChat?.modo === "humano" && message.from !== "agent" && message.from !== "IA") {
+        if (
+          selectedChat?.modo === "humano" &&
+          message.from !== "agent" &&
+          message.from !== "IA"
+        ) {
           set({ isSendDisabled: false });
         }
       },
-      
+
       // ... (resto de las funciones de reminders, etc.)
       fetchSchedules: async () => {
         set({ loadingSchedules: true });
@@ -258,10 +269,10 @@ export const useChatStore = create(
         set({ loadingFlows: true });
         try {
           // Y aquí llama a 'getFlows' del servicio
-          const flowsFromApi = await getFlows(); 
+          const flowsFromApi = await getFlows();
           set({ flows: flowsFromApi || [], loadingFlows: false });
         } catch (error) {
-          console.error('Error fetching flows:', error);
+          console.error("Error fetching flows:", error);
           set({ loadingFlows: false });
         }
       },
@@ -273,48 +284,53 @@ export const useChatStore = create(
           }));
           return newFlow;
         } catch (error) {
-          console.error('Error creating flow:', error);
+          console.error("Error creating flow:", error);
           throw error;
         }
       },
       deleteFlow: async (flowId) => {
         try {
-          console.log('Deleting flow with ID:', flowId);
+          console.log("Deleting flow with ID:", flowId);
           await deleteFlowAPI(flowId);
           set((state) => ({
             flows: state.flows.filter((f) => f.id !== flowId),
           }));
         } catch (error) {
-          console.error('Error deleting flow:', error);
+          console.error("Error deleting flow:", error);
           throw error; // Lanza el error para que el toast lo atrape
         }
       },
 
       fetchFlowById: async (flowId) => {
         set({ loadingCurrentFlow: true, currentEditingFlow: null });
-        const existingFlow = get().flows.find(f => f.id === flowId); 
-       try {
+        const existingFlow = get().flows.find((f) => f.id === flowId);
+        try {
           const flowDetails = await getFlowById(flowId);
-          
+
           const combinedFlowData = {
-            ...existingFlow, 
+            ...existingFlow,
             ...flowDetails,
           };
 
-          set({ currentEditingFlow: combinedFlowData, loadingCurrentFlow: false });
+          set({
+            currentEditingFlow: combinedFlowData,
+            loadingCurrentFlow: false,
+          });
         } catch (error) {
           if (existingFlow) {
-              set({ 
-                  currentEditingFlow: existingFlow, 
-                  loadingCurrentFlow: false 
-              });
-              console.warn(`[FlowStore] Fallback exitoso: La API falló, cargando editor con datos mínimos.`);
-              return;
+            set({
+              currentEditingFlow: existingFlow,
+              loadingCurrentFlow: false,
+            });
+            console.warn(
+              `[FlowStore] Fallback exitoso: La API falló, cargando editor con datos mínimos.`
+            );
+            return;
           }
           set({ loadingCurrentFlow: false });
         }
       },
-      
+
       clearCurrentEditingFlow: () => {
         set({ currentEditingFlow: null });
       },
@@ -324,7 +340,7 @@ export const useChatStore = create(
           const triggersFromApi = await getTriggers();
           set({ triggers: triggersFromApi || [], loadingTriggers: false });
         } catch (error) {
-          console.error('Error fetching triggers:', error);
+          console.error("Error fetching triggers:", error);
           set({ loadingTriggers: false });
         }
       },
@@ -340,7 +356,7 @@ export const useChatStore = create(
           }));
           return newTrigger;
         } catch (error) {
-          console.error('Error creating trigger:', error);
+          console.error("Error creating trigger:", error);
           throw error; // Lanza el error para que el modal lo atrape
         }
       },
@@ -356,33 +372,47 @@ export const useChatStore = create(
           // 2. ¡LA SOLUCIÓN! Vuelve a llamar a fetchTriggers
           //    Usamos get() para llamar a otra acción dentro del store.
           await get().fetchTriggers();
-
         } catch (error) {
-          console.error('Error updating trigger:', error);
+          console.error("Error updating trigger:", error);
           throw error; // Lanza el error para que el modal lo atrape
         }
       },
      fetchStages: async () => {
         set({ loadingStages: true });
         try {
-          // Simulamos API. Si hay datos persistidos, los usamos; si no, defaults.
+          const apiStages = await getStages();
+          
+          // Si el backend devuelve datos, los usamos. Si no, usamos defaults.
+          if (apiStages && apiStages.length > 0) {
+            set({ stages: apiStages, loadingStages: false });
+          } else {
+            console.log("El backend no retornó etapas, usando defaults.");
+            set({ stages: DEFAULT_STAGES, loadingStages: false });
+          }
+        } catch (error) {
+          console.error("Error fetching stages from API:", error);
+          // En caso de error, mantenemos lo que haya en local o defaults para no romper la UI
           const current = get().stages;
           if (!current || current.length === 0) {
              set({ stages: DEFAULT_STAGES, loadingStages: false });
           } else {
              set({ loadingStages: false });
           }
-        } catch (error) {
-          console.error("Error fetching stages:", error);
-          set({ stages: DEFAULT_STAGES, loadingStages: false });
         }
       },
-          saveStages: async (newStages) => {
-        set({ stages: newStages }); // Optimista
+      saveStages: async (newStages) => {
+        // 1. Actualización optimista (UI update instantáneo)
+        set({ stages: newStages }); 
+        
         try {
-          console.log("Etapas guardadas en backend (Simulado):", newStages);
+          console.log("Guardando etapas en backend...", newStages);
+          await updateStages(newStages);
+          // Opcional: Podrías hacer un fetchStages() aquí para asegurar sincronía, 
+          // pero usualmente no es necesario si el backend guarda lo que envías.
         } catch (error) {
-          console.error("Error guardando etapas:", error);
+          console.error("Error guardando etapas en el backend:", error);
+          // Aquí podrías implementar un rollback si quisieras ser estricto, 
+          // o mostrar un toast de error en la UI.
         }
       },
     }),
@@ -398,8 +428,7 @@ export const useChatStore = create(
         googleAuthStatus: state.googleAuthStatus,
         stages: state.stages,
       }),
-      onRehydrateStorage: () => (state) => {
-      },
+      onRehydrateStorage: () => (state) => {},
     }
   )
 );
