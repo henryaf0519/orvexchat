@@ -2,9 +2,10 @@ import React, { useState, useEffect } from 'react';
 import MainSidebar from "../components/MainSidebar";
 import KanbanBoard from "../components/KanbanBoard";
 import ContactsList from "../components/ContactsList";
+import StagesSettingsModal from "../components/StagesSettingsModal"; // ✅
 import { getContacts } from "../services/reminderService";
 import { useChatStore } from "../store/chatStore";
-import { FaSearch, FaTh, FaList } from "react-icons/fa";
+import { FaSearch, FaTh, FaList, FaCog } from "react-icons/fa"; // ✅
 
 export default function ContactsPage() {
   const [view, setView] = useState("kanban");
@@ -12,11 +13,12 @@ export default function ContactsPage() {
   const [allContacts, setAllContacts] = useState([]);
   const [filteredContacts, setFilteredContacts] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false); // ✅
+
   const companyId = useChatStore((state) => state.companyId);
 
   useEffect(() => {
     if (!companyId) return;
-
     getContacts()
       .then((contacts) => {
         const processedContacts = contacts.map((contact) => ({
@@ -48,10 +50,21 @@ export default function ContactsPage() {
       <div className="flex-1 flex flex-col overflow-hidden">
         <main className="flex-1 flex flex-col overflow-hidden p-6">
           <div className="flex justify-between items-center mb-6 flex-shrink-0">
-            <h1 className="text-3xl font-bold text-gray-800">
-              Gestor de Contactos (CRM)
-            </h1>
-            {/* 3. Barra de Búsqueda y Selector de Vista */}
+            <div className="flex items-center gap-3">
+                <h1 className="text-3xl font-bold text-gray-800">
+                Gestor de Contactos
+                </h1>
+                {/* ✅ BOTÓN CONFIGURACIÓN */}
+                <button
+                  onClick={() => setIsSettingsOpen(true)}
+                  className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-200 rounded-full transition-colors"
+                  title="Configurar Etapas"
+                >
+                   <FaCog size={20} />
+                </button>
+            </div>
+
+            {/* Barra de Búsqueda y Vista */}
             <div className="flex items-center gap-4">
               <div className="relative">
                 <FaSearch className="absolute top-1/2 left-3 -translate-y-1/2 text-gray-400" />
@@ -86,7 +99,7 @@ export default function ContactsPage() {
             </div>
           </div>
 
-          {/* 4. Renderizado Condicional de la Vista */}
+          {/* Vista */}
           <div className="flex-1 overflow-auto">
             {isLoading ? (
               <p>Cargando...</p>
@@ -98,6 +111,11 @@ export default function ContactsPage() {
           </div>
         </main>
       </div>
+
+      {/* ✅ MODAL */}
+      {isSettingsOpen && (
+        <StagesSettingsModal onClose={() => setIsSettingsOpen(false)} />
+      )}
     </div>
   );
 }

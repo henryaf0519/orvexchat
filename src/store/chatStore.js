@@ -38,6 +38,14 @@ const sortConversations = (conversations) => {
   });
 };
 
+const DEFAULT_STAGES = [
+  { id: "Nuevo", name: "Nuevo Lead", color: "#3B82F6", isSystem: true },
+  { id: "Contactado", name: "Contactado", color: "#6366F1", isSystem: false },
+  { id: "Propuesta", name: "Propuesta", color: "#A855F7", isSystem: false },
+  { id: "Vendido", name: "Vendido", color: "#22C55E", isSystem: false },
+  { id: "Perdido", name: "Perdido", color: "#6B7280", isSystem: false },
+];
+
 export const useChatStore = create(
   persist(
     (set, get) => ({
@@ -60,6 +68,8 @@ export const useChatStore = create(
       triggers: [],
       loadingTriggers: false, 
       googleAuthStatus: null,
+      stages: DEFAULT_STAGES,
+      loadingStages: false,
 
       setAuthData: (data) => {
         set({
@@ -267,8 +277,6 @@ export const useChatStore = create(
           throw error;
         }
       },
-
-      // Esta acción llama a 'deleteFlowAPI'
       deleteFlow: async (flowId) => {
         try {
           console.log('Deleting flow with ID:', flowId);
@@ -284,12 +292,8 @@ export const useChatStore = create(
 
       fetchFlowById: async (flowId) => {
         set({ loadingCurrentFlow: true, currentEditingFlow: null });
-        
-        // 1. Obtener la data mínima del flujo desde el estado local (la lista)
         const existingFlow = get().flows.find(f => f.id === flowId); 
-
-        try {
-          // 2. Intentar llamar a la API (Esto falla para flujos nuevos)
+       try {
           const flowDetails = await getFlowById(flowId);
           
           const combinedFlowData = {
@@ -299,20 +303,14 @@ export const useChatStore = create(
 
           set({ currentEditingFlow: combinedFlowData, loadingCurrentFlow: false });
         } catch (error) {
-          // 3. Si la API falla, manejar el error
-          console.error('Error fetching flow by ID:', error);
-          
-          // 4. Si tenemos la data mínima del flujo (nombre, ID, etc.), la usamos
           if (existingFlow) {
               set({ 
                   currentEditingFlow: existingFlow, 
                   loadingCurrentFlow: false 
               });
               console.warn(`[FlowStore] Fallback exitoso: La API falló, cargando editor con datos mínimos.`);
-              return; // Salir exitosamente
+              return;
           }
-          
-          // 5. Si no tenemos ni la data mínima, el error es grave, lo re-lanza o lo muestra
           set({ loadingCurrentFlow: false });
         }
       },
@@ -364,6 +362,29 @@ export const useChatStore = create(
           throw error; // Lanza el error para que el modal lo atrape
         }
       },
+     fetchStages: async () => {
+        set({ loadingStages: true });
+        try {
+          // Simulamos API. Si hay datos persistidos, los usamos; si no, defaults.
+          const current = get().stages;
+          if (!current || current.length === 0) {
+             set({ stages: DEFAULT_STAGES, loadingStages: false });
+          } else {
+             set({ loadingStages: false });
+          }
+        } catch (error) {
+          console.error("Error fetching stages:", error);
+          set({ stages: DEFAULT_STAGES, loadingStages: false });
+        }
+      },
+          saveStages: async (newStages) => {
+        set({ stages: newStages }); // Optimista
+        try {
+          console.log("Etapas guardadas en backend (Simulado):", newStages);
+        } catch (error) {
+          console.error("Error guardando etapas:", error);
+        }
+      },
     }),
     {
       name: "orvex-chat-storage",
@@ -375,6 +396,7 @@ export const useChatStore = create(
         templates: state.templates,
         companyId: state.companyId,
         googleAuthStatus: state.googleAuthStatus,
+        stages: state.stages,
       }),
       onRehydrateStorage: () => (state) => {
       },
