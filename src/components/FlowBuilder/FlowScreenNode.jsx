@@ -75,7 +75,7 @@ export default function FlowScreenNode({ data, id }) {
           const newComponents = [...(data.components || [])];
           const newOptions = component.options.filter((_, i) => i !== optionIndexToRemove);
           newComponents[index] = { ...component, options: newOptions };
-          data.updateNodeData(id, { ...data, components: newOptions });
+          data.updateNodeData(id, { ...data, components: newComponents });
       };
 
       // --- ✅ INICIO MANEJO DE IMAGEN ---
