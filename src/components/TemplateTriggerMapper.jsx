@@ -3,11 +3,10 @@ import { useChatStore } from '../store/chatStore';
 import { toast } from 'react-toastify';
 import { X, Save, Loader2, LayoutTemplate, ArrowRight, MousePointer, CheckCircle, Link, MessageSquare } from 'lucide-react';
 import { getTemplates } from '../services/templateService';
-// ✅ IMPORTANTE: Importamos el servicio para obtener los detalles del flujo
 import { getFlowById } from '../services/flowService';
-import TriggerPreview from './TriggerPreview'; 
+import TriggerPreview from './TriggerPreview';
 
-export default function TemplateTriggerMapper({ isOpen, onClose, initialTemplateName }) {
+export default function TemplateTriggerMapper({ isOpen, onClose, initialTemplateName, initialTemplateId }) {
   const flows = useChatStore((state) => state.flows);
   const triggers = useChatStore((state) => state.triggers); 
   const createNewTrigger = useChatStore((state) => state.createNewTrigger);
@@ -23,7 +22,7 @@ export default function TemplateTriggerMapper({ isOpen, onClose, initialTemplate
 
   const publishedFlows = useMemo(() => flows.filter(f => f.status === 'PUBLISHED'), [flows]);
 
-  // Cargar plantillas y Pre-seleccionar
+  // Cargar plantillas y Pre-seleccionar (Por ID o por Nombre)
   useEffect(() => {
     if (isOpen) {
       setLoadingTemplates(true);
@@ -35,10 +34,22 @@ export default function TemplateTriggerMapper({ isOpen, onClose, initialTemplate
             );
             setTemplates(valid);
 
-            if (initialTemplateName) {
+            // ✅ ESTRATEGIA DE PRE-SELECCIÓN
+            let preSelected = null;
+
+            // 1. Prioridad: Buscar por ID (Nuevo estándar)
+            if (initialTemplateId) {
+                preSelected = valid.find(t => t.id === initialTemplateId);
+            }
+            
+            // 2. Fallback: Buscar por Nombre (Compatibilidad)
+            if (!preSelected && initialTemplateName) {
                 const normalizedName = initialTemplateName.trim().toLowerCase();
-                const preSelected = valid.find(t => t.name.toLowerCase() === normalizedName);
-                if (preSelected) setSelectedTemplate(preSelected);
+                preSelected = valid.find(t => t.name.toLowerCase() === normalizedName);
+            }
+
+            if (preSelected) {
+                setSelectedTemplate(preSelected);
             }
         })
         .catch(() => toast.error("Error cargando plantillas"))
@@ -47,7 +58,7 @@ export default function TemplateTriggerMapper({ isOpen, onClose, initialTemplate
         setSelectedTemplate(null);
         setButtonMappings({});
     }
-  }, [isOpen, initialTemplateName]);
+  }, [isOpen, initialTemplateName, initialTemplateId]);
 
   // Auto-detectar configuración existente
   useEffect(() => {
@@ -57,12 +68,22 @@ export default function TemplateTriggerMapper({ isOpen, onClose, initialTemplate
 
           buttons.forEach((btn, idx) => {
               const expectedId = `${selectedTemplate.name}_btn_${idx}`;
+              
               const existingTrigger = triggers.find(t => {
-                  const matchNew = !t.isActive && 
-                                   t.initial_data?.template_name === selectedTemplate.name && 
-                                   t.initial_data?.button_index === idx;
+                  // 1. Coincidencia por ID DE PLANTILLA (Lo que pediste)
+                  const matchId = !t.isActive && 
+                                  t.initial_data?.template_id === selectedTemplate.id && 
+                                  t.initial_data?.button_index === idx;
+
+                  // 2. Coincidencia por Nombre (Legacy)
+                  const matchName = !t.isActive && 
+                                    t.initial_data?.template_name === selectedTemplate.name && 
+                                    t.initial_data?.button_index === idx;
+                  
+                  // 3. Coincidencia Legacy pura
                   const matchOld = !t.isActive && t.name === expectedId;
-                  return matchNew || matchOld;
+                  
+                  return matchId || matchName || matchOld;
               });
               
               if (existingTrigger) {
@@ -81,7 +102,6 @@ export default function TemplateTriggerMapper({ isOpen, onClose, initialTemplate
       }
   }, [selectedTemplate, triggers]);
 
-  // Actualizar campos locales
   const updateMapping = (idx, field, value) => {
       setButtonMappings(prev => {
           const current = prev[idx] || { 
@@ -94,7 +114,6 @@ export default function TemplateTriggerMapper({ isOpen, onClose, initialTemplate
       });
   };
 
-  // ✅ GUARDADO "PRO" CON OBTENCIÓN DE SCREEN_ID REAL
   const handleSaveAll = async () => {
       if (!selectedTemplate) return;
       
@@ -106,31 +125,23 @@ export default function TemplateTriggerMapper({ isOpen, onClose, initialTemplate
       try {
           const promises = buttons.map(async (btn, idx) => {
               const mapping = buttonMappings[idx];
-              
-              // Si el usuario no seleccionó flujo para este botón, lo saltamos
               if (!mapping || !mapping.flow_id) return; 
 
               if (!mapping.header_text || !mapping.body_text || !mapping.flow_cta) {
                   throw new Error(`Faltan datos en el botón "${btn.text}"`);
               }
 
-              // 1. OBTENER SCREEN_ID REAL DEL FLUJO
-              let realScreenId = "START"; // Fallback por seguridad
+              // Obtener Screen ID real
+              let realScreenId = "START"; 
               try {
                   const flowDetails = await getFlowById(mapping.flow_id);
-                  // Buscamos la primera pantalla definida en el modelo de enrutamiento
                   if (flowDetails?.flow_json?.routing_model) {
                       const screens = Object.keys(flowDetails.flow_json.routing_model);
-                      if (screens.length > 0) {
-                          realScreenId = screens[0];
-                          console.log(`[Mapper] Flujo ${mapping.flow_id} -> Pantalla inicial detectada: ${realScreenId}`);
-                      }
+                      if (screens.length > 0) realScreenId = screens[0];
                   }
-              } catch (error) {
-                  console.warn(`No se pudo obtener el detalle del flujo ${mapping.flow_id}, usando START.`);
-              }
+              } catch (e) { console.warn("No screen details"); }
 
-              // 2. Generar o Mantener ID del Trigger
+              // Generar ID del Trigger si es necesario
               let triggerNameID = mapping.name;
               if (!triggerNameID || triggerNameID.includes('_btn_')) {
                   triggerNameID = (baseTimestamp + idx).toString();
@@ -145,11 +156,15 @@ export default function TemplateTriggerMapper({ isOpen, onClose, initialTemplate
                   body_text: mapping.body_text,
                   footer_text: mapping.footer_text || "",
                   keyword: btn.text,
-                  screen_id: realScreenId, // ✅ AQUÍ USAMOS EL ID REAL OBTENIDO
+                  screen_id: realScreenId,
+                  // ✅ GUARDADO CORREGIDO: Usamos template_id
                   initial_data: { 
                       button_index: idx, 
-                      template_name: selectedTemplate.name 
-                  } 
+                      template_id: selectedTemplate.id, // <--- ID CRÍTICO
+                      template_name: selectedTemplate.name // (Opcional: dejamos el nombre por conveniencia visual en DB)
+                  },
+                  template_id: selectedTemplate.id
+
               };
 
               const existingId = mapping.id;
@@ -186,7 +201,6 @@ export default function TemplateTriggerMapper({ isOpen, onClose, initialTemplate
     <div className="fixed inset-0 bg-black bg-opacity-60 z-50 flex justify-center items-center p-4" onClick={onClose}>
       <div className="bg-white rounded-xl shadow-2xl w-full max-w-6xl h-[90vh] flex flex-col overflow-hidden" onClick={(e) => e.stopPropagation()}>
         
-        {/* HEADER */}
         <div className="p-6 border-b bg-white flex justify-between items-center shrink-0">
             <div>
                 <h3 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
@@ -198,10 +212,8 @@ export default function TemplateTriggerMapper({ isOpen, onClose, initialTemplate
             <button onClick={onClose} className="p-2 hover:bg-gray-100 rounded-full"><X size={24} className="text-gray-500"/></button>
         </div>
 
-        {/* BODY */}
         <div className="flex-1 overflow-y-auto p-8 bg-gray-50">
             
-            {/* SELECCIONAR PLANTILLA */}
             <div className="mb-8 bg-white p-6 rounded-2xl border border-gray-200 shadow-sm">
                 <label className="block text-lg font-bold text-gray-700 mb-3 flex items-center gap-2">
                     <LayoutTemplate size={20} className="text-blue-500"/> 
@@ -214,7 +226,8 @@ export default function TemplateTriggerMapper({ isOpen, onClose, initialTemplate
                         className="w-full p-4 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-blue-500 text-gray-700 font-medium text-lg"
                         onChange={(e) => setSelectedTemplate(templates.find(t => t.id === e.target.value))}
                         value={selectedTemplate?.id || ''}
-                        disabled={!!initialTemplateName}
+                        // Deshabilitar si ya venimos pre-seleccionados para no cambiar contexto por error
+                        disabled={!!initialTemplateId || !!initialTemplateName}
                     >
                         <option value="">-- Busca tu plantilla aprobada --</option>
                         {templates.map(t => <option key={t.id} value={t.id}>{t.name} ({t.language})</option>)}
@@ -222,7 +235,6 @@ export default function TemplateTriggerMapper({ isOpen, onClose, initialTemplate
                 )}
             </div>
 
-            {/* LISTA DE BOTONES */}
             {selectedTemplate ? (
                 <div className="space-y-8 animate-fade-in-down">
                     <label className="block text-lg font-bold text-gray-700 flex items-center gap-2 border-b pb-4">
@@ -233,19 +245,16 @@ export default function TemplateTriggerMapper({ isOpen, onClose, initialTemplate
                     {selectedTemplate.components.find(c => c.type === 'BUTTONS')?.buttons.map((btn, idx) => {
                         const mapping = buttonMappings[idx] || {};
                         const isConfigured = !!mapping.flow_id;
-                        
-                        // Datos para Preview
+
                         const previewData = {
                             header: mapping.header_text || selectedTemplate.name,
                             body: mapping.body_text || "Aquí verás el mensaje de respuesta...",
                             footer: mapping.footer_text || "",
-                            cta: mapping.flow_cta || btn.text // Usa el texto del botón como default
+                            cta: mapping.flow_cta || btn.text 
                         };
 
                         return (
                             <div key={idx} className="bg-white border border-gray-200 rounded-2xl shadow-sm overflow-hidden mb-8">
-                                
-                                {/* Cabecera de la Tarjeta */}
                                 <div className="bg-gray-100 p-4 border-b border-gray-200 flex items-center gap-4">
                                     <span className="bg-white border border-gray-300 text-gray-700 px-3 py-1 rounded-lg font-bold text-xs uppercase">Botón {idx + 1}</span>
                                     <span className="font-bold text-gray-900 text-lg">"{btn.text}"</span>
@@ -253,8 +262,6 @@ export default function TemplateTriggerMapper({ isOpen, onClose, initialTemplate
                                 </div>
 
                                 <div className="p-6 grid grid-cols-1 lg:grid-cols-2 gap-10">
-                                    
-                                    {/* IZQUIERDA: FORMULARIO */}
                                     <div className="space-y-5">
                                         <div>
                                             <label className="block text-xs font-bold text-blue-700 mb-1 uppercase">Flujo a Activar</label>
@@ -268,8 +275,7 @@ export default function TemplateTriggerMapper({ isOpen, onClose, initialTemplate
                                             </select>
                                         </div>
 
-                                        {/* Inputs (visibles si hay flujo) */}
-                                        <div className={`space-y-4 transition-all duration-300 ${!mapping.flow_id ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
+                                        <div className={`space-y-4 transition-opacity duration-300 ${!mapping.flow_id ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
                                             <input className="w-full p-3 border rounded-lg" placeholder="Título del mensaje" value={mapping.header_text || ''} onChange={(e) => updateMapping(idx, 'header_text', e.target.value)} maxLength={60}/>
                                             <textarea className="w-full p-3 border rounded-lg h-24 resize-none" placeholder="Mensaje principal..." value={mapping.body_text || ''} onChange={(e) => updateMapping(idx, 'body_text', e.target.value)} maxLength={1024}/>
                                             <div className="grid grid-cols-2 gap-4">
@@ -279,7 +285,6 @@ export default function TemplateTriggerMapper({ isOpen, onClose, initialTemplate
                                         </div>
                                     </div>
 
-                                    {/* DERECHA: VISTA PREVIA */}
                                     <div className="flex items-center justify-center bg-[#ECE5DD] rounded-2xl border border-gray-300 shadow-inner p-6 min-h-[300px]">
                                         <TriggerPreview 
                                             header={previewData.header} 

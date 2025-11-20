@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { toast } from 'react-toastify';
-import { Plus, Edit2, Copy, Loader2, Star, LayoutTemplate, Link, Zap } from 'lucide-react';
+import { Plus, Edit2, Copy, Loader2, Star, LayoutTemplate, Link, Zap, Key } from 'lucide-react';
 import { useChatStore } from '../store/chatStore';
 import TriggerFormModal from '../components/TriggerFormModal';
 import TemplateTriggerMapper from '../components/TemplateTriggerMapper';
@@ -14,8 +14,9 @@ export default function TriggersPage() {
   const [isMapperOpen, setIsMapperOpen] = useState(false);
   const [editingTrigger, setEditingTrigger] = useState(null);
   
-  // Estado para pasar el nombre de la plantilla al mapeador
+  // Estados para pasar datos al mapeador
   const [mapperInitialTemplate, setMapperInitialTemplate] = useState(null);
+  const [mapperInitialId, setMapperInitialId] = useState(null); // ✅ Nuevo estado para ID
 
   useEffect(() => {
     fetchTriggers();
@@ -25,29 +26,35 @@ export default function TriggersPage() {
   const defaultTrigger = triggers.find(t => t.isActive);
   const buttonTriggers = triggers.filter(t => !t.isActive);
 
-  // ✅ LÓGICA INTELIGENTE: Decide qué modal abrir
+  // ✅ LÓGICA INTELIGENTE DE EDICIÓN ACTUALIZADA
   const handleEdit = (t) => {
       if (t.isActive) {
-          // ES SALUDO -> Modal Simple
           setEditingTrigger(t);
           setIsDefaultModalOpen(true);
       } else {
-          // ES BOTÓN -> Mapeador
-          console.log("Editando botón de plantilla:", t);
+          console.log("Editando botón:", t);
 
-          let templateName = t.initial_data?.template_name;
+          // 1. Intentamos recuperar el ID de la plantilla (Nuevo Estándar)
+          let templateId = t.initial_data?.template_id;
           
-          // Fallbacks para triggers antiguos
+          // 2. Fallback: Nombre
+          let templateName = t.initial_data?.template_name;
           if (!templateName && t.header_text) templateName = t.header_text;
           if (!templateName && t.name && t.name.includes('_btn_')) {
               templateName = t.name.split('_btn_')[0];
           }
 
-          if (templateName) {
-              setMapperInitialTemplate(templateName);
+          if (templateId) {
+              setMapperInitialId(templateId); // Prioridad al ID
+              setMapperInitialTemplate(null); 
+              setIsMapperOpen(true);
+          } else if (templateName) {
+              setMapperInitialTemplate(templateName); // Fallback al nombre
+              setMapperInitialId(null);
               setIsMapperOpen(true);
           } else {
               toast.warn("No se detectó la plantilla origen. Selecciónala de nuevo.");
+              setMapperInitialId(null);
               setMapperInitialTemplate(null);
               setIsMapperOpen(true);
           }
@@ -61,6 +68,7 @@ export default function TriggersPage() {
 
   const handleOpenMapper = () => {
       setMapperInitialTemplate(null);
+      setMapperInitialId(null);
       setIsMapperOpen(true);
   };
 
@@ -98,13 +106,12 @@ export default function TriggersPage() {
                         <div className="bg-white p-5 rounded-xl border border-yellow-200 shadow-sm flex items-center justify-between ring-1 ring-yellow-100">
                             <div>
                                 <h3 className="font-bold text-gray-800 text-lg">{defaultTrigger.name}</h3>
-                                <p className="text-sm text-gray-500 mt-1">Flujo: <span className="font-mono bg-gray-100 px-1 rounded">{defaultTrigger.flow_id}</span></p>
+                                <p className="text-sm text-gray-500 mt-1">Flujo: <span className="font-mono bg-gray-100 px-1 rounded text-black">{defaultTrigger.flow_id}</span></p>
                             </div>
                             <button onClick={() => handleEdit(defaultTrigger)} className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50 flex items-center gap-2 bg-white shadow-sm"><Edit2 size={16}/> Editar</button>
                         </div>
                     ) : (
                         <div className="bg-yellow-50 border border-yellow-200 border-dashed rounded-xl p-6 text-center">
-                            <p className="text-yellow-800 font-medium mb-3">No hay saludo configurado.</p>
                             <button onClick={handleOpenDefault} className="bg-yellow-500 text-white px-5 py-2 rounded-lg font-bold hover:bg-yellow-600 shadow-sm">Configurar Saludo Ahora</button>
                         </div>
                     )}
@@ -141,13 +148,15 @@ export default function TriggersPage() {
                                             <td className="px-6 py-4">
                                                 <div className="flex items-center gap-2">
                                                     <LayoutTemplate size={14} className="text-gray-400"/>
-                                                    <span className="text-sm text-gray-800 font-medium">{t.initial_data?.template_name || t.header_text || 'N/A'}</span>
+                                                    {/* Mostrar el nombre de la plantilla */}
+                                                    <span className="text-sm text-gray-800 font-medium">
+                                                        {t.initial_data?.template_name || t.header_text || 'N/A'}
+                                                    </span>
                                                 </div>
                                             </td>
                                             <td className="px-6 py-4 text-sm text-blue-600 font-medium">{t.flow_id}</td>
                                             <td className="px-6 py-4 text-right">
                                                 <button onClick={() => copyTriggerUrl(t.name)} className="text-gray-400 hover:text-blue-600 p-2 mr-2"><Copy size={16}/></button>
-                                                {/* Botón Editar Correcto */}
                                                 <button onClick={() => handleEdit(t)} className="text-gray-400 hover:text-blue-600 p-2"><Edit2 size={16}/></button>
                                             </td>
                                         </tr>
@@ -167,20 +176,14 @@ export default function TriggersPage() {
         </main>
       </div>
 
-      {/* Modales */}
-      {isDefaultModalOpen && (
-        <TriggerFormModal 
-            isOpen={isDefaultModalOpen} 
-            onClose={() => setIsDefaultModalOpen(false)} 
-            trigger={editingTrigger} 
-        />
-      )}
+      {isDefaultModalOpen && <TriggerFormModal isOpen={isDefaultModalOpen} onClose={() => setIsDefaultModalOpen(false)} trigger={editingTrigger} />}
       
       {isMapperOpen && (
         <TemplateTriggerMapper 
             isOpen={isMapperOpen} 
             onClose={() => setIsMapperOpen(false)} 
-            initialTemplateName={mapperInitialTemplate} 
+            initialTemplateName={mapperInitialTemplate}
+            initialTemplateId={mapperInitialId} // ✅ Pasamos el ID también
         />
       )}
     </div>
