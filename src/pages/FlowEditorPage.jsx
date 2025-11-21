@@ -4,7 +4,7 @@ import { ArrowLeft } from 'lucide-react';
 import { useChatStore } from '../store/chatStore';
 import MainHeader from '../components/MainHeader';
 import MainSidebar from '../components/MainSidebar';
-import FlowBuilder from '../components/FlowBuilder';
+import  FlowBuilder from '../components/FlowBuilder/index';
 
 function FlowEditorPage() {
   const { flowId } = useParams();

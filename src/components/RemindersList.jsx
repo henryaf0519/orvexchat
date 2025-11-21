@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useChatStore } from '../store/chatStore';
 import { FaTrash } from 'react-icons/fa';
-import ConfirmationModal from './ConfirmationModal'; // Importa el nuevo modal
+import ConfirmationModal from './ConfirmationModal'; 
 
 export default function RemindersList() {
   const schedules = useChatStore((state) => state.schedules);
@@ -17,13 +17,11 @@ export default function RemindersList() {
     fetchSchedules();
   }, [fetchSchedules]);
 
-  // Esta función abre el modal y guarda el ID del recordatorio a eliminar
   const handleDeleteClick = (scheduleId) => {
     setScheduleToDelete(scheduleId);
     setIsModalOpen(true);
   };
 
-  // Esta función se ejecuta cuando el usuario confirma la eliminación
   const handleConfirmDelete = async () => {
     if (scheduleToDelete) {
       try {
@@ -32,7 +30,6 @@ export default function RemindersList() {
         console.error("Error al eliminar", error);
         alert("No se pudo eliminar el recordatorio.");
       } finally {
-        // Cierra el modal y limpia el estado
         setIsModalOpen(false);
         setScheduleToDelete(null);
       }
@@ -46,39 +43,51 @@ export default function RemindersList() {
     if (parts.length < 5) return `Recurrente (${cronExpression})`;
 
     const [minute, hour, , , daysOfWeekStr] = parts;
-    const time = `${hour.padStart(2, '0')}:${minute.padStart(2, '0')}`;
+    
+    // ✅ CAMBIO: Conversión manual a formato 12 horas (AM/PM)
+    const hourInt = parseInt(hour, 10);
+    const period = hourInt >= 12 ? 'p. m.' : 'a. m.';
+    const hour12 = hourInt % 12 || 12; // Convierte 0 a 12 para la medianoche
+    const time12 = `${hour12.toString().padStart(2, '0')}:${minute.padStart(2, '0')} ${period}`;
 
     const dayMap = {
       '0': 'Dom', '1': 'Lun', '2': 'Mar', '3': 'Mié', '4': 'Jue', '5': 'Vie', '6': 'Sáb'
     };
 
     if (daysOfWeekStr === '*') {
-      return `Todos los días a las ${time}`;
+      return `Todos los días a las ${time12}`;
     }
 
     const days = daysOfWeekStr.split(',').sort();
 
     if (days.join(',') === '0,1,2,3,4,5,6') {
-      return `Todos los días a las ${time}`;
+      return `Todos los días a las ${time12}`;
     }
     if (days.join(',') === '1,2,3,4,5') {
-      return `Lunes a Viernes a las ${time}`;
+      return `Lunes a Viernes a las ${time12}`;
     }
     if (days.join(',') === '0,6') {
-      return `Fines de semana a las ${time}`;
+      return `Fines de semana a las ${time12}`;
     }
 
     const dayNames = days.map(d => dayMap[d] || '').join(', ');
-    return `${dayNames} a las ${time}`;
+    return `${dayNames} a las ${time12}`;
   };
 
 
   const formatScheduleTime = (schedule) => {
     if (schedule.scheduleType === 'once' && schedule.sendAt) {
-      const localDateString = schedule.sendAt.slice(0, -1);
-      return new Date(localDateString).toLocaleString('es-CO', {
-        year: 'numeric', month: 'long', day: 'numeric',
-        hour: '2-digit', minute: '2-digit'
+      // Mantenemos el fix anterior para la hora de Colombia en envíos únicos
+      const date = new Date(schedule.sendAt);
+      
+      return date.toLocaleString('es-CO', {
+        timeZone: 'America/Bogota', 
+        year: 'numeric', 
+        month: 'long', 
+        day: 'numeric',
+        hour: '2-digit', 
+        minute: '2-digit',
+        hour12: true
       });
     }
     if (schedule.scheduleType === 'recurring' && schedule.cronExpression) {

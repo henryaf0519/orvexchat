@@ -5,10 +5,10 @@ import { Plus, Edit2, Trash2, UploadCloud, Loader2, Zap } from 'lucide-react';
 import { useChatStore } from '../store/chatStore';
 import { publishFlow } from '../services/flowService';
 import ConfirmationModal from '../components/ConfirmationModal';
-import InputModal from '../components/InputModal';
+import InputModal from '../components/FlowBuilder/InputModal';
 import MainHeader from '../components/MainHeader';
 import MainSidebar from '../components/MainSidebar';
-import FlowInstructionsModal from '../components/FlowInstructionsModal';
+import FlowInstructionsModal from '../components/FlowBuilder/FlowInstructionsModal';
 
 const statusTranslations = {
   PUBLISHED: 'Publicado',

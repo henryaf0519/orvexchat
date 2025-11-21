@@ -6,8 +6,8 @@ import {
   getFlows, // <--- La que trae todos
   getFlowById,
   createFlow as createFlowAPI,
-  deleteFlow as deleteFlowAPI
-} from '../services/flowService';
+  deleteFlow as deleteFlowAPI,
+} from "../services/flowService";
 import {
   getChats,
   getMessages,
@@ -19,13 +19,15 @@ import {
   getSchedules,
   createSchedule,
   deleteSchedule,
-  getContacts
+  getContacts,
 } from "../services/reminderService";
 import {
   getTriggers,
   createTrigger,
-  updateTrigger as updateTriggerAPI
-} from '../services/flowTriggerService';
+  updateTrigger as updateTriggerAPI,
+} from "../services/flowTriggerService";
+
+import { getStages, updateStages } from "../services/crmService";
 
 const sortConversations = (conversations) => {
   return conversations.sort((a, b) => {
@@ -37,6 +39,14 @@ const sortConversations = (conversations) => {
     );
   });
 };
+
+const DEFAULT_STAGES = [
+  { id: "Nuevo", name: "Nuevo Lead", color: "#3B82F6", isSystem: true },
+  { id: "Contactado", name: "Contactado", color: "#6366F1", isSystem: false },
+  { id: "Propuesta", name: "Propuesta", color: "#A855F7", isSystem: false },
+  { id: "Vendido", name: "Vendido", color: "#22C55E", isSystem: false },
+  { id: "Perdido", name: "Perdido", color: "#6B7280", isSystem: false },
+];
 
 export const useChatStore = create(
   persist(
@@ -58,7 +68,10 @@ export const useChatStore = create(
       currentEditingFlow: null,
       loadingCurrentFlow: false,
       triggers: [],
-      loadingTriggers: false, 
+      loadingTriggers: false,
+      googleAuthStatus: null,
+      stages: DEFAULT_STAGES,
+      loadingStages: false,
 
       setAuthData: (data) => {
         set({
@@ -66,7 +79,12 @@ export const useChatStore = create(
           accessToken: data.accessToken,
           isAuthenticated: !!data.accessToken,
           companyId: data.userData?.number_id,
+          googleAuthStatus: data.userData?.hasGoogleAuth ? "connected" : null,
         });
+      },
+
+      setGoogleAuthStatus: (status) => {
+        set({ googleAuthStatus: status });
       },
 
       setTemplates: (templatesArray) => {
@@ -119,13 +137,15 @@ export const useChatStore = create(
         if (isHumanControl) {
           const lastMessage = messages[messages.length - 1];
           set({
-            isSendDisabled: lastMessage ? (lastMessage.from === "agent" || lastMessage.from === "IA") : false,
+            isSendDisabled: lastMessage
+              ? lastMessage.from === "agent" || lastMessage.from === "IA"
+              : false,
           });
         } else {
           set({ isSendDisabled: true });
         }
       },
-      
+
       handleNewNotification: (data) => {
         const { conversationId, message } = data;
         const companyId = get().companyId;
@@ -174,7 +194,7 @@ export const useChatStore = create(
           SK: `MESSAGE#${new Date().toISOString()}`,
         };
         get().addMessageToHistory(newMessage);
-        
+
         // Deshabilita el input inmediatamente después de enviar
         set({ isSendDisabled: true });
       },
@@ -185,11 +205,14 @@ export const useChatStore = create(
         try {
           await updateChatModeAPI(chatId, newMode);
 
-          if (newMode === 'humano') {
+          if (newMode === "humano") {
             const history = get().currentChatHistory;
-            const lastMessage = history.length > 0 ? history[history.length - 1] : null;
+            const lastMessage =
+              history.length > 0 ? history[history.length - 1] : null;
             // La caja de texto estará deshabilitada si el último mensaje fue de un agente.
-            const shouldBeDisabled = lastMessage ? lastMessage.from === 'agent' || lastMessage.from === 'IA' : false;
+            const shouldBeDisabled = lastMessage
+              ? lastMessage.from === "agent" || lastMessage.from === "IA"
+              : false;
             set({ isSendDisabled: shouldBeDisabled });
           } else {
             set({ isSendDisabled: true });
@@ -210,11 +233,15 @@ export const useChatStore = create(
           (c) => c.id === get().selectedConversationId
         );
         // Habilita el input si estamos en modo humano y el mensaje NO es de un agente o IA.
-        if (selectedChat?.modo === "humano" && message.from !== "agent" && message.from !== "IA") {
+        if (
+          selectedChat?.modo === "humano" &&
+          message.from !== "agent" &&
+          message.from !== "IA"
+        ) {
           set({ isSendDisabled: false });
         }
       },
-      
+
       // ... (resto de las funciones de reminders, etc.)
       fetchSchedules: async () => {
         set({ loadingSchedules: true });
@@ -242,10 +269,10 @@ export const useChatStore = create(
         set({ loadingFlows: true });
         try {
           // Y aquí llama a 'getFlows' del servicio
-          const flowsFromApi = await getFlows(); 
+          const flowsFromApi = await getFlows();
           set({ flows: flowsFromApi || [], loadingFlows: false });
         } catch (error) {
-          console.error('Error fetching flows:', error);
+          console.error("Error fetching flows:", error);
           set({ loadingFlows: false });
         }
       },
@@ -257,60 +284,53 @@ export const useChatStore = create(
           }));
           return newFlow;
         } catch (error) {
-          console.error('Error creating flow:', error);
+          console.error("Error creating flow:", error);
           throw error;
         }
       },
-
-      // Esta acción llama a 'deleteFlowAPI'
       deleteFlow: async (flowId) => {
         try {
-          console.log('Deleting flow with ID:', flowId);
+          console.log("Deleting flow with ID:", flowId);
           await deleteFlowAPI(flowId);
           set((state) => ({
             flows: state.flows.filter((f) => f.id !== flowId),
           }));
         } catch (error) {
-          console.error('Error deleting flow:', error);
+          console.error("Error deleting flow:", error);
           throw error; // Lanza el error para que el toast lo atrape
         }
       },
 
       fetchFlowById: async (flowId) => {
         set({ loadingCurrentFlow: true, currentEditingFlow: null });
-        
-        // 1. Obtener la data mínima del flujo desde el estado local (la lista)
-        const existingFlow = get().flows.find(f => f.id === flowId); 
-
+        const existingFlow = get().flows.find((f) => f.id === flowId);
         try {
-          // 2. Intentar llamar a la API (Esto falla para flujos nuevos)
           const flowDetails = await getFlowById(flowId);
-          
+
           const combinedFlowData = {
-            ...existingFlow, 
+            ...existingFlow,
             ...flowDetails,
           };
 
-          set({ currentEditingFlow: combinedFlowData, loadingCurrentFlow: false });
+          set({
+            currentEditingFlow: combinedFlowData,
+            loadingCurrentFlow: false,
+          });
         } catch (error) {
-          // 3. Si la API falla, manejar el error
-          console.error('Error fetching flow by ID:', error);
-          
-          // 4. Si tenemos la data mínima del flujo (nombre, ID, etc.), la usamos
           if (existingFlow) {
-              set({ 
-                  currentEditingFlow: existingFlow, 
-                  loadingCurrentFlow: false 
-              });
-              console.warn(`[FlowStore] Fallback exitoso: La API falló, cargando editor con datos mínimos.`);
-              return; // Salir exitosamente
+            set({
+              currentEditingFlow: existingFlow,
+              loadingCurrentFlow: false,
+            });
+            console.warn(
+              `[FlowStore] Fallback exitoso: La API falló, cargando editor con datos mínimos.`
+            );
+            return;
           }
-          
-          // 5. Si no tenemos ni la data mínima, el error es grave, lo re-lanza o lo muestra
           set({ loadingCurrentFlow: false });
         }
       },
-      
+
       clearCurrentEditingFlow: () => {
         set({ currentEditingFlow: null });
       },
@@ -320,7 +340,7 @@ export const useChatStore = create(
           const triggersFromApi = await getTriggers();
           set({ triggers: triggersFromApi || [], loadingTriggers: false });
         } catch (error) {
-          console.error('Error fetching triggers:', error);
+          console.error("Error fetching triggers:", error);
           set({ loadingTriggers: false });
         }
       },
@@ -336,7 +356,7 @@ export const useChatStore = create(
           }));
           return newTrigger;
         } catch (error) {
-          console.error('Error creating trigger:', error);
+          console.error("Error creating trigger:", error);
           throw error; // Lanza el error para que el modal lo atrape
         }
       },
@@ -352,10 +372,47 @@ export const useChatStore = create(
           // 2. ¡LA SOLUCIÓN! Vuelve a llamar a fetchTriggers
           //    Usamos get() para llamar a otra acción dentro del store.
           await get().fetchTriggers();
-
         } catch (error) {
-          console.error('Error updating trigger:', error);
+          console.error("Error updating trigger:", error);
           throw error; // Lanza el error para que el modal lo atrape
+        }
+      },
+      fetchStages: async () => {
+        set({ loadingStages: true });
+        try {
+          // 1. Llamamos siempre a la API para tener datos frescos
+          const apiStages = await getStages();
+
+          // 2. Si la API responde con datos, SOBRESCRIBIMOS los defaults
+          if (apiStages && apiStages.length > 0) {
+            set({ stages: apiStages, loadingStages: false });
+            console.log("Etapas actualizadas desde API:", apiStages);
+          } else {
+            // Solo si la API devuelve vacío, mantenemos lo que hay o defaults
+            console.warn("API devolvió 0 etapas, manteniendo actuales.");
+            set({ loadingStages: false });
+          }
+        } catch (error) {
+          console.error(
+            "Error al cargar etapas, usando caché/defaults:",
+            error
+          );
+          set({ loadingStages: false });
+        }
+      },
+      saveStages: async (newStages) => {
+        // 1. Actualización optimista (UI update instantáneo)
+        set({ stages: newStages });
+
+        try {
+          console.log("Guardando etapas en backend...", newStages);
+          await updateStages(newStages);
+          // Opcional: Podrías hacer un fetchStages() aquí para asegurar sincronía,
+          // pero usualmente no es necesario si el backend guarda lo que envías.
+        } catch (error) {
+          console.error("Error guardando etapas en el backend:", error);
+          // Aquí podrías implementar un rollback si quisieras ser estricto,
+          // o mostrar un toast de error en la UI.
         }
       },
     }),
@@ -368,9 +425,10 @@ export const useChatStore = create(
         accessToken: state.accessToken,
         templates: state.templates,
         companyId: state.companyId,
+        googleAuthStatus: state.googleAuthStatus,
+        stages: state.stages,
       }),
-      onRehydrateStorage: () => (state) => {
-      },
+      onRehydrateStorage: () => (state) => {},
     }
   )
 );

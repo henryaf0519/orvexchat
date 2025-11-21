@@ -13,17 +13,17 @@ export default function TriggerPreview({ header, body, footer, cta }) {
         
         {/* 1. Header (Encabezado) */}
         <p className="font-bold text-gray-900 text-base">
-          {header || 'Bienvenido a...'}
+          {header || 'Hola nombre'}
         </p>
         
         {/* 2. Body (Cuerpo) */}
         <p className="text-sm text-gray-800 whitespace-pre-wrap break-words">
-          {body || 'Toca el botón de abajo para explorar...'}
+          {body || 'Para continuar oprime el boton por favor'}
         </p>
         
         {/* 3. Footer (Pie de página) */}
         <p className="text-xs text-gray-500 mt-1">
-          {footer || 'Tu aliado...'}
+          {footer}
         </p>
       </div>
 
