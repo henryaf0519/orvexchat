@@ -3,19 +3,19 @@ import { useChatStore } from '../store/chatStore';
 import { toast } from 'react-toastify';
 import { X, Loader2, Star, MessageCircle } from 'lucide-react';
 import TriggerPreview from './TriggerPreview';
-import { getFlowById } from '../services/flowService'; 
+import { getFlowById } from '../services/flowService';
 
 export default function TriggerFormModal({ isOpen, onClose, trigger }) {
-  // ESTE MODAL AHORA ES SOLO PARA EL SALUDO POR DEFECTO
-  
   const [formData, setFormData] = useState({
     flow_id: '',
-    flow_cta: 'Abrir Menú',
-    header_text: '', 
-    body_text: '',   
-    footer_text: '', 
+    flow_cta: '',
+    header_text: '',
+    body_text: '',
+    footer_text: '',
   });
-  
+
+  // Estado local para errores de validación
+  const [errors, setErrors] = useState({});
   const [isLoading, setIsLoading] = useState(false);
 
   const flows = useChatStore((state) => state.flows);
@@ -25,52 +25,71 @@ export default function TriggerFormModal({ isOpen, onClose, trigger }) {
   const publishedFlows = useMemo(() => flows.filter(flow => flow.status === 'PUBLISHED'), [flows]);
 
   useEffect(() => {
-    if (trigger) { 
-      // MODO EDICIÓN
+    if (trigger) {
       setFormData({
         flow_id: trigger.flow_id || '',
         flow_cta: trigger.flow_cta || '',
-        header_text: trigger.header_text || '', 
-        body_text: trigger.body_text || '',   
-        footer_text: trigger.footer_text || '', 
+        header_text: trigger.header_text || '',
+        body_text: trigger.body_text || '',
+        footer_text: trigger.footer_text || '',
       });
-    } else { 
-      // MODO CREACIÓN (Valores por defecto para saludo)
-      setFormData({ 
-        flow_id: '', 
-        flow_cta: 'Abrir Menú',
-        header_text: '¡Hola! 👋', 
-        body_text: 'Bienvenido a nuestro asistente virtual. ¿En qué podemos ayudarte hoy?', 
-        footer_text: 'Selecciona una opción' 
+    } else {
+      // Inicializar vacío (sin valores por defecto)
+      setFormData({
+        flow_id: '',
+        flow_cta: '',
+        header_text: '',
+        body_text: '',
+        footer_text: '',
       });
     }
-  }, [trigger, isOpen]); 
+    setErrors({}); // Limpiar errores al abrir
+  }, [trigger, isOpen]);
 
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+    const { name, value } = e.target;
+    setFormData({ ...formData, [name]: value });
+    
+    // Limpiar el error del campo mientras el usuario escribe
+    if (errors[name]) {
+      setErrors(prev => ({ ...prev, [name]: null }));
+    }
+  };
+
+  const validate = () => {
+    const newErrors = {};
+    
+    if (!formData.flow_id) newErrors.flow_id = 'Campo requerido';
+    if (!formData.header_text.trim()) newErrors.header_text = 'Campo requerido';
+    if (!formData.body_text.trim()) newErrors.body_text = 'Campo requerido';
+    if (!formData.footer_text.trim()) newErrors.footer_text = 'Campo requerido';
+    if (!formData.flow_cta.trim()) newErrors.flow_cta = 'Campo requerido';
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.flow_id) return toast.error('Selecciona un flujo');
+
+    if (!validate()) {
+      return; // Detener si hay errores, el usuario los verá en rojo
+    }
 
     setIsLoading(true);
     try {
       const flowDetails = await getFlowById(formData.flow_id);
-      const finalScreenId = flowDetails?.flow_json?.routing_model 
-          ? Object.keys(flowDetails.flow_json.routing_model)[0] 
-          : 'START';
+      const finalScreenId = flowDetails?.flow_json?.routing_model
+        ? Object.keys(flowDetails.flow_json.routing_model)[0]
+        : 'START';
 
-      // ✅ PAYLOAD BLINDADO: Siempre es true porque este modal es solo para el saludo
       const payload = {
         ...formData,
         screen_id: finalScreenId,
-        isActive: true, // <--- SIEMPRE TRUE
-        name: 'default_welcome_trigger', 
+        isActive: true,
+        name: 'default_welcome_trigger',
         keyword: ''
       };
-
-      console.log("🚀 Guardando Saludo (isActive: true):", payload);
 
       if (trigger) {
         await updateTrigger(trigger.id || trigger.trigger_id, payload);
@@ -88,7 +107,12 @@ export default function TriggerFormModal({ isOpen, onClose, trigger }) {
       setIsLoading(false);
     }
   };
-  
+
+  // Helper para renderizar el mensaje de error debajo del input
+  const ErrorMessage = ({ field }) => (
+    errors[field] ? <p className="text-red-500 text-xs mt-1 font-medium">{errors[field]}</p> : null
+  );
+
   if (!isOpen) return null;
 
   return (
@@ -118,19 +142,69 @@ export default function TriggerFormModal({ isOpen, onClose, trigger }) {
                     <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-200 space-y-6">
                         <div>
                             <label className="block text-sm font-bold text-gray-700 mb-2">Flujo a Ejecutar</label>
-                            <select name="flow_id" value={formData.flow_id} onChange={handleChange} className="w-full p-3 border rounded-lg bg-white focus:ring-2 focus:ring-blue-500" required>
+                            <select 
+                                name="flow_id" 
+                                value={formData.flow_id} 
+                                onChange={handleChange} 
+                                className={`w-full p-3 border rounded-lg bg-white focus:ring-2 focus:ring-blue-500 outline-none ${errors.flow_id ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-300'}`}
+                            >
                                 <option value="">-- Selecciona un flujo --</option>
                                 {publishedFlows.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
                             </select>
+                            <ErrorMessage field="flow_id" />
                         </div>
 
                         <div className="border-t pt-4 space-y-4">
                             <h4 className="text-xs font-bold text-gray-400 uppercase tracking-wider">Contenido del Mensaje</h4>
-                            <input name="header_text" value={formData.header_text} onChange={handleChange} placeholder="Título (Header)" className="w-full p-3 border rounded-lg" maxLength={60} required/>
-                            <textarea name="body_text" value={formData.body_text} onChange={handleChange} placeholder="Mensaje de bienvenida..." className="w-full p-3 border rounded-lg h-28 resize-none" required maxLength={1024}/>
+                            
+                            <div>
+                                <input 
+                                    name="header_text" 
+                                    value={formData.header_text} 
+                                    onChange={handleChange} 
+                                    placeholder="Título (Header)" 
+                                    className={`w-full p-3 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500 ${errors.header_text ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-300'}`}
+                                    maxLength={60} 
+                                />
+                                <ErrorMessage field="header_text" />
+                            </div>
+
+                            <div>
+                                <textarea 
+                                    name="body_text" 
+                                    value={formData.body_text} 
+                                    onChange={handleChange} 
+                                    placeholder="Mensaje de bienvenida..." 
+                                    className={`w-full p-3 border rounded-lg h-28 resize-none outline-none focus:ring-2 focus:ring-blue-500 ${errors.body_text ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-300'}`}
+                                    maxLength={1024}
+                                />
+                                <ErrorMessage field="body_text" />
+                            </div>
+
                             <div className="grid grid-cols-2 gap-4">
-                                <input name="footer_text" value={formData.footer_text} onChange={handleChange} placeholder="Pie de página" className="w-full p-3 border rounded-lg" maxLength={60}/>
-                                <input name="flow_cta" value={formData.flow_cta} onChange={handleChange} placeholder="Texto del Botón" className="w-full p-3 border border-green-300 bg-green-50 rounded-lg font-medium text-green-800" maxLength={20} required/>
+                                <div>
+                                    <input 
+                                        name="footer_text" 
+                                        value={formData.footer_text} 
+                                        onChange={handleChange} 
+                                        placeholder="Pie de página" 
+                                        className={`w-full p-3 border rounded-lg outline-none focus:ring-2 focus:ring-blue-500 ${errors.footer_text ? 'border-red-500 ring-1 ring-red-500' : 'border-gray-300'}`}
+                                        maxLength={60}
+                                    />
+                                    <ErrorMessage field="footer_text" />
+                                </div>
+
+                                <div>
+                                    <input 
+                                        name="flow_cta" 
+                                        value={formData.flow_cta} 
+                                        onChange={handleChange} 
+                                        placeholder="Texto del Botón" 
+                                        className={`w-full p-3 border rounded-lg font-medium text-green-800 outline-none focus:ring-2 focus:ring-green-500 ${errors.flow_cta ? 'border-red-500 ring-1 ring-red-500 bg-white' : 'border-green-300 bg-green-50'}`}
+                                        maxLength={20} 
+                                    />
+                                    <ErrorMessage field="flow_cta" />
+                                </div>
                             </div>
                         </div>
                     </div>

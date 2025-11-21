@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { useChatStore } from '../store/chatStore';
 import { toast } from 'react-toastify';
-import { X, Save, Loader2, LayoutTemplate, ArrowRight, MousePointer, CheckCircle, Link, MessageSquare } from 'lucide-react';
+import { X, Save, Loader2, LayoutTemplate, ArrowRight, MousePointer, CheckCircle, Link, MessageSquare, AlertCircle } from 'lucide-react';
 import { getTemplates } from '../services/templateService';
 import { getFlowById } from '../services/flowService';
 import TriggerPreview from './TriggerPreview';
@@ -16,13 +16,15 @@ export default function TemplateTriggerMapper({ isOpen, onClose, initialTemplate
   const [templates, setTemplates] = useState([]);
   const [selectedTemplate, setSelectedTemplate] = useState(null);
   
-  const [buttonMappings, setButtonMappings] = useState({}); 
+  const [buttonMappings, setButtonMappings] = useState({});
+  // Estado para errores: { [buttonIndex]: { fieldName: "Error msg" } }
+  const [errors, setErrors] = useState({}); 
   const [loadingTemplates, setLoadingTemplates] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
 
   const publishedFlows = useMemo(() => flows.filter(f => f.status === 'PUBLISHED'), [flows]);
 
-  // Cargar plantillas y Pre-seleccionar (Por ID o por Nombre)
+  // Cargar plantillas y Pre-seleccionar
   useEffect(() => {
     if (isOpen) {
       setLoadingTemplates(true);
@@ -34,15 +36,10 @@ export default function TemplateTriggerMapper({ isOpen, onClose, initialTemplate
             );
             setTemplates(valid);
 
-            // ✅ ESTRATEGIA DE PRE-SELECCIÓN
             let preSelected = null;
-
-            // 1. Prioridad: Buscar por ID (Nuevo estándar)
             if (initialTemplateId) {
                 preSelected = valid.find(t => t.id === initialTemplateId);
             }
-            
-            // 2. Fallback: Buscar por Nombre (Compatibilidad)
             if (!preSelected && initialTemplateName) {
                 const normalizedName = initialTemplateName.trim().toLowerCase();
                 preSelected = valid.find(t => t.name.toLowerCase() === normalizedName);
@@ -57,6 +54,7 @@ export default function TemplateTriggerMapper({ isOpen, onClose, initialTemplate
     } else {
         setSelectedTemplate(null);
         setButtonMappings({});
+        setErrors({});
     }
   }, [isOpen, initialTemplateName, initialTemplateId]);
 
@@ -70,17 +68,14 @@ export default function TemplateTriggerMapper({ isOpen, onClose, initialTemplate
               const expectedId = `${selectedTemplate.name}_btn_${idx}`;
               
               const existingTrigger = triggers.find(t => {
-                  // 1. Coincidencia por ID DE PLANTILLA (Lo que pediste)
                   const matchId = !t.isActive && 
                                   t.initial_data?.template_id === selectedTemplate.id && 
                                   t.initial_data?.button_index === idx;
 
-                  // 2. Coincidencia por Nombre (Legacy)
                   const matchName = !t.isActive && 
                                     t.initial_data?.template_name === selectedTemplate.name && 
                                     t.initial_data?.button_index === idx;
                   
-                  // 3. Coincidencia Legacy pura
                   const matchOld = !t.isActive && t.name === expectedId;
                   
                   return matchId || matchName || matchOld;
@@ -99,23 +94,66 @@ export default function TemplateTriggerMapper({ isOpen, onClose, initialTemplate
               }
           });
           setButtonMappings(newMappings);
+          setErrors({}); // Reset errors on template change
       }
   }, [selectedTemplate, triggers]);
 
   const updateMapping = (idx, field, value) => {
       setButtonMappings(prev => {
+          // REQUERIMIENTO 2: Sin valores por defecto ("" strings vacíos)
           const current = prev[idx] || { 
-              header_text: selectedTemplate?.name || "¡Hola!",
-              body_text: "Para continuar, toca el botón de abajo.",
+              header_text: "",
+              body_text: "",
               footer_text: "",
-              flow_cta: "Ver"
+              flow_cta: ""
           };
           return { ...prev, [idx]: { ...current, [field]: value } };
       });
+
+      // Limpiar error específico al escribir
+      if (errors[idx] && errors[idx][field]) {
+          setErrors(prev => ({
+              ...prev,
+              [idx]: { ...prev[idx], [field]: null }
+          }));
+      }
+  };
+
+  // REQUERIMIENTO 1: Validación estricta
+  const validate = () => {
+      const newErrors = {};
+      let isValid = true;
+      const buttons = selectedTemplate.components.find(c => c.type === 'BUTTONS')?.buttons || [];
+
+      buttons.forEach((btn, idx) => {
+          const mapping = buttonMappings[idx];
+          // Solo validamos si el usuario ha seleccionado un flujo para este botón
+          if (mapping && mapping.flow_id) {
+              const btnErrors = {};
+              if (!mapping.header_text?.trim()) btnErrors.header_text = "Campo requerido";
+              if (!mapping.body_text?.trim()) btnErrors.body_text = "Campo requerido";
+              if (!mapping.footer_text?.trim()) btnErrors.footer_text = "Campo requerido";
+              if (!mapping.flow_cta?.trim()) btnErrors.flow_cta = "Campo requerido";
+
+              if (Object.keys(btnErrors).length > 0) {
+                  newErrors[idx] = btnErrors;
+                  isValid = false;
+              }
+          }
+      });
+
+      setErrors(newErrors);
+      return isValid;
   };
 
   const handleSaveAll = async () => {
       if (!selectedTemplate) return;
+      
+      // Ejecutar validación antes de guardar
+      if (!validate()) {
+          // Opcional: Mostrar toast genérico, pero los errores visuales ya estarán ahí
+          return;
+      }
       
       setIsSaving(true);
       const buttons = selectedTemplate.components.find(c => c.type === 'BUTTONS')?.buttons || [];
@@ -125,11 +163,8 @@ export default function TemplateTriggerMapper({ isOpen, onClose, initialTemplate
       try {
           const promises = buttons.map(async (btn, idx) => {
               const mapping = buttonMappings[idx];
+              // Si no hay flow_id, se ignora (no es obligatorio configurar TODOS los botones, pero si configuras uno, debe estar completo)
               if (!mapping || !mapping.flow_id) return; 
-
-              if (!mapping.header_text || !mapping.body_text || !mapping.flow_cta) {
-                  throw new Error(`Faltan datos en el botón "${btn.text}"`);
-              }
 
               // Obtener Screen ID real
               let realScreenId = "START"; 
@@ -141,7 +176,6 @@ export default function TemplateTriggerMapper({ isOpen, onClose, initialTemplate
                   }
               } catch (e) { console.warn("No screen details"); }
 
-              // Generar ID del Trigger si es necesario
               let triggerNameID = mapping.name;
               if (!triggerNameID || triggerNameID.includes('_btn_')) {
                   triggerNameID = (baseTimestamp + idx).toString();
@@ -154,17 +188,15 @@ export default function TemplateTriggerMapper({ isOpen, onClose, initialTemplate
                   flow_cta: mapping.flow_cta,
                   header_text: mapping.header_text,
                   body_text: mapping.body_text,
-                  footer_text: mapping.footer_text || "",
+                  footer_text: mapping.footer_text,
                   keyword: btn.text,
                   screen_id: realScreenId,
-                  // ✅ GUARDADO CORREGIDO: Usamos template_id
                   initial_data: { 
                       button_index: idx, 
-                      template_id: selectedTemplate.id, // <--- ID CRÍTICO
-                      template_name: selectedTemplate.name // (Opcional: dejamos el nombre por conveniencia visual en DB)
+                      template_id: selectedTemplate.id,
+                      template_name: selectedTemplate.name 
                   },
                   template_id: selectedTemplate.id
-
               };
 
               const existingId = mapping.id;
@@ -184,7 +216,7 @@ export default function TemplateTriggerMapper({ isOpen, onClose, initialTemplate
               await fetchTriggers();
               onClose();
           } else {
-              toast.warn("No configuraste ningún flujo.");
+              toast.warn("No seleccionaste ningún flujo para configurar.");
           }
 
       } catch (error) {
@@ -194,6 +226,23 @@ export default function TemplateTriggerMapper({ isOpen, onClose, initialTemplate
           setIsSaving(false);
       }
   };
+
+  // Helper para clases de input
+  const getInputClass = (idx, fieldName) => `
+    w-full p-3 border rounded-lg transition-colors duration-200 outline-none
+    ${errors[idx]?.[fieldName] 
+      ? 'border-red-500 bg-red-50 focus:ring-red-500 focus:border-red-500' 
+      : 'border-gray-300 focus:ring-2 focus:ring-blue-500 bg-white'}
+  `;
+
+  // Helper para mensajes de error
+  const ErrorMessage = ({ idx, field }) => (
+    errors[idx]?.[field] ? (
+      <p className="text-xs text-red-500 mt-1 flex items-center gap-1 font-medium">
+        <AlertCircle size={12} /> {errors[idx][field]}
+      </p>
+    ) : null
+  );
 
   if (!isOpen) return null;
 
@@ -226,7 +275,6 @@ export default function TemplateTriggerMapper({ isOpen, onClose, initialTemplate
                         className="w-full p-4 border border-gray-300 rounded-xl shadow-sm focus:ring-2 focus:ring-blue-500 text-gray-700 font-medium text-lg"
                         onChange={(e) => setSelectedTemplate(templates.find(t => t.id === e.target.value))}
                         value={selectedTemplate?.id || ''}
-                        // Deshabilitar si ya venimos pre-seleccionados para no cambiar contexto por error
                         disabled={!!initialTemplateId || !!initialTemplateName}
                     >
                         <option value="">-- Busca tu plantilla aprobada --</option>
@@ -270,27 +318,80 @@ export default function TemplateTriggerMapper({ isOpen, onClose, initialTemplate
                                                 value={mapping.flow_id || ''}
                                                 onChange={(e) => updateMapping(idx, 'flow_id', e.target.value)}
                                             >
-                                                <option value="">👇 Selecciona aquí...</option>
+                                                <option value="">👇 Selecciona aquí (Desactivado)...</option>
                                                 {publishedFlows.map(f => <option key={f.id} value={f.id}>{f.name}</option>)}
                                             </select>
                                         </div>
 
+                                        {/* Inputs visibles solo si hay flujo seleccionado */}
                                         <div className={`space-y-4 transition-opacity duration-300 ${!mapping.flow_id ? 'opacity-50 pointer-events-none' : 'opacity-100'}`}>
-                                            <input className="w-full p-3 border rounded-lg" placeholder="Título del mensaje" value={mapping.header_text || ''} onChange={(e) => updateMapping(idx, 'header_text', e.target.value)} maxLength={60}/>
-                                            <textarea className="w-full p-3 border rounded-lg h-24 resize-none" placeholder="Mensaje principal..." value={mapping.body_text || ''} onChange={(e) => updateMapping(idx, 'body_text', e.target.value)} maxLength={1024}/>
+                                            
+                                            {/* Header */}
+                                            <div>
+                                                <input 
+                                                    className={getInputClass(idx, 'header_text')} 
+                                                    placeholder="Título del mensaje" 
+                                                    value={mapping.header_text || ''} 
+                                                    onChange={(e) => updateMapping(idx, 'header_text', e.target.value)} 
+                                                    maxLength={60}
+                                                />
+                                                <div className="flex justify-between mt-1">
+                                                    <ErrorMessage idx={idx} field="header_text" />
+                                                    <span className="text-[10px] text-gray-400 ml-auto">{(mapping.header_text || '').length}/60</span>
+                                                </div>
+                                            </div>
+
+                                            {/* Body */}
+                                            <div>
+                                                <textarea 
+                                                    className={`${getInputClass(idx, 'body_text')} h-24 resize-none`} 
+                                                    placeholder="Mensaje principal..." 
+                                                    value={mapping.body_text || ''} 
+                                                    onChange={(e) => updateMapping(idx, 'body_text', e.target.value)} 
+                                                    maxLength={1024}
+                                                />
+                                                <ErrorMessage idx={idx} field="body_text" />
+                                            </div>
+
+                                            {/* Footer & CTA */}
                                             <div className="grid grid-cols-2 gap-4">
-                                                <input className="w-full p-3 border rounded-lg" placeholder="Footer" value={mapping.footer_text || ''} onChange={(e) => updateMapping(idx, 'footer_text', e.target.value)} maxLength={60}/>
-                                                <input className="w-full p-3 border border-green-300 bg-green-50 rounded-lg font-medium text-green-800" placeholder="Texto Botón" value={mapping.flow_cta || ''} onChange={(e) => updateMapping(idx, 'flow_cta', e.target.value)} maxLength={20}/>
+                                                <div>
+                                                    <input 
+                                                        className={getInputClass(idx, 'footer_text')} 
+                                                        placeholder="Pie de página" 
+                                                        value={mapping.footer_text || ''} 
+                                                        onChange={(e) => updateMapping(idx, 'footer_text', e.target.value)} 
+                                                        maxLength={60}
+                                                    />
+                                                    <div className="flex justify-between mt-1">
+                                                        <ErrorMessage idx={idx} field="footer_text" />
+                                                        <span className="text-[10px] text-gray-400 ml-auto">{(mapping.footer_text || '').length}/60</span>
+                                                    </div>
+                                                </div>
+
+                                                <div>
+                                                    <input 
+                                                        className={`${getInputClass(idx, 'flow_cta')} bg-green-50 text-green-800 font-medium`} 
+                                                        placeholder="Texto Botón" 
+                                                        value={mapping.flow_cta || ''} 
+                                                        onChange={(e) => updateMapping(idx, 'flow_cta', e.target.value)} 
+                                                        maxLength={20}
+                                                    />
+                                                    <div className="flex justify-between mt-1">
+                                                        <ErrorMessage idx={idx} field="flow_cta" />
+                                                        <span className="text-[10px] text-gray-400 ml-auto">{(mapping.flow_cta || '').length}/20</span>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
 
                                     <div className="flex items-center justify-center bg-[#ECE5DD] rounded-2xl border border-gray-300 shadow-inner p-6 min-h-[300px]">
                                         <TriggerPreview 
-                                            header={previewData.header} 
-                                            body={previewData.body} 
-                                            footer={previewData.footer} 
-                                            cta={previewData.cta} 
+                                            header={previewData.header || "Título"} 
+                                            body={previewData.body || "Mensaje..."} 
+                                            footer={previewData.footer || "Footer"} 
+                                            cta={previewData.cta || "Botón"} 
                                         />
                                     </div>
                                 </div>
