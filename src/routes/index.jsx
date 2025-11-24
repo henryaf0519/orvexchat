@@ -11,6 +11,7 @@ import TemplatesPage from '../pages/TemplatesPage';
 import FlowEditorPage from '../pages/FlowEditorPage';
 import FlowsPage from '../pages/FlowsPage';
 import TriggersPage from '../pages/TriggersPage';
+import CalendarPage from '../pages/CalendarPage';
 import App from '../app';
 
 export const router = createBrowserRouter([
@@ -93,7 +94,15 @@ export const router = createBrowserRouter([
             <TriggersPage />
           </ProtectedRoute>
         )
-      }
+      },
+      {
+        path: 'calendar',
+        element: (
+          <ProtectedRoute>
+            <CalendarPage />
+          </ProtectedRoute>
+        ),
+      },
     ],
   },
 ]);
