@@ -59,7 +59,7 @@ export default function CalendarPage() {
                   Agenda Corporativa
                 </h1>
                 <p className="text-slate-500 text-sm mt-1 font-medium">
-                    Visualiza y gestiona la disponibilidad de todo tu equipo Orvex.
+                    Visualiza y gestiona la disponibilidad de todo tu equipo.
                 </p>
             </div>
             
