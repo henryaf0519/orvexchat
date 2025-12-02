@@ -195,7 +195,7 @@ export default function CreateAppointmentModal({ isOpen, onClose, onCreate, init
                     <FaUser className={getIconClass(errors.clientName)} />
                     <input 
                       type="text" 
-                      placeholder="Ej: Henry"
+                      placeholder="Nombre Cliente"
                       className={getInputClasses(errors.clientName)}
                       value={formData.clientName}
                       onChange={e => handleChange('clientName', e.target.value)}
