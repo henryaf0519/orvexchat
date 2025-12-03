@@ -6,8 +6,7 @@ import CreateAppointmentModal from "../components/CreateAppointmentModal";
 import { toast } from "react-toastify";
 import { FaSyncAlt, FaCalendarCheck } from "react-icons/fa";
 
-// ✅ Importamos ambas funciones reales del servicio
-import { getAppointments, createAppointment } from "../services/appointmentService";
+import { getAppointments, createAppointment, cancelAppointment } from "../services/appointmentService";
 
 export default function CalendarPage() {
   const [appointments, setAppointments] = useState([]);
@@ -60,8 +59,6 @@ export default function CalendarPage() {
     setSelectedDateForCreate(date);
     setIsCreateModalOpen(true);
   };
-
-  // ✅ LÓGICA REAL DE ENVÍO
   const handleCreateSubmit = async (formData) => {
     try {
       // 1. Notificar al usuario que el proceso inició (Google Calendar tarda unos segundos)
@@ -88,6 +85,44 @@ export default function CalendarPage() {
       // Manejo de error real (mostramos el mensaje que venga del backend si existe)
       toast.dismiss(); // Quitamos el loading
       toast.error(error.message || "Error al crear la cita. Inténtalo de nuevo.");
+    }
+  };
+
+  const handleCancelAppointment = async () => {
+    if (!selectedEvent || !selectedEvent.id) {
+      toast.error("Error: No se encontró el ID de la cita para cancelar.");
+      return;
+    }
+    const confirmCancel = window.confirm(
+      "¿Estás seguro de que quieres CANCELAR esta cita? Esta acción es irreversible."
+    );
+
+    if (!confirmCancel) return;
+    setLoading(true);
+    const loadingToastId = toast.loading("Cancelando cita...");
+    
+    try {
+      await cancelAppointment(selectedEvent.id);
+      toast.update(loadingToastId, {
+        render: "¡Cita cancelada con éxito!",
+        type: "success",
+        isLoading: false,
+        autoClose: 5000,
+      });
+
+      closeEventModal();
+      await fetchAppointments(); 
+      
+    } catch (error) {
+      console.error(error);
+      toast.update(loadingToastId, {
+        render: error.message || "Error al cancelar la cita. Inténtalo de nuevo.",
+        type: "error",
+        isLoading: false,
+        autoClose: 5000,
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -140,7 +175,8 @@ export default function CalendarPage() {
         <EventModal 
             isOpen={isEventModalOpen} 
             onClose={closeEventModal} 
-            event={selectedEvent} 
+            event={selectedEvent}
+            onCancel={handleCancelAppointment}
         />
 
         <CreateAppointmentModal

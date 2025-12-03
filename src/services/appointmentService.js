@@ -40,3 +40,22 @@ export const createAppointment = async (appointmentData) => {
     throw error;
   }
 };
+
+export const cancelAppointment = async (appointmentId) => {
+  try {
+    const encodedId = encodeURIComponent(appointmentId);
+    const response = await apiFetch(`/appointments/${encodedId}`, {
+      method: "DELETE",
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || "Error al cancelar la cita");
+    }
+
+    return { success: true };
+  } catch (error) {
+    console.error("Error in cancelAppointment service:", error);
+    throw error;
+  }
+};

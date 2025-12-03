@@ -40,7 +40,7 @@ export default function MyCalendar({ appointments, onEventClick, onDateSelect, o
     return {
       id: appt.id,
       title: appt.title,
-      start: appt.date,
+      start: appt.start,
       backgroundColor: styles.bg,
       borderColor: styles.border,
       textColor: styles.text,
