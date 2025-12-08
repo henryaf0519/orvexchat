@@ -3,13 +3,7 @@ import { useChatStore } from '../store/chatStore';
 
 export default function TemplateMessage({ template }) {
   const sendMessage = useChatStore((state) => state.sendMessage);
-
-  const handleButtonClick = (buttonTitle) => {
-    if (buttonTitle) {
-      sendMessage(buttonTitle);
-    }
-  };
-
+  
   if (!template || !template.components) {
     return null;
   }
