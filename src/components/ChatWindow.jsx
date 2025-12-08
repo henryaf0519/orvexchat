@@ -20,12 +20,6 @@ export default function ChatWindow({
     }
   }, [messages, chatId]);
 
-  // Función para obtener la primera letra del ID del chat para el avatar del header
-  const getChatAvatarInitial = (id) => {
-    if (!id) return '';
-    const namePart = id.split('#')[0]; // Si el ID es algo como "CHAT#12345", toma "CHAT"
-    return namePart.charAt(0).toUpperCase();
-  };
 
   return (
     <section className="flex-1 flex flex-col bg-white shadow-lg rounded-lg overflow-hidden m-4">

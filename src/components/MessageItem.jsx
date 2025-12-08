@@ -13,16 +13,29 @@ export default function MessageItem({ message }) {
     ? "bg-indigo-600 text-white"
     : "bg-gray-200 text-gray-900";
 
-  const formatTimestamp = (isoString) => {
-    if (!isoString || !isoString.includes('#')) return '';
-    const dateString = isoString.split('#')[1];
-    const date = new Date(dateString);
-    const options = {
-      hour: '2-digit',
-      minute: '2-digit',
-      timeZone: 'America/Bogota'
-    };
-    return date.toLocaleTimeString([], options);
+const formatTimestamp = (isoString) => {
+    if (!isoString) return '';
+    
+    try {
+      const dateString = isoString.includes('#') ? isoString.split('#')[1] : isoString;
+      const date = new Date(dateString);
+      
+      if (isNaN(date.getTime())) return ''; 
+
+      const options = {
+        day: 'numeric',    
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true,
+        timeZone: 'America/Bogota'
+      };
+      return date.toLocaleString('es-CO', options).replace(',', ''); 
+                 
+    } catch (e) {
+      return '';
+    }
   };
 
   const renderContent = () => {
