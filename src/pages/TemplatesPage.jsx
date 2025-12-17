@@ -142,18 +142,14 @@ export default function TemplatesPage() {
               }
           } else if (formData.headerType === 'IMAGE') {
               if (finalHeaderBase64) {
-                  // Si se subió una imagen NUEVA, enviamos el base64
                   headerComponent.example = { header_base64: finalHeaderBase64 };
               } else if (formData.headerImageUrl) {
-                  // ✅ CAMBIO CLAVE: Si NO hay imagen nueva PERO SÍ había una antes,
-                  // reenviamos el "handle" que guardamos previamente.
                   headerComponent.example = { header_handle: [formData.headerImageUrl] };
               }
           }
           components.push(headerComponent);
       }
 
-      // BODY
       const bodyComponent = { type: 'BODY', text: formData.bodyText };
       if (formData.bodyText.includes('{{')) {
         const variableCount = (formData.bodyText.match(/\{\{\d+\}\}/g) || []).length;
@@ -165,12 +161,10 @@ export default function TemplatesPage() {
       }
       components.push(bodyComponent);
 
-      // FOOTER
       if (formData.footerText) {
         components.push({ type: 'FOOTER', text: formData.footerText });
       }
 
-      // BUTTONS
       if (formData.buttons.length > 0) {
         const formattedButtons = formData.buttons.map(({ ...rest }) => rest);
         components.push({ type: 'BUTTONS', buttons: formattedButtons });
@@ -183,12 +177,10 @@ export default function TemplatesPage() {
       const components = buildComponents();
 
       if (editingTemplateId) {
-        // Para actualizar, solo necesitamos los componentes
         const updatePayload = { components };
         await updateTemplate(editingTemplateId, updatePayload);
         toast.success(`Plantilla "${formData.name}" actualizada con éxito!`);
       } else {
-        // Para crear, necesitamos toda la estructura
         const createPayload = {
           name: formData.name.toLowerCase().replace(/[^a-z0-9_]/g, ''),
           language: formData.language,
