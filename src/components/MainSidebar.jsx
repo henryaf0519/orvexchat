@@ -56,10 +56,10 @@ export default function MainSidebar() {
      
      {/* Botón de Chats */}
      <button
-      onClick={() => navigate('/chat')}
+      onClick={() => navigate('/messages')}
       title="Chats"
       className={`p-3 rounded-xl transition-transform transform hover:scale-110 ${
-       currentPath === '/chat' ? 'bg-red-600 text-white' : 'hover:bg-red-600 hover:text-white'
+       currentPath === '/messages' ? 'bg-red-600 text-white' : 'hover:bg-red-600 hover:text-white'
       }`}
      >
       <FaComments size={24} />

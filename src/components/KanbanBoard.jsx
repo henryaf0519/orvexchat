@@ -111,7 +111,7 @@ export default function KanbanBoard() {
 
   const handleCardClick = (contact) => {
     selectConversation(contact.id);
-    navigate("/chat");
+    navigate("/messages");
   };
 
   const handleOpenModal = (contact) => {

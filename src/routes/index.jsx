@@ -32,7 +32,7 @@ export const router = createBrowserRouter([
         element: <RegisterPage />,
       },
       {
-        path: 'chat',
+        path: 'messages',
         element: (
           <ProtectedRoute>
             <ChatPage />

@@ -55,7 +55,7 @@ export default function LoginPage() {
       // ✅ 3. Usar la variable correcta 'loginData.templates'
       setTemplates(loginData.templates || []);
       
-      navigate("/chat");
+      navigate("/messages");
       
     } catch (err) {
       // Ahora este error solo se mostrará si las credenciales son realmente inválidas

@@ -13,7 +13,7 @@ export default function MessageItem({ message }) {
     ? "bg-indigo-600 text-white"
     : "bg-gray-200 text-gray-900";
 
-const formatTimestamp = (isoString) => {
+  const formatTimestamp = (isoString) => {
     if (!isoString) return '';
     
     try {
@@ -32,32 +32,49 @@ const formatTimestamp = (isoString) => {
         timeZone: 'America/Bogota'
       };
       return date.toLocaleString('es-CO', options).replace(',', ''); 
-                 
+                  
     } catch (e) {
       return '';
     }
   };
 
   const renderContent = () => {
+    // 🛡️ SOLUCIÓN ROBUSTA:
+    // 1. Obtenemos el valor crudo
+    let rawValue = message.text;
+
+    // 2. Si es un objeto, intentamos extraer 'data'
+    if (typeof rawValue === 'object' && rawValue !== null) {
+        rawValue = rawValue.data;
+    }
+
+    // 3. ⚠️ IMPORTANTE: Forzamos la conversión a String.
+    // Esto arregla el error "replace is not a function" si llega un número (ej: 12345)
+    // o si llega null/undefined.
+    const safeText = String(rawValue || "");
+
     switch (message.type) {
       case 'audio':
         return <AudioPlayer src={message.url} isAgent={isAgent} />;
 
       case 'plantilla': {
-        console.log('Renderizando plantilla:', message);
-        console.log('Templates disponibles:', templates);
-        const templateData = templates.find(t => t.name === message.text);
-        console.log('Datos de la plantilla encontrada:', templateData);
+        // Usamos safeText que ya garantizamos que es un string
+        const templateName = safeText;
+        
+        // console.log('Renderizando plantilla:', message); 
+        
+        const templateData = templates.find(t => t.name === templateName);
+        
         if (templateData) {
           return <TemplateMessage template={templateData} />;
         }
-        return <p className="text-sm text-red-300 bg-red-50 p-2 rounded">Plantilla "{message.text}" no encontrada.</p>;
+        return <p className="text-sm text-red-300 bg-red-50 p-2 rounded">Plantilla "{templateName}" no encontrada.</p>;
       }
 
       case 'image':
         return (
           <img
-            src={message.text}
+            src={safeText}
             alt="Imagen enviada en el chat"
             className="rounded-lg w-48 h-auto cursor-pointer"
             onClick={() => setIsModalOpen(true)}
@@ -65,11 +82,10 @@ const formatTimestamp = (isoString) => {
         );
 
       case 'flow':
-        // Contenido del Flow para ser renderizado dentro de la burbuja
         return (
           <div className="p-2">
             <p className="font-bold text-center mb-2">Flow Interactivo</p>
-            <p className="text-sm text-center opacity-90">{message.text}</p>
+            <p className="text-sm text-center opacity-90">{safeText}</p>
             <button className="mt-4 w-full bg-white text-indigo-600 font-semibold py-2 rounded-lg hover:bg-indigo-100 transition-colors">
               Iniciar Flow
             </button>
@@ -77,26 +93,21 @@ const formatTimestamp = (isoString) => {
         );
 
       case 'respflow':
-        // Mantenemos la lógica de parsing que ya funciona
-        const formattedRespFlow = message.text
+        // Ahora safeText es 100% seguro un string, el .replace funcionará
+        const formattedRespFlow = safeText
           .replace(/✅ \*(.*?)\*/g, '<br><strong>✅ $1</strong>')
           .replace(/👤 \*(.*?)\*/g, '<br><strong>👤 $1</strong>')
-          // Damos un mejor color al separador <hr>
           .replace(/----------------------------------/g, '<hr class="my-2 border-t border-indigo-400/50">')
           .replace(/\*([^:]+):\*/g, '<strong>$1:</strong>')
           .trim();
         
         return (
-          // 1. Tarjeta interior: color más claro (indigo-500) que la burbuja (indigo-600)
           <div className="bg-indigo-500 rounded-lg p-3 shadow-inner w-full max-w-xs">
-            
-            {/* 2. Encabezado profesional (como pediste) */}
             <div className="flex items-center gap-2 mb-2 border-b border-indigo-400/50 pb-2">
               <FaClipboardList className="text-indigo-200" size={16} />
               <h4 className="text-sm font-semibold text-white">Resumen de la Interacción</h4>
             </div>
             
-            {/* 3. Contenido parseado (con mejor color de texto) */}
             <p
               className="text-sm leading-relaxed whitespace-pre-line px-1 text-indigo-100"
               dangerouslySetInnerHTML={{ __html: formattedRespFlow }}
@@ -107,7 +118,7 @@ const formatTimestamp = (isoString) => {
       default:
         return (
           <p className="text-sm leading-relaxed whitespace-pre-line px-2">
-            {message.text}
+            {safeText}
           </p>
         );
     }
@@ -133,7 +144,7 @@ const formatTimestamp = (isoString) => {
         >
           <div className="relative" onClick={(e) => e.stopPropagation()}>
             <img
-              src={message.text}
+              src={String(message.text?.data || message.text || "")} 
               alt="Imagen en tamaño completo"
               className="max-w-full max-h-[80vh] w-auto object-contain"
             />
