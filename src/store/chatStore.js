@@ -20,6 +20,7 @@ import {
   createSchedule,
   deleteSchedule,
   getContacts,
+  sendImmediateMessage,
 } from "../services/reminderService";
 import {
   getTriggers,
@@ -108,7 +109,7 @@ export const useChatStore = create(
               modo: contact.modo || "IA",
               lastMessage,
             };
-          })
+          }),
         );
         const sortedConversations = sortConversations(conversationsWithDetails);
         set({ conversations: sortedConversations });
@@ -123,14 +124,14 @@ export const useChatStore = create(
         });
         set((state) => ({
           conversations: state.conversations.map((c) =>
-            c.id === conversationId ? { ...c, hasUnread: false } : c
+            c.id === conversationId ? { ...c, hasUnread: false } : c,
           ),
         }));
         const messages = await getMessages(conversationId);
         set({ currentChatHistory: messages, loadingMessages: false });
 
         const selectedChat = get().conversations.find(
-          (c) => c.id === conversationId
+          (c) => c.id === conversationId,
         );
         const isHumanControl = selectedChat?.modo === "humano";
 
@@ -220,7 +221,7 @@ export const useChatStore = create(
 
           set((state) => ({
             conversations: state.conversations.map((chat) =>
-              chat.id === chatId ? { ...chat, modo: newMode } : chat
+              chat.id === chatId ? { ...chat, modo: newMode } : chat,
             ),
           }));
         } catch (error) {
@@ -230,7 +231,7 @@ export const useChatStore = create(
 
       updateSendDisabledOnNewMessage: (message) => {
         const selectedChat = get().conversations.find(
-          (c) => c.id === get().selectedConversationId
+          (c) => c.id === get().selectedConversationId,
         );
         // Habilita el input si estamos en modo humano y el mensaje NO es de un agente o IA.
         if (
@@ -264,6 +265,14 @@ export const useChatStore = create(
         set((state) => ({
           schedules: state.schedules.filter((s) => s.scheduleId !== scheduleId),
         }));
+      },
+      sendImmediateMessage: async (data) => {
+        try {
+          return await sendImmediateMessage(data);
+        } catch (error) {
+          console.error("Error en acción sendImmediateMessage:", error);
+          throw error; 
+        }
       },
       fetchFlows: async () => {
         set({ loadingFlows: true });
@@ -323,7 +332,7 @@ export const useChatStore = create(
               loadingCurrentFlow: false,
             });
             console.warn(
-              `[FlowStore] Fallback exitoso: La API falló, cargando editor con datos mínimos.`
+              `[FlowStore] Fallback exitoso: La API falló, cargando editor con datos mínimos.`,
             );
             return;
           }
@@ -395,7 +404,7 @@ export const useChatStore = create(
         } catch (error) {
           console.error(
             "Error al cargar etapas, usando caché/defaults:",
-            error
+            error,
           );
           set({ loadingStages: false });
         }
@@ -429,6 +438,6 @@ export const useChatStore = create(
         stages: state.stages,
       }),
       onRehydrateStorage: () => (state) => {},
-    }
-  )
+    },
+  ),
 );

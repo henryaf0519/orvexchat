@@ -109,3 +109,19 @@ export async function getInteractiveButtons() {
     return [];
   }
 }
+
+
+export async function sendImmediateMessage(data) {
+  try {
+    console.log('Enviando mensaje inmediato con datos:', data);
+    const response = await apiFetch('/bulk-messaging/send-immediate', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    });
+    if (!response.ok) throw new Error('Error al enviar mensaje inmediato.');
+    return await response.json();
+  } catch (error) {
+    console.error('Fallo en sendImmediateMessage:', error);
+    throw error;
+  }
+}
