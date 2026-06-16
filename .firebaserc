@@ -1,8 +1,5 @@
 {
   "projects": {
-    "default": "orvex-666d6",
-    "orvexIA": "orvexia-4f178"
-  },
-  "targets": {},
-  "etags": {}
+    "default": "orvexia-4f178"
+  }
 }
