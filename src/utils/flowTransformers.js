@@ -101,7 +101,11 @@ export const reconstructNodeData = (screen, nodeType) => {
           ...baseData,
           introText: form.children.find((c) => c.type === "TextBody")?.text || "",
           components: form.children
-            .filter((c) => c.type === "TextInput" || c.type === "RadioButtonsGroup")
+            .filter((c) =>
+              c.type === "TextInput" ||
+              c.type === "RadioButtonsGroup" ||
+              c.type === "Dropdown"
+            )
             .map((c, i) => {
               if (c.type === "TextInput") {
                 return {
