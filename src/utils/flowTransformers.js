@@ -99,18 +99,42 @@ export const reconstructNodeData = (screen, nodeType) => {
       case "formNode":
         return {
           ...baseData,
-          introText:
-            form.children.find((c) => c.type === "TextBody")?.text || "",
-          components:
-            form.children
-              .filter((c) => c.type === "TextInput")
-              .map((c, i) => ({
-                type: "TextInput",
-                id: `input_${i}`,
-                label: c.label,
-                name: c.name,
-                required: c.required,
-              })) || [],
+          introText: form.children.find((c) => c.type === "TextBody")?.text || "",
+          components: form.children
+            .filter((c) => c.type === "TextInput" || c.type === "RadioButtonsGroup")
+            .map((c, i) => {
+              if (c.type === "TextInput") {
+                return {
+                  type: "TextInput",
+                  id: `input_${i}`,
+                  label: c.label,
+                  name: c.name,
+                  required: c.required,
+                };
+              }
+              if (c.type === "RadioButtonsGroup") {
+                return {
+                  type: "RadioButtonsGroup",
+                  id: `radio_${i}`,
+                  label: c.label,
+                  name: c.name,
+                  options: c["data-source"].map(opt => ({
+                    id: opt.id,
+                    title: opt.title
+                  }))
+                };
+              }
+              if (c.type === "Dropdown") {
+                return {
+                  type: "Dropdown",
+                  id: `dropdown_${i}`,
+                  label: c.label,
+                  name: c.name,
+                  options: c["data-source"].map(opt => ({ id: opt.id, title: opt.title }))
+                };
+              }
+              return null;
+            }).filter(Boolean) || [],
         };
 
       case "screenNode":
@@ -199,9 +223,9 @@ export const parseJsonToElements = (flowJson, navMap) => {
       position: { x: 250 + index * 400, y: 100 },
       data: {
         ...nodeData,
-        updateNodeData: () => {},
-        openPreviewModal: () => {},
-        deleteNode: () => {},
+        updateNodeData: () => { },
+        openPreviewModal: () => { },
+        deleteNode: () => { },
       },
     };
   });
@@ -489,27 +513,62 @@ export const generateMetaFlowJson = (nodes, edges) => {
         };
       } else if (node.type === "formNode") {
         const formChildren = [];
-        
+
         if (node.data.introText) {
           formChildren.push({ type: "TextBody", text: node.data.introText });
         }
-        
+
         (node.data.components || []).forEach((comp) => {
-             formChildren.push({ 
-                type: "TextInput", 
-                label: comp.label, 
-                name: comp.name, 
-                required: comp.required, 
-                "input-type": "text" 
+          if (comp.type === "TextInput") {
+            formChildren.push({
+              type: "TextInput",
+              label: comp.label,
+              name: comp.name,
+              required: comp.required,
+              "input-type": "text"
             });
+          } else if (comp.type === "RadioButtonsGroup") {
+            formChildren.push({
+              type: "RadioButtonsGroup",
+              label: comp.label,
+              name: comp.label,
+              required: true,
+              "data-source": (comp.options || []).map(opt => ({
+                id: opt.title,
+                title: opt.title
+              }))
+            });
+          }
+          else if (comp.type === "Dropdown") {
+            formChildren.push({
+              type: "Dropdown",
+              label: comp.label,
+              name: comp.label,
+              "data-source": (comp.options || []).map(opt => ({
+                id: opt.title,
+                title: opt.title
+              })),
+              required: true
+            });
+          }
         });
 
         // 1. Construye el payload (esto ya estaba bien)
+        // CÓDIGO CORREGIDO
+        // 1. Construye el payload (ahora incluye Dropdown y RadioButtonsGroup)
+        // Dentro de generateMetaFlowJson
         const formPayload = formChildren
-          .filter((c) => c.type === "TextInput")
+          .filter((c) => ["TextInput", "Dropdown", "RadioButtonsGroup"].includes(c.type))
           .reduce((acc, curr) => {
             if (curr.name) {
-              acc[curr.name] = `\${form.${curr.name}}`;
+              if (curr.type === "Dropdown" || curr.type === "RadioButtonsGroup") {
+                // En lugar de solo enviar el valor, obligamos a capturar el texto
+                // Meta requiere que el valor del payload sea el ID, 
+                // pero para que llegue el texto, debemos mapearlo así:
+                acc[curr.name] = `\${form.${curr.name}}`;
+              } else {
+                acc[curr.name] = `\${form.${curr.name}}`;
+              }
             }
             return acc;
           }, {});
@@ -530,9 +589,9 @@ export const generateMetaFlowJson = (nodes, edges) => {
         const nextScreenId = footerEdge
           ? idLookup.get(footerEdge.target)
           : null;
-          
+
         if (nextScreenId) {
-            allDestinations.add(nextScreenId);
+          allDestinations.add(nextScreenId);
         }
         // ========== FIN DE LA CORRECCIÓN ==========
 
@@ -542,7 +601,7 @@ export const generateMetaFlowJson = (nodes, edges) => {
           label: node.data.footer_label || "Enviar",
           "on-click-action": action, // <-- 'action' ahora SIEMPRE es 'data_exchange'
         });
-        
+
         screenChildren.push({
           type: "Form",
           name: `${dynamicName}_form`,
@@ -550,7 +609,7 @@ export const generateMetaFlowJson = (nodes, edges) => {
         });
 
       }
-       else if (node.type === "confirmationNode") {
+      else if (node.type === "confirmationNode") {
         const finalPayload = {
           flow_completed: "true",
           screen: jsonScreenID,

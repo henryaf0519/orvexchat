@@ -1,7 +1,7 @@
 // src/components/FlowFormNode.jsx
 import React from 'react';
 import { Handle, Position } from 'reactflow';
-import { FaTrash, FaPen, FaTimes, FaPlus, FaKeyboard } from 'react-icons/fa';
+import { FaTrash, FaPen, FaTimes, FaPlus, FaKeyboard, FaDotCircle, FaChevronDown } from 'react-icons/fa';
 
 // --- Estilos (reutilizados de tus otros nodos) ---
 const nodeClasses = "relative bg-white border border-yellow-400 rounded-xl w-[350px] shadow-lg font-sans";
@@ -28,8 +28,116 @@ export default function FlowFormNode({ data, id }) {
     if (name === 'title') {
       finalValue = value.replace(/[^a-zA-Z\s]/g, '');
     }
-    
+
     data.updateNodeData(id, { ...data, [name]: finalValue });
+  };
+
+  const addOption = (compIndex) => {
+    const newComponents = [...data.components];
+    const newOpt = { id: `opt_${Date.now()}`, title: '' };
+    newComponents[compIndex].options.push(newOpt);
+    data.updateNodeData(id, { ...data, components: newComponents });
+  };
+
+  const addComponent = (type) => {
+    const newComponent = {
+      type,
+      id: `${type.toLowerCase()}_${Date.now()}`,
+      label: '',
+      name: `field_${Date.now()}`
+    };
+
+    // ✅ INICIALIZAMOS CON 2 OPCIONES POR DEFECTO
+    if (type === 'RadioButtonsGroup' || type === 'Dropdown') {
+      newComponent.options = [{ id: 'opt1', title: 'Opción 1' }];
+    }
+
+    const newComponents = [...(data.components || []), newComponent];
+    data.updateNodeData(id, { ...data, components: newComponents });
+  };
+
+  const updateField = (index, field, value) => {
+    const newComponents = [...data.components];
+    newComponents[index] = { ...newComponents[index], [field]: value };
+    data.updateNodeData(id, { ...data, components: newComponents });
+  };
+
+  const updateOption = (compIndex, optIndex, value) => {
+    const newComponents = [...data.components];
+    const newOptions = [...newComponents[compIndex].options];
+    newOptions[optIndex] = { ...newOptions[optIndex], title: value };
+    newComponents[compIndex] = { ...newComponents[compIndex], options: newOptions };
+    data.updateNodeData(id, { ...data, components: newComponents });
+  };
+
+  const renderField = (field, index) => {
+    switch (field.type) {
+      case 'TextInput':
+        return (
+          <input
+            value={field.label || ''}
+            onChange={(e) => updateField(index, 'label', e.target.value)}
+            placeholder="Etiqueta (ej: Nombre)"
+            className="w-full border p-2 text-sm rounded"
+          />
+        );
+      case 'RadioButtonsGroup':
+        return (
+          <div className="space-y-2 mt-2">
+            <input
+              value={field.label || ''}
+              onChange={(e) => updateField(index, 'label', e.target.value)}
+              placeholder="Pregunta (ej: ¿Eres propietario?)"
+              className="w-full border p-2 text-sm font-bold rounded"
+            />
+            {/* Renderizamos las opciones existentes */}
+            {(field.options || []).map((opt, optIdx) => (
+              <div key={optIdx} className="flex gap-1">
+                <input
+                  value={opt.title}
+                  onChange={(e) => updateOption(index, optIdx, e.target.value)}
+                  placeholder={`Opción ${optIdx + 1}`}
+                  className="w-full border p-2 text-sm bg-gray-50 rounded"
+                />
+              </div>
+            ))}
+            <button
+              onClick={() => addOption(index)} // ✅ Ahora ya funciona
+              className="text-[10px] text-blue-600 underline mt-1"
+            >
+              + Añadir opción
+            </button>
+          </div>
+        );
+      case 'Dropdown':
+        return (
+          <div className="space-y-2 mt-2">
+            <input
+              value={field.label || ''}
+              onChange={(e) => updateField(index, 'label', e.target.value)}
+              placeholder="Pregunta del select (ej: ¿Cuántos hijos?)"
+              className="w-full border p-2 text-sm font-bold rounded"
+            />
+            {(field.options || []).map((opt, optIdx) => (
+              <div key={optIdx} className="flex gap-1">
+                <input
+                  value={opt.title}
+                  onChange={(e) => updateOption(index, optIdx, e.target.value)}
+                  placeholder={`Opción ${optIdx + 1}`}
+                  className="w-full border p-2 text-sm bg-gray-50 rounded"
+                />
+              </div>
+            ))}
+            <button
+              onClick={() => addOption(index)}
+              className="text-[10px] text-blue-600 underline block"
+            >
+              + Añadir opción
+            </button>
+          </div>
+        );
+      default: return null;
+    }
   };
 
   // --- Funciones para los campos del formulario ---
@@ -50,11 +158,11 @@ export default function FlowFormNode({ data, id }) {
   // Al cambiar la etiqueta, generamos el 'name' automáticamente
   const handleLabelChange = (index, newLabel) => {
     const newName = newLabel.toLowerCase().replace(/\s+/g, '');
-    
+
     const newComponents = [...data.components];
     if (newComponents[index]) {
-      newComponents[index] = { 
-        ...newComponents[index], 
+      newComponents[index] = {
+        ...newComponents[index],
         label: newLabel, // Actualiza la etiqueta
         name: newName    // Actualiza el 'name' derivado
       };
@@ -66,8 +174,8 @@ export default function FlowFormNode({ data, id }) {
   const toggleRequired = (index) => {
     const newComponents = [...data.components];
     if (newComponents[index]) {
-      newComponents[index] = { 
-        ...newComponents[index], 
+      newComponents[index] = {
+        ...newComponents[index],
         required: !newComponents[index].required // Invierte el valor
       };
       data.updateNodeData(id, { ...data, components: newComponents });
@@ -97,7 +205,7 @@ export default function FlowFormNode({ data, id }) {
 
       <div className={nodeClasses}>
         {/* Handle de entrada (target) */}
-        <Handle type="target" position={Position.Left} className="custom-handle" style={{left: '-32px'}} id={`${id}-target`}/>
+        <Handle type="target" position={Position.Left} className="custom-handle" style={{ left: '-32px' }} id={`${id}-target`} />
 
         {/* Cabecera */}
         <div className={headerClasses}>
@@ -110,7 +218,7 @@ export default function FlowFormNode({ data, id }) {
               placeholder="Título del Formulario..."
               className="editable-field flex-grow bg-transparent focus:outline-none font-semibold text-gray-800"
             />
-            <FaPen className="edit-icon" size={12}/>
+            <FaPen className="edit-icon" size={12} />
           </div>
           <button onClick={() => data.deleteNode(id)} className={clickableIconClasses} title="Eliminar pantalla">
             <FaTimes size={14} />
@@ -121,15 +229,15 @@ export default function FlowFormNode({ data, id }) {
         <div className={bodyClasses}>
           {/* ✅ --- INICIO CAMBIO: Campo de Texto Introductorio --- */}
           <div className="mb-4">
-              <label className="text-xs font-medium text-gray-500 block mb-1">Texto Introductorio (Opcional)</label>
-              <textarea
-                name="introText"
-                value={data.introText || ''}
-                onChange={handleChange}
-                placeholder="Ej: Por favor, completa los siguientes datos y un asesor se comunicará contigo ..."
-                className={textAreaClasses}
-                rows={3}
-              />
+            <label className="text-xs font-medium text-gray-500 block mb-1">Texto Introductorio (Opcional)</label>
+            <textarea
+              name="introText"
+              value={data.introText || ''}
+              onChange={handleChange}
+              placeholder="Ej: Por favor, completa los siguientes datos y un asesor se comunicará contigo ..."
+              className={textAreaClasses}
+              rows={3}
+            />
           </div>
           {/* ✅ --- FIN CAMBIO --- */}
 
@@ -138,50 +246,46 @@ export default function FlowFormNode({ data, id }) {
               <button onClick={() => deleteField(index)} className={deleteComponentBtnClasses} title="Eliminar campo">
                 <FaTrash size={10} />
               </button>
-              
-              <span className={`${componentHeaderClasses} mb-1`}>Campo de Texto {index + 1}</span>
-              
-              <div className="space-y-2">
-                {/* 1. Input de Etiqueta */}
-                <input
-                  value={field.label || ''}
-                  onChange={(e) => handleLabelChange(index, e.target.value)}
-                  placeholder="Escribe el nombre del campo (ej: Celular)"
-                  className={textInputClasses}
-                />
-                
-                {/* 2. Nuevo Toggle Switch (debajo del input) */}
-                <div className="flex items-center justify-between mt-2 pt-2 border-t border-gray-100">
-                    <label 
-                        className="text-sm font-medium text-gray-700 cursor-pointer"
-                        onClick={() => toggleRequired(index)} // Permite hacer clic en la etiqueta
-                    >
-                        Requerido
-                    </label>
-                    <button
-                        type="button"
-                        role="switch"
-                        aria-checked={field.required}
-                        onClick={() => toggleRequired(index)}
-                        className={`relative inline-flex items-center h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out ${
-                            field.required ? 'bg-green-500' : 'bg-gray-200'
-                        }`}
-                    >
-                        <span className="sr-only">Marcar como requerido</span>
-                        <span
-                            aria-hidden="true"
-                            className={`inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
-                                field.required ? 'translate-x-5' : 'translate-x-0'
-                            }`}
-                        />
-                    </button>
+
+              {/* Etiqueta del tipo de campo */}
+              <span className={componentHeaderClasses}>
+                {field.type === 'TextInput' ? 'Campo de Texto' : 'Selección (Radio)'} {index + 1}
+              </span>
+
+              {/* Delegamos la UI al switch que creamos */}
+              {renderField(field, index)}
+
+              {/* Solo mostramos el toggle de "Requerido" si es TextInput */}
+              {field.type === 'TextInput' && (
+                <div className="flex items-center justify-between mt-3 pt-2 border-t border-gray-100">
+                  <label className="text-xs font-medium text-gray-700 cursor-pointer" onClick={() => toggleRequired(index)}>
+                    Requerido
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => toggleRequired(index)}
+                    className={`w-10 h-5 rounded-full transition-colors ${field.required ? 'bg-green-500' : 'bg-gray-200'}`}
+                  >
+                    <span className={`block w-4 h-4 bg-white rounded-full transform transition-transform ${field.required ? 'translate-x-5' : 'translate-x-1'}`} />
+                  </button>
                 </div>
-              </div>
+              )}
             </div>
           ))}
-          <button onClick={addField} className="text-sm text-blue-600 hover:text-blue-800 flex items-center gap-2 mt-3">
-            <FaPlus size={12} /> Añadir Campo
-          </button>
+          <div className="flex gap-2 mt-4 border-t pt-2">
+            <button onClick={() => addComponent('TextInput')} className="text-xs flex items-center gap-1 hover:text-blue-600 cursor-pointer">
+              <FaKeyboard /> Texto
+            </button>
+            <button onClick={() => addComponent('RadioButtonsGroup')} className="text-xs flex items-center gap-1 hover:text-blue-600 cursor-pointer">
+              <FaDotCircle /> Selección
+            </button>
+            <button
+              onClick={() => addComponent('Dropdown')}
+              className="text-xs flex items-center gap-1 hover:text-blue-600 cursor-pointer"
+            >
+              <FaChevronDown /> Select
+            </button>
+          </div>
         </div>
 
         {/* Pie de Página (Botón de envío) */}
@@ -194,16 +298,16 @@ export default function FlowFormNode({ data, id }) {
               placeholder="Texto del botón final..."
               className={footerInputClasses}
             />
-            <FaPen className="edit-icon" size={12} style={{color: 'white', opacity: 0.7, right: '15px'}}/>
+            <FaPen className="edit-icon" size={12} style={{ color: 'white', opacity: 0.7, right: '15px' }} />
           </div>
           <button
             onClick={() => data.openPreviewModal({ ...data, type: 'formNode' })} // Pasa el tipo para el modal
             className="w-full bg-white text-blue-600 border border-blue-400 py-2.5 rounded-lg font-semibold text-sm hover:bg-blue-50 transition-colors flex items-center justify-center gap-2 mt-2"
-              title="Vista Previa"
+            title="Vista Previa"
           >
             Vista Previa
           </button>
-         <button
+          <button
             onClick={(e) => {
               e.stopPropagation();
               data.removeEdge(id, `${id}-source`); // Llama a la función removeEdge para el handle principal
@@ -213,11 +317,11 @@ export default function FlowFormNode({ data, id }) {
           >
             Desconectar Siguiente
           </button>
-          
+
         </div>
 
         {/* Handle de salida (source) */}
-        <Handle type="source" position={Position.Right} className="custom-handle" id={`${id}-source`}/>
+        <Handle type="source" position={Position.Right} className="custom-handle" id={`${id}-source`} />
       </div>
     </>
   );
