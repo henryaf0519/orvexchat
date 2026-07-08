@@ -1,7 +1,7 @@
 // src/components/FlowFormNode.jsx
 import React from 'react';
 import { Handle, Position } from 'reactflow';
-import { FaTrash, FaPen, FaTimes, FaPlus, FaKeyboard, FaDotCircle, FaChevronDown } from 'react-icons/fa';
+import { FaTrash, FaPen, FaTimes, FaPlus, FaKeyboard, FaDotCircle, FaChevronDown, FaCheckSquare } from 'react-icons/fa';
 
 // --- Estilos (reutilizados de tus otros nodos) ---
 const nodeClasses = "relative bg-white border border-yellow-400 rounded-xl w-[350px] shadow-lg font-sans";
@@ -50,6 +50,12 @@ export default function FlowFormNode({ data, id }) {
     // ✅ INICIALIZAMOS CON 2 OPCIONES POR DEFECTO
     if (type === 'RadioButtonsGroup' || type === 'Dropdown') {
       newComponent.options = [{ id: 'opt1', title: 'Opción 1' }];
+    }
+
+    if (type === 'OptIn') {
+      newComponent.label = 'I would like to receive news and offers.';
+      newComponent.name = 'offers_acceptance';
+      newComponent.required = true;
     }
 
     const newComponents = [...(data.components || []), newComponent];
@@ -134,6 +140,26 @@ export default function FlowFormNode({ data, id }) {
             >
               + Añadir opción
             </button>
+          </div>
+        );
+      case 'OptIn':
+        return (
+          <div className="space-y-2 mt-2">
+            <input
+              value={field.label || ''}
+              onChange={(e) => updateField(index, 'label', e.target.value)}
+              placeholder="Texto (ej: Deseo recibir ofertas)"
+              className="w-full border p-2 text-sm font-bold rounded"
+            />
+            <input
+              value={field.name || ''}
+              onChange={(e) => updateField(index, 'name', e.target.value)}
+              placeholder="nombre_variable (ej: offers_acceptance)"
+              className="w-full border p-2 text-sm bg-gray-50 rounded"
+            />
+            <p className="text-[10px] text-gray-500 italic mt-1">
+              Siempre es obligatorio. (Nota: WhatsApp no permite links web clickeables aquí).
+            </p>
           </div>
         );
       default: return null;
@@ -284,6 +310,9 @@ export default function FlowFormNode({ data, id }) {
               className="text-xs flex items-center gap-1 hover:text-blue-600 cursor-pointer"
             >
               <FaChevronDown /> Select
+            </button>
+            <button onClick={() => addComponent('OptIn')} className="text-xs flex items-center gap-1 hover:text-blue-600 cursor-pointer">
+              <FaCheckSquare /> Checkbox (Opt-In)
             </button>
           </div>
         </div>

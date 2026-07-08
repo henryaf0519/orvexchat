@@ -26,7 +26,7 @@ export const determineNodeType = (screen) => {
   );
   if (hasCatalogSelection) return "catalogNode";
 
-  const hasTextInput = form.children.some((c) => c.type === "TextInput");
+  const hasTextInput = form.children.some((c) => c.type === "TextInput" || c.type === "OptIn");
   if (hasTextInput) return "formNode";
 
   return "screenNode";
@@ -135,6 +135,15 @@ export const reconstructNodeData = (screen, nodeType) => {
                   label: c.label,
                   name: c.name,
                   options: c["data-source"].map(opt => ({ id: opt.id, title: opt.title }))
+                };
+              }
+              if (c.type === "OptIn") {
+                return {
+                  type: "OptIn",
+                  id: `optin_${i}`,
+                  label: c.label,
+                  name: c.name,
+                  required: true,
                 };
               }
               return null;
@@ -542,6 +551,7 @@ export const generateMetaFlowJson = (nodes, edges) => {
                 title: opt.title
               }))
             });
+            
           }
           else if (comp.type === "Dropdown") {
             formChildren.push({
@@ -555,6 +565,14 @@ export const generateMetaFlowJson = (nodes, edges) => {
               required: true
             });
           }
+          else if (comp.type === "OptIn") {
+            formChildren.push({
+              type: "OptIn",
+              label: comp.label,
+              name: comp.name,
+              required: true
+            });
+          }
         });
 
         // 1. Construye el payload (esto ya estaba bien)
@@ -562,7 +580,7 @@ export const generateMetaFlowJson = (nodes, edges) => {
         // 1. Construye el payload (ahora incluye Dropdown y RadioButtonsGroup)
         // Dentro de generateMetaFlowJson
         const formPayload = formChildren
-          .filter((c) => ["TextInput", "Dropdown", "RadioButtonsGroup"].includes(c.type))
+          .filter((c) => ["TextInput", "Dropdown", "RadioButtonsGroup", "OptIn"].includes(c.type))
           .reduce((acc, curr) => {
             if (curr.name) {
               if (curr.type === "Dropdown" || curr.type === "RadioButtonsGroup") {
