@@ -1,16 +1,16 @@
 import React from 'react';
 import { FaChevronLeft, FaChevronRight } from "react-icons/fa";
 
-export default function FlowSidebar({ 
-  isOpen, 
-  toggleOpen, 
-  flowName, 
-  setFlowName, 
-  onAddNode, 
-  onSave, 
-  onTest, 
-  isSaving, 
-  isSendingTest 
+export default function FlowSidebar({
+  isOpen,
+  toggleOpen,
+  flowName,
+  setFlowName,
+  onAddNode,
+  onSave,
+  onTest,
+  isSaving,
+  isSendingTest
 }) {
   const panelWidth = isOpen ? "250px" : "0px";
   const panelPadding = isOpen ? "10px" : "0px";
@@ -75,6 +75,9 @@ export default function FlowSidebar({
           <button onClick={() => onAddNode('confirmationNode')} style={btnStyle("#ef4444")}>
             + Añadir Confirmación
           </button>
+          <button onClick={() => onAddNode('quoteNode')} style={btnStyle("#0d9488")}>
+            + Añadir Servicio
+          </button>
         </div>
 
         <div style={{ marginTop: "20px" }}>
@@ -118,17 +121,17 @@ export default function FlowSidebar({
       <button
         onClick={toggleOpen}
         style={{
-            position: "absolute",
-            left: isOpen ? "250px" : "0px",
-            top: "50%",
-            transform: "translateY(-50%)",
-            zIndex: 10,
-            background: "white",
-            border: "1px solid #ccc",
-            borderRadius: "0 5px 5px 0",
-            padding: "10px 5px",
-            cursor: "pointer",
-            transition: "left 0.3s ease-in-out",
+          position: "absolute",
+          left: isOpen ? "250px" : "0px",
+          top: "50%",
+          transform: "translateY(-50%)",
+          zIndex: 10,
+          background: "white",
+          border: "1px solid #ccc",
+          borderRadius: "0 5px 5px 0",
+          padding: "10px 5px",
+          cursor: "pointer",
+          transition: "left 0.3s ease-in-out",
         }}
       >
         {isOpen ? <FaChevronLeft size={14} /> : <FaChevronRight size={14} />}

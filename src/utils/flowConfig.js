@@ -46,6 +46,19 @@ export const NODE_DEFAULTS = {
       tool: 'none',
     },
   },
+  quoteNode: {
+    title: "Servicio Backend",
+    introText: "",
+    radioLabel: "Selecciona una opción:",
+    radioOptions: [
+      { id: `opt_${Date.now()}_1`, title: "Opción 1" },
+      { id: `opt_${Date.now()}_2`, title: "Opción 2" }
+    ],
+    footer_label: "Continuar",
+    config: {
+      serviceName: "cotizar"
+    }
+  },
   confirmationNode: {
     title: "",
     headingText: "✅ ¡Todo listo!",

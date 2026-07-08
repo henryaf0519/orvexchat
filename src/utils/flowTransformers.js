@@ -44,6 +44,19 @@ export const reconstructNodeData = (screen, nodeType) => {
 
   try {
     switch (nodeType) {
+      case "quoteNode":
+        return {
+          ...baseData,
+          introText: form.children.find((c) => c.type === "TextBody" && c.text !== "${data.details}")?.text || "",
+          radioLabel: form.children.find((c) => c.type === "RadioButtonsGroup")?.label || "",
+          radioOptions: form.children.find((c) => c.type === "RadioButtonsGroup")?.["data-source"].map(opt => ({
+            id: opt.id,
+            title: opt.title
+          })) || [],
+          config: {
+            serviceName: screenConfig?.[screen.id]?.config?.serviceName || "cotizar",
+          }
+        };
       case "appointmentNode":
         const dropdown = form.children.find((c) => c.type === "Dropdown");
         const introText = form.children.find(
@@ -112,7 +125,7 @@ export const reconstructNodeData = (screen, nodeType) => {
                   type: "TextInput",
                   id: `input_${i}`,
                   label: c.label,
-                  name: c.name,
+                  name: c.label,
                   required: c.required,
                 };
               }
@@ -551,7 +564,7 @@ export const generateMetaFlowJson = (nodes, edges) => {
                 title: opt.title
               }))
             });
-            
+
           }
           else if (comp.type === "Dropdown") {
             formChildren.push({
@@ -630,6 +643,64 @@ export const generateMetaFlowJson = (nodes, edges) => {
           children: formChildren,
         });
 
+      }
+      else if (node.type === "quoteNode") {
+        // ✅ REGISTRO EN EL MAPA DE NAVEGACIÓN OCULTO PARA EL BACKEND
+        screenConfigMap.__SCREEN_CONFIG__.SCREENS[jsonScreenID] = {
+          type: node.type,
+          dataSourceTrigger: "execute_backend_service", // Identificador general para tu lambda/servicio
+          config: {
+            serviceName: node.data.config?.serviceName || "cotizar" // Nombre dinámico del servicio
+          }
+        };
+
+        const quotePayload = {
+          selected_plan: "${form.selected_plan}"
+        };
+
+        if (node.data.introText) {
+          screenChildren.push({ type: "TextBody", text: node.data.introText });
+        }
+
+        // Muestra los detalles dinámicos devueltos por el servicio ejecutado
+        screenChildren.push({ type: "TextBody", text: "${data.details}" });
+
+        // Mapeo de botones de planes
+        const dataSource = (node.data.radioOptions || []).map((opt, optIndex) => {
+          const handleId = `${node.id}-quote-option-${optIndex}`;
+          const connectedEdge = outgoingEdges.find((e) => e.sourceHandle === handleId);
+          if (connectedEdge) {
+            const targetScreenId = idLookup.get(connectedEdge.target);
+            if (targetScreenId) {
+              navigationMap[opt.id] = { pantalla: targetScreenId, valor: opt.title || "" };
+              allDestinations.add(targetScreenId);
+            }
+          }
+          return { id: opt.id, title: opt.title };
+        });
+
+        screenChildren.push({
+          type: "RadioButtonsGroup",
+          label: node.data.radioLabel || "Selecciona una opción:",
+          name: "selected_plan",
+          "data-source": dataSource,
+          required: true,
+        });
+
+        const footerEdge = outgoingEdges.find((e) => e.sourceHandle === `${node.id}-source`);
+        const nextScreenId = footerEdge ? idLookup.get(footerEdge.target) : null;
+        if (nextScreenId) allDestinations.add(nextScreenId);
+
+        screenChildren.push({
+          type: "Footer",
+          label: node.data.footer_label || "Continuar",
+          "on-click-action": {
+            name: "data_exchange",
+            payload: quotePayload
+          },
+        });
+
+        screenChildren = [{ type: "Form", name: `${dynamicName}_quote_form`, children: screenChildren }];
       }
       else if (node.type === "confirmationNode") {
         const finalPayload = {

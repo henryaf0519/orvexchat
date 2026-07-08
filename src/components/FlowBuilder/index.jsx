@@ -23,6 +23,7 @@ import FlowCatalogNode from "./FlowCatalogNode";
 import FlowFormNode from "./FlowFormNode";
 import FlowConfirmationNode from "./FlowConfirmationNode";
 import FlowAppointmentNode from "./FlowAppointmentNode";
+import FlowQuoteNode from "./FlowQuoteNode";
 
 const nodeTypes = {
   screenNode: FlowScreenNode,
@@ -30,6 +31,7 @@ const nodeTypes = {
   formNode: FlowFormNode,
   confirmationNode: FlowConfirmationNode,
   appointmentNode: FlowAppointmentNode,
+  quoteNode: FlowQuoteNode
 };
 
 const FlowBuilder = ({ flowData, flowId }) => {
@@ -94,17 +96,6 @@ const FlowBuilder = ({ flowData, flowId }) => {
   // Wrapper para addNode que inyecta el modal
   const handleAddNode = (type) => {
       addNode(type);
-      // Nota: addNode en el hook usa injectNodeFunctions básico. 
-      // ReactFlow actualizará los nodos, y si necesitamos el modal en los nuevos nodos,
-      // el hook debería ser capaz de recibir 'extraFunctions'.
-      // Por simplicidad en esta refactorización, podemos hacer un efecto secundario
-      // o simplemente pasar el modal context. 
-      // *Corrección rápida*: Como addNode del hook usa su propio inject, 
-      // necesitamos actualizar los nodos con el openPreviewModal después de añadirlo
-      // o modificar el hook. Para no complicar, dejaremos que el hook maneje la estructura
-      // y luego usamos un useEffect o setNodes para asegurar que openPreviewModal esté.
-      
-      // MEJOR OPCIÓN: Actualizar los nodos inmediatamente después de añadir
       setTimeout(() => {
           setNodes((nds) => nds.map(n => ({
               ...n,
