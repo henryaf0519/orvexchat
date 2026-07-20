@@ -16,6 +16,12 @@ export const determineNodeType = (screen) => {
   const hasDropdown = form.children.some((c) => c.type === "Dropdown");
   if (hasDropdown) return "appointmentNode";
 
+  // ✅ CORRECCIÓN 1: Identificar el quoteNode ANTES que el confirmationNode
+  const isQuoteNode = form.children.some(
+    (c) => c.type === "RadioButtonsGroup" && c.name === "selected_plan"
+  );
+  if (isQuoteNode) return "quoteNode";
+
   const hasDynamicDetails = form.children.some(
     (c) => c.type === "TextBody" && c.text === "${data.details}"
   );
@@ -32,7 +38,7 @@ export const determineNodeType = (screen) => {
   return "screenNode";
 };
 
-export const reconstructNodeData = (screen, nodeType) => {
+export const reconstructNodeData = (screen, nodeType, screenConfig) => {
   const form = screen.layout.children.find((c) => c.type === "Form");
   if (!form) return { title: screen.title || "" };
 
@@ -45,33 +51,32 @@ export const reconstructNodeData = (screen, nodeType) => {
   try {
     switch (nodeType) {
       case "quoteNode":
+        const radioGroup = form.children.find((c) => c.type === "RadioButtonsGroup");
         return {
           ...baseData,
           introText: form.children.find((c) => c.type === "TextBody" && c.text !== "${data.details}")?.text || "",
-          radioLabel: form.children.find((c) => c.type === "RadioButtonsGroup")?.label || "",
-          radioOptions: form.children.find((c) => c.type === "RadioButtonsGroup")?.["data-source"].map(opt => ({
-            id: opt.id,
-            title: opt.title
+          radioLabel: radioGroup?.label || "",
+          radioOptions: radioGroup?.["data-source"]?.map((opt, i) => ({
+            id: opt.id || `plan_${Date.now()}_${i}`,
+            title: opt.title || ""
           })) || [],
           config: {
+            // Ahora screenConfig existe y no romperá el código
             serviceName: screenConfig?.[screen.id]?.config?.serviceName || "cotizar",
           }
         };
+
       case "appointmentNode":
         const dropdown = form.children.find((c) => c.type === "Dropdown");
-        const introText = form.children.find(
-          (c) => c.type === "TextBody"
-        )?.text;
+        const introText = form.children.find((c) => c.type === "TextBody")?.text;
         return {
           ...baseData,
           config: {
-            // Defaults antiguos
             labelDate: dropdown?.label || "Selecciona la fecha",
             introText: introText || "",
             daysAvailable: [1, 2, 3, 4, 5],
             intervalMinutes: 60,
             daysToShow: 30,
-            // ✅ Defaults nuevos (Horarios y Tiempos Muertos)
             startTime: "08:00",
             endTime: "17:00",
             breakTimes: [],
@@ -82,31 +87,22 @@ export const reconstructNodeData = (screen, nodeType) => {
       case "confirmationNode":
         return {
           ...baseData,
-          headingText:
-            form.children.find((c) => c.type === "TextHeading")?.text || "",
-          bodyText:
-            form.children.find(
-              (c) => c.type === "TextBody" && c.text !== "${data.details}"
-            )?.text || "",
+          headingText: form.children.find((c) => c.type === "TextHeading")?.text || "",
+          bodyText: form.children.find((c) => c.type === "TextBody" && c.text !== "${data.details}")?.text || "",
           footer_label: footer?.label || "Finalizar",
         };
 
       case "catalogNode":
+        const catalogGroup = form.children.find((c) => c.type === "RadioButtonsGroup");
         return {
           ...baseData,
-          introText:
-            form.children.find((c) => c.type === "TextBody")?.text || "",
+          introText: form.children.find((c) => c.type === "TextBody")?.text || "",
           products: [],
-          radioLabel:
-            form.children.find((c) => c.type === "RadioButtonsGroup")?.label ||
-            "",
-          radioOptions:
-            form.children
-              .find((c) => c.type === "RadioButtonsGroup")
-              ?.["data-source"].map((opt) => ({
-                id: opt.id,
-                title: opt.title,
-              })) || [],
+          radioLabel: catalogGroup?.label || "",
+          radioOptions: catalogGroup?.["data-source"]?.map((opt) => ({
+            id: opt.id,
+            title: opt.title,
+          })) || [],
         };
 
       case "formNode":
@@ -114,51 +110,12 @@ export const reconstructNodeData = (screen, nodeType) => {
           ...baseData,
           introText: form.children.find((c) => c.type === "TextBody")?.text || "",
           components: form.children
-            .filter((c) =>
-              c.type === "TextInput" ||
-              c.type === "RadioButtonsGroup" ||
-              c.type === "Dropdown"
-            )
+            .filter((c) => ["TextInput", "RadioButtonsGroup", "Dropdown", "OptIn"].includes(c.type))
             .map((c, i) => {
-              if (c.type === "TextInput") {
-                return {
-                  type: "TextInput",
-                  id: `input_${i}`,
-                  label: c.label,
-                  name: c.label,
-                  required: c.required,
-                };
-              }
-              if (c.type === "RadioButtonsGroup") {
-                return {
-                  type: "RadioButtonsGroup",
-                  id: `radio_${i}`,
-                  label: c.label,
-                  name: c.name,
-                  options: c["data-source"].map(opt => ({
-                    id: opt.id,
-                    title: opt.title
-                  }))
-                };
-              }
-              if (c.type === "Dropdown") {
-                return {
-                  type: "Dropdown",
-                  id: `dropdown_${i}`,
-                  label: c.label,
-                  name: c.name,
-                  options: c["data-source"].map(opt => ({ id: opt.id, title: opt.title }))
-                };
-              }
-              if (c.type === "OptIn") {
-                return {
-                  type: "OptIn",
-                  id: `optin_${i}`,
-                  label: c.label,
-                  name: c.name,
-                  required: true,
-                };
-              }
+              if (c.type === "TextInput") return { type: "TextInput", id: `input_${i}`, label: c.label, name: c.label, required: c.required };
+              if (c.type === "RadioButtonsGroup") return { type: "RadioButtonsGroup", id: `radio_${i}`, label: c.label, name: c.name, options: c["data-source"]?.map(opt => ({ id: opt.id, title: opt.title })) };
+              if (c.type === "Dropdown") return { type: "Dropdown", id: `dropdown_${i}`, label: c.label, name: c.name, options: c["data-source"]?.map(opt => ({ id: opt.id, title: opt.title })) };
+              if (c.type === "OptIn") return { type: "OptIn", id: `optin_${i}`, label: c.label, name: c.name, required: true };
               return null;
             }).filter(Boolean) || [],
         };
@@ -170,30 +127,11 @@ export const reconstructNodeData = (screen, nodeType) => {
           components: form.children
             .filter((c) => c.type !== "Footer")
             .map((c, i) => {
-              if (c.type === "Image") {
-                return {
-                  type: "Image",
-                  id: `image_${i}`,
-                  src: c.src ? `data:image/png;base64,${c.src}` : null,
-                };
-              }
-              if (c.type === "TextBody") {
-                return { type: "TextBody", id: `textbody_${i}`, text: c.text };
-              }
-              if (c.type === "RadioButtonsGroup") {
-                return {
-                  type: "RadioButtonsGroup",
-                  id: `radio_${i}`,
-                  options:
-                    c["data-source"].map((opt) => ({
-                      id: opt.id,
-                      title: opt.title,
-                    })) || [],
-                };
-              }
+              if (c.type === "Image") return { type: "Image", id: `image_${i}`, src: c.src ? `data:image/png;base64,${c.src}` : null };
+              if (c.type === "TextBody") return { type: "TextBody", id: `textbody_${i}`, text: c.text };
+              if (c.type === "RadioButtonsGroup") return { type: "RadioButtonsGroup", id: `radio_${i}`, options: c["data-source"]?.map((opt) => ({ id: opt.id, title: opt.title })) || [] };
               return null;
-            })
-            .filter(Boolean),
+            }).filter(Boolean),
         };
     }
   } catch (error) {
@@ -229,7 +167,7 @@ export const parseJsonToElements = (flowJson, navMap) => {
       nodeType = determineNodeType(screen);
     }
 
-    let nodeData = reconstructNodeData(screen, nodeType);
+    let nodeData = reconstructNodeData(screen, nodeType, screenConfig);
 
     // Fusiona la config guardada sobre los defaults
     if (
@@ -290,6 +228,14 @@ export const parseJsonToElements = (flowJson, navMap) => {
             sourceHandleId = `${node.id}-catalog-option-${optIndex}`;
           }
         }
+
+        else if (node.type === "quoteNode" && node.data.radioOptions) {
+          const optIndex = node.data.radioOptions.findIndex((opt) => opt.id === optionId || opt.title === optionId);
+          if (optIndex !== -1) {
+            sourceNodeId = node.id;
+            sourceHandleId = `${node.id}-quote-option-${optIndex}`;
+          }
+        }
         if (sourceNodeId) break;
       }
 
@@ -319,7 +265,8 @@ export const parseJsonToElements = (flowJson, navMap) => {
 
     if (
       sourceNode.type === "formNode" ||
-      sourceNode.type === "appointmentNode"
+      sourceNode.type === "appointmentNode" ||
+      sourceNode.type === "quoteNode"
     ) {
       const targetId = targetScreenIds[0];
       if (targetId && screenMap.has(targetId)) {
@@ -544,12 +491,14 @@ export const generateMetaFlowJson = (nodes, edges) => {
           formChildren.push({ type: "TextBody", text: node.data.introText });
         }
 
+        console.log("Procesando componentes del formNode:", node.data.components);
+
         (node.data.components || []).forEach((comp) => {
           if (comp.type === "TextInput") {
             formChildren.push({
               type: "TextInput",
               label: comp.label,
-              name: comp.name,
+              name: comp.label,
               required: comp.required,
               "input-type": "text"
             });
@@ -644,25 +593,22 @@ export const generateMetaFlowJson = (nodes, edges) => {
         });
 
       }
+      // ... dentro de generateMetaFlowJson, localiza el bloque "else if (node.type === 'quoteNode')"
       else if (node.type === "quoteNode") {
-        // ✅ REGISTRO EN EL MAPA DE NAVEGACIÓN OCULTO PARA EL BACKEND
         screenConfigMap.__SCREEN_CONFIG__.SCREENS[jsonScreenID] = {
           type: node.type,
-          dataSourceTrigger: "execute_backend_service", // Identificador general para tu lambda/servicio
+          dataSourceTrigger: "execute_backend_service",
           config: {
-            serviceName: node.data.config?.serviceName || "cotizar" // Nombre dinámico del servicio
+            serviceName: node.data.config?.serviceName || "cotizar"
           }
         };
 
-        const quotePayload = {
-          selected_plan: "${form.selected_plan}"
-        };
+        const quotePayload = { selected_plan: "${form.selected_plan}" };
 
         if (node.data.introText) {
           screenChildren.push({ type: "TextBody", text: node.data.introText });
         }
 
-        // Muestra los detalles dinámicos devueltos por el servicio ejecutado
         screenChildren.push({ type: "TextBody", text: "${data.details}" });
 
         // Mapeo de botones de planes
@@ -676,7 +622,8 @@ export const generateMetaFlowJson = (nodes, edges) => {
               allDestinations.add(targetScreenId);
             }
           }
-          return { id: opt.id, title: opt.title };
+          
+          return { id: opt.title, title: opt.title };
         });
 
         screenChildren.push({
