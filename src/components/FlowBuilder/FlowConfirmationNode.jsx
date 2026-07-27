@@ -110,7 +110,13 @@ export default function FlowConfirmationNode({ data, id }) {
           </button>
         </div>
         
-        {/* SIN Handle de salida (source) porque es terminal */}
+        <Handle 
+            type="source" 
+            position={Position.Right} 
+            className="custom-handle" 
+            id={`${id}-source`} 
+            style={{ right: '-32px', top: '50%' }} 
+        />
       </div>
     </>
   );

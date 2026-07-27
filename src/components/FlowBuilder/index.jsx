@@ -24,6 +24,7 @@ import FlowFormNode from "./FlowFormNode";
 import FlowConfirmationNode from "./FlowConfirmationNode";
 import FlowAppointmentNode from "./FlowAppointmentNode";
 import FlowQuoteNode from "./FlowQuoteNode";
+import FlowLinkNode from "./FlowLinkNode";
 
 const nodeTypes = {
   screenNode: FlowScreenNode,
@@ -31,7 +32,8 @@ const nodeTypes = {
   formNode: FlowFormNode,
   confirmationNode: FlowConfirmationNode,
   appointmentNode: FlowAppointmentNode,
-  quoteNode: FlowQuoteNode
+  quoteNode: FlowQuoteNode,
+  linkNode: FlowLinkNode
 };
 
 const FlowBuilder = ({ flowData, flowId }) => {

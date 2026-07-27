@@ -36,6 +36,7 @@ export const determineNodeType = (screen) => {
   if (hasTextInput) return "formNode";
 
   return "screenNode";
+
 };
 
 export const reconstructNodeData = (screen, nodeType, screenConfig) => {
@@ -50,6 +51,14 @@ export const reconstructNodeData = (screen, nodeType, screenConfig) => {
 
   try {
     switch (nodeType) {
+      case "linkNode":
+        return {
+          ...baseData,
+          headingText: form.children.find((c) => c.type === "TextHeading")?.text || "",
+          bodyText: form.children.find((c) => c.type === "TextBody")?.text || "",
+          footer_label: footer?.label || "Finalizar",
+          config: screenConfig?.[screen.id]?.config || { wpMessage: "", wpUrl: "" }
+        };
       case "quoteNode":
         const radioGroup = form.children.find((c) => c.type === "RadioButtonsGroup");
         return {
@@ -308,6 +317,20 @@ export const generateMetaFlowJson = (nodes, edges) => {
 
   const screens = nodes
     .map((node, index) => {
+      if (node.type === "linkNode") {
+          // Opcional: Lo guardamos en TU configuración para que no desaparezca del lienzo al recargar
+          if (!screenConfigMap.__SCREEN_CONFIG__.VIRTUAL_NODES) {
+              screenConfigMap.__SCREEN_CONFIG__.VIRTUAL_NODES = [];
+          }
+          screenConfigMap.__SCREEN_CONFIG__.VIRTUAL_NODES.push({
+              id: node.id,
+              type: node.type,
+              position: node.position,
+              data: node.data
+          });
+          
+          return null; // <--- ESTO ES LO CLAVE. Retornar null hace que NO se agregue al JSON del flujo.
+      }
       const jsonScreenID = idLookup.get(node.id);
       const outgoingEdges = edges.filter((e) => e.source === node.id);
 
@@ -593,7 +616,6 @@ export const generateMetaFlowJson = (nodes, edges) => {
         });
 
       }
-      // ... dentro de generateMetaFlowJson, localiza el bloque "else if (node.type === 'quoteNode')"
       else if (node.type === "quoteNode") {
         screenConfigMap.__SCREEN_CONFIG__.SCREENS[jsonScreenID] = {
           type: node.type,
@@ -622,7 +644,7 @@ export const generateMetaFlowJson = (nodes, edges) => {
               allDestinations.add(targetScreenId);
             }
           }
-          
+
           return { id: opt.title, title: opt.title };
         });
 
@@ -655,28 +677,49 @@ export const generateMetaFlowJson = (nodes, edges) => {
           screen: jsonScreenID,
         };
         screenTerminal = true;
-        screenChildren.push({
-          type: "TextHeading",
-          text: node.data.headingText || "",
-        });
+        
+        screenChildren.push({ type: "TextHeading", text: node.data.headingText || "" });
         screenChildren.push({ type: "TextBody", text: "${data.details}" });
-        screenChildren.push({
-          type: "TextBody",
-          text: node.data.bodyText || "",
-        });
+        screenChildren.push({ type: "TextBody", text: node.data.bodyText || "" });
         screenChildren.push({
           type: "Footer",
           label: node.data.footer_label || "Finalizar",
           "on-click-action": { name: "data_exchange", payload: finalPayload },
         });
+        
         screenChildren = [
           { type: "Form", name: "confirmation_form", children: screenChildren },
         ];
+
+        // ✅ NUEVA LÓGICA: Buscar si hay un nodo de link conectado
+        const connectedEdge = outgoingEdges.find(e => e.source === node.id);
+        let linkConfig = null;
+        
+        if (connectedEdge) {
+            // Buscamos el nodo destino de esa flecha
+            const targetNode = nodes.find(n => n.id === connectedEdge.target);
+            if (targetNode && targetNode.type === "linkNode") {
+                // Extraemos la configuración del mensaje que hiciste
+                linkConfig = targetNode.data.config;
+            }
+        }
+
+        // Guardamos en tu JSON interno (para el backend)
+        screenConfigMap.__SCREEN_CONFIG__.SCREENS[jsonScreenID] = {
+          type: "confirmationNode",
+          // Si encontró un linkNode conectado, guarda la info. Si no, queda vacío.
+          postFlowAction: linkConfig ? {
+              type: 'send_whatsapp_link',
+              wpMessage: linkConfig.wpMessage,
+              wpUrl: linkConfig.wpUrl
+          } : null
+        };
       }
 
       metaFlow.routing_model[jsonScreenID] = Array.from(allDestinations);
-      if (node.type === "confirmationNode")
+      if (node.type === "confirmationNode" || node.type === "linkNode") {
         metaFlow.routing_model[jsonScreenID] = [];
+      }
 
       return {
         id: jsonScreenID,

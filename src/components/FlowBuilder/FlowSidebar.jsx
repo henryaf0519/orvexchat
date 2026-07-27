@@ -75,6 +75,9 @@ export default function FlowSidebar({
           <button onClick={() => onAddNode('confirmationNode')} style={btnStyle("#ef4444")}>
             + Añadir Confirmación
           </button>
+          <button onClick={() => onAddNode('linkNode')} style={btnStyle("#10b981")}>
+            + Añadir Link
+          </button>
           <button onClick={() => onAddNode('quoteNode')} style={btnStyle("#0d9488")}>
             + Añadir Servicio
           </button>

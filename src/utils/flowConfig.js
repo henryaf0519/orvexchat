@@ -59,6 +59,16 @@ export const NODE_DEFAULTS = {
       serviceName: "cotizar"
     }
   },
+  linkNode: {
+    title: "Cierre Enlace",
+    headingText: "¡Casi listo!",
+    bodyText: "Finaliza el formulario para enviarte el enlace seguro por chat.",
+    footer_label: "Enviar Link",
+    config: {
+      wpMessage: "Ingresa a este link para acceder a nuestro cotizador",
+      wpUrl: "https://www.arriendy.com/"
+    }
+  },
   confirmationNode: {
     title: "",
     headingText: "✅ ¡Todo listo!",
