@@ -291,6 +291,29 @@ export const parseJsonToElements = (flowJson, navMap) => {
     }
   }
 
+  if (navMap && navMap.__SCREEN_CONFIG__) {
+        const virtualNodes = navMap.__SCREEN_CONFIG__.VIRTUAL_NODES || [];
+        const virtualEdges = navMap.__SCREEN_CONFIG__.VIRTUAL_EDGES || [];
+
+        virtualNodes.forEach(vNode => {
+            initialNodes.push({
+                id: vNode.id,
+                type: vNode.type,
+                position: vNode.position || { x: 0, y: 0 },
+                data: {
+                    ...vNode.data,
+                    updateNodeData: () => {},
+                    openPreviewModal: () => {},
+                    deleteNode: () => {}
+                }
+            });
+        });
+
+        virtualEdges.forEach(vEdge => {
+            initialEdges.push(vEdge);
+        });
+    }
+
   return { initialNodes, initialEdges };
 };
 
@@ -318,18 +341,26 @@ export const generateMetaFlowJson = (nodes, edges) => {
   const screens = nodes
     .map((node, index) => {
       if (node.type === "linkNode") {
-          // Opcional: Lo guardamos en TU configuración para que no desaparezca del lienzo al recargar
           if (!screenConfigMap.__SCREEN_CONFIG__.VIRTUAL_NODES) {
               screenConfigMap.__SCREEN_CONFIG__.VIRTUAL_NODES = [];
+              screenConfigMap.__SCREEN_CONFIG__.VIRTUAL_EDGES = [];
           }
+          
+          // Guardamos el nodo para poder dibujarlo al recargar
           screenConfigMap.__SCREEN_CONFIG__.VIRTUAL_NODES.push({
               id: node.id,
               type: node.type,
               position: node.position,
               data: node.data
           });
+
+          // Buscamos la flecha que llega a este nodo (desde Confirmación) y la guardamos
+          const edgeToThisNode = edges.find(e => e.target === node.id);
+          if (edgeToThisNode) {
+              screenConfigMap.__SCREEN_CONFIG__.VIRTUAL_EDGES.push(edgeToThisNode);
+          }
           
-          return null; // <--- ESTO ES LO CLAVE. Retornar null hace que NO se agregue al JSON del flujo.
+          return null; // Oculto para Meta, pero a salvo en tu BD.
       }
       const jsonScreenID = idLookup.get(node.id);
       const outgoingEdges = edges.filter((e) => e.source === node.id);
@@ -715,6 +746,7 @@ export const generateMetaFlowJson = (nodes, edges) => {
           } : null
         };
       }
+      
 
       metaFlow.routing_model[jsonScreenID] = Array.from(allDestinations);
       if (node.type === "confirmationNode" || node.type === "linkNode") {
