@@ -193,7 +193,7 @@ export const parseJsonToElements = (flowJson, navMap) => {
     return {
       id: screen.id,
       type: nodeType,
-      position: { x: 250 + index * 400, y: 100 },
+      position: screenConfig?.[screen.id]?.position || { x: 250 + index * 400, y: 100 },
       data: {
         ...nodeData,
         updateNodeData: () => { },
@@ -768,6 +768,10 @@ export const generateMetaFlowJson = (nodes, edges) => {
             wpUrl: linkConfig.wpUrl
           } : null
         };
+      }
+
+      if (screenConfigMap.__SCREEN_CONFIG__.SCREENS[jsonScreenID]) {
+          screenConfigMap.__SCREEN_CONFIG__.SCREENS[jsonScreenID].position = node.position;
       }
 
 
