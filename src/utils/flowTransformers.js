@@ -292,27 +292,30 @@ export const parseJsonToElements = (flowJson, navMap) => {
   }
 
   if (navMap && navMap.__SCREEN_CONFIG__) {
-        const virtualNodes = navMap.__SCREEN_CONFIG__.VIRTUAL_NODES || [];
-        const virtualEdges = navMap.__SCREEN_CONFIG__.VIRTUAL_EDGES || [];
+    const virtualNodes = navMap.__SCREEN_CONFIG__.VIRTUAL_NODES || [];
+    const virtualEdges = navMap.__SCREEN_CONFIG__.VIRTUAL_EDGES || [];
 
-        virtualNodes.forEach(vNode => {
-            initialNodes.push({
-                id: vNode.id,
-                type: vNode.type,
-                position: vNode.position || { x: 0, y: 0 },
-                data: {
-                    ...vNode.data,
-                    updateNodeData: () => {},
-                    openPreviewModal: () => {},
-                    deleteNode: () => {}
-                }
-            });
-        });
+    virtualNodes.forEach(vNode => {
+      initialNodes.push({
+        id: vNode.id,
+        type: vNode.type,
+        position: vNode.position || { x: 0, y: 0 },
+        data: {
+          ...vNode.data,
+          updateNodeData: () => { },
+          openPreviewModal: () => { },
+          deleteNode: () => { }
+        }
+      });
+    });
 
-        virtualEdges.forEach(vEdge => {
-            initialEdges.push(vEdge);
-        });
-    }
+    virtualEdges.forEach(vEdge => {
+      initialEdges.push(vEdge);
+    });
+  }
+
+  console.log("🟢 [CARGANDO] Nodos totales pasados a React Flow:", initialNodes.map(n => n.id));
+  console.log("🟢 [CARGANDO] Flechas totales pasadas a React Flow:", initialEdges);
 
   return { initialNodes, initialEdges };
 };
@@ -346,7 +349,6 @@ export const generateMetaFlowJson = (nodes, edges) => {
               screenConfigMap.__SCREEN_CONFIG__.VIRTUAL_EDGES = [];
           }
           
-          // Guardamos el nodo para poder dibujarlo al recargar
           screenConfigMap.__SCREEN_CONFIG__.VIRTUAL_NODES.push({
               id: node.id,
               type: node.type,
@@ -354,13 +356,34 @@ export const generateMetaFlowJson = (nodes, edges) => {
               data: node.data
           });
 
-          // Buscamos la flecha que llega a este nodo (desde Confirmación) y la guardamos
           const edgeToThisNode = edges.find(e => e.target === node.id);
+          
           if (edgeToThisNode) {
-              screenConfigMap.__SCREEN_CONFIG__.VIRTUAL_EDGES.push(edgeToThisNode);
+              const sourceJsonID = idLookup.get(edgeToThisNode.source) || edgeToThisNode.source;
+              
+              const mappedEdge = {
+                  id: `virtual_edge_${sourceJsonID}_${node.id}`,
+                  source: sourceJsonID,
+                  target: node.id,
+                  sourceHandle: edgeToThisNode.sourceHandle 
+                      ? edgeToThisNode.sourceHandle.replace(edgeToThisNode.source, sourceJsonID) 
+                      : null,
+                  targetHandle: `${node.id}-target`, 
+                  type: "smoothstep",
+                  markerEnd: { type: "arrowclosed" }
+              };
+
+              // 🔥 LOGS DE GUARDADO 🔥
+              console.log("🔴 [GUARDANDO] Nodo Origen Original (ReactFlow):", edgeToThisNode.source);
+              console.log("🔴 [GUARDANDO] Nodo Origen Traducido (Meta):", sourceJsonID);
+              console.log("🔴 [GUARDANDO] Handle Origen Original:", edgeToThisNode.sourceHandle);
+              console.log("🔴 [GUARDANDO] Handle Origen Final:", mappedEdge.sourceHandle);
+              console.log("🔴 [GUARDANDO] Flecha Completa a Guardar:", mappedEdge);
+
+              screenConfigMap.__SCREEN_CONFIG__.VIRTUAL_EDGES.push(mappedEdge);
           }
           
-          return null; // Oculto para Meta, pero a salvo en tu BD.
+          return null;
       }
       const jsonScreenID = idLookup.get(node.id);
       const outgoingEdges = edges.filter((e) => e.source === node.id);
@@ -708,7 +731,7 @@ export const generateMetaFlowJson = (nodes, edges) => {
           screen: jsonScreenID,
         };
         screenTerminal = true;
-        
+
         screenChildren.push({ type: "TextHeading", text: node.data.headingText || "" });
         screenChildren.push({ type: "TextBody", text: "${data.details}" });
         screenChildren.push({ type: "TextBody", text: node.data.bodyText || "" });
@@ -717,7 +740,7 @@ export const generateMetaFlowJson = (nodes, edges) => {
           label: node.data.footer_label || "Finalizar",
           "on-click-action": { name: "data_exchange", payload: finalPayload },
         });
-        
+
         screenChildren = [
           { type: "Form", name: "confirmation_form", children: screenChildren },
         ];
@@ -725,14 +748,14 @@ export const generateMetaFlowJson = (nodes, edges) => {
         // ✅ NUEVA LÓGICA: Buscar si hay un nodo de link conectado
         const connectedEdge = outgoingEdges.find(e => e.source === node.id);
         let linkConfig = null;
-        
+
         if (connectedEdge) {
-            // Buscamos el nodo destino de esa flecha
-            const targetNode = nodes.find(n => n.id === connectedEdge.target);
-            if (targetNode && targetNode.type === "linkNode") {
-                // Extraemos la configuración del mensaje que hiciste
-                linkConfig = targetNode.data.config;
-            }
+          // Buscamos el nodo destino de esa flecha
+          const targetNode = nodes.find(n => n.id === connectedEdge.target);
+          if (targetNode && targetNode.type === "linkNode") {
+            // Extraemos la configuración del mensaje que hiciste
+            linkConfig = targetNode.data.config;
+          }
         }
 
         // Guardamos en tu JSON interno (para el backend)
@@ -740,13 +763,13 @@ export const generateMetaFlowJson = (nodes, edges) => {
           type: "confirmationNode",
           // Si encontró un linkNode conectado, guarda la info. Si no, queda vacío.
           postFlowAction: linkConfig ? {
-              type: 'send_whatsapp_link',
-              wpMessage: linkConfig.wpMessage,
-              wpUrl: linkConfig.wpUrl
+            type: 'send_whatsapp_link',
+            wpMessage: linkConfig.wpMessage,
+            wpUrl: linkConfig.wpUrl
           } : null
         };
       }
-      
+
 
       metaFlow.routing_model[jsonScreenID] = Array.from(allDestinations);
       if (node.type === "confirmationNode" || node.type === "linkNode") {
