@@ -320,7 +320,6 @@ export const parseJsonToElements = (flowJson, navMap) => {
   return { initialNodes, initialEdges };
 };
 
-// --- GENERADOR (ReactFlow -> JSON) ---
 
 export const generateMetaFlowJson = (nodes, edges) => {
   const metaFlow = {
@@ -343,6 +342,9 @@ export const generateMetaFlowJson = (nodes, edges) => {
 
   const screens = nodes
     .map((node, index) => {
+      // ==========================================
+      // 🐛 CORRECCIÓN APLICADA AQUÍ (linkNode)
+      // ==========================================
       if (node.type === "linkNode") {
           if (!screenConfigMap.__SCREEN_CONFIG__.VIRTUAL_NODES) {
               screenConfigMap.__SCREEN_CONFIG__.VIRTUAL_NODES = [];
@@ -368,9 +370,12 @@ export const generateMetaFlowJson = (nodes, edges) => {
                   sourceHandle: edgeToThisNode.sourceHandle 
                       ? edgeToThisNode.sourceHandle.replace(edgeToThisNode.source, sourceJsonID) 
                       : null,
-                  targetHandle: `${node.id}-target`, 
+                  // ✅ FIX: Usamos el targetHandle original de React Flow, si no existe usamos null.
+                  // Esto evita que React Flow borre la flecha al no encontrar el id del handle.
+                  targetHandle: edgeToThisNode.targetHandle || null, 
                   type: "smoothstep",
-                  markerEnd: { type: "arrowclosed" }
+                  // ✅ FIX: Usamos MarkerType.ArrowClosed de reactflow para consistencia.
+                  markerEnd: { type: MarkerType.ArrowClosed } 
               };
 
               // 🔥 LOGS DE GUARDADO 🔥
@@ -383,8 +388,9 @@ export const generateMetaFlowJson = (nodes, edges) => {
               screenConfigMap.__SCREEN_CONFIG__.VIRTUAL_EDGES.push(mappedEdge);
           }
           
-          return null;
+          return null; // El linkNode NO se agrega al array de screens de Meta
       }
+
       const jsonScreenID = idLookup.get(node.id);
       const outgoingEdges = edges.filter((e) => e.source === node.id);
 
@@ -497,7 +503,6 @@ export const generateMetaFlowJson = (nodes, edges) => {
           },
         ];
       } else if (node.type === "appointmentNode") {
-        // ✅ GUARDA LA CONFIG COMPLETA (incluye startTime, endTime, breakTimes)
         screenConfigMap.__SCREEN_CONFIG__.SCREENS[jsonScreenID] = {
           type: node.type,
           dataSourceTrigger: "fetch_available_dates",
@@ -568,8 +573,6 @@ export const generateMetaFlowJson = (nodes, edges) => {
           formChildren.push({ type: "TextBody", text: node.data.introText });
         }
 
-        console.log("Procesando componentes del formNode:", node.data.components);
-
         (node.data.components || []).forEach((comp) => {
           if (comp.type === "TextInput") {
             formChildren.push({
@@ -614,18 +617,11 @@ export const generateMetaFlowJson = (nodes, edges) => {
           }
         });
 
-        // 1. Construye el payload (esto ya estaba bien)
-        // CÓDIGO CORREGIDO
-        // 1. Construye el payload (ahora incluye Dropdown y RadioButtonsGroup)
-        // Dentro de generateMetaFlowJson
         const formPayload = formChildren
           .filter((c) => ["TextInput", "Dropdown", "RadioButtonsGroup", "OptIn"].includes(c.type))
           .reduce((acc, curr) => {
             if (curr.name) {
               if (curr.type === "Dropdown" || curr.type === "RadioButtonsGroup") {
-                // En lugar de solo enviar el valor, obligamos a capturar el texto
-                // Meta requiere que el valor del payload sea el ID, 
-                // pero para que llegue el texto, debemos mapearlo así:
                 acc[curr.name] = `\${form.${curr.name}}`;
               } else {
                 acc[curr.name] = `\${form.${curr.name}}`;
@@ -634,16 +630,11 @@ export const generateMetaFlowJson = (nodes, edges) => {
             return acc;
           }, {});
 
-        // ========== INICIO DE LA CORRECCIÓN ==========
-
-        // 2. Define la acción del footer *SIEMPRE* como data_exchange
         const action = {
           name: "data_exchange",
           payload: formPayload,
         };
 
-        // 3. AÚN NECESITAMOS registrar la navegación en el routing_model,
-        //    aunque el botón no la ejecute directamente.
         const footerEdge = outgoingEdges.find(
           (e) => e.sourceHandle === `${node.id}-source`
         );
@@ -654,13 +645,11 @@ export const generateMetaFlowJson = (nodes, edges) => {
         if (nextScreenId) {
           allDestinations.add(nextScreenId);
         }
-        // ========== FIN DE LA CORRECCIÓN ==========
 
-        // 4. Añade el Footer con la acción corregida
         formChildren.push({
           type: "Footer",
           label: node.data.footer_label || "Enviar",
-          "on-click-action": action, // <-- 'action' ahora SIEMPRE es 'data_exchange'
+          "on-click-action": action, 
         });
 
         screenChildren.push({
@@ -687,7 +676,6 @@ export const generateMetaFlowJson = (nodes, edges) => {
 
         screenChildren.push({ type: "TextBody", text: "${data.details}" });
 
-        // Mapeo de botones de planes
         const dataSource = (node.data.radioOptions || []).map((opt, optIndex) => {
           const handleId = `${node.id}-quote-option-${optIndex}`;
           const connectedEdge = outgoingEdges.find((e) => e.sourceHandle === handleId);
@@ -745,23 +733,18 @@ export const generateMetaFlowJson = (nodes, edges) => {
           { type: "Form", name: "confirmation_form", children: screenChildren },
         ];
 
-        // ✅ NUEVA LÓGICA: Buscar si hay un nodo de link conectado
         const connectedEdge = outgoingEdges.find(e => e.source === node.id);
         let linkConfig = null;
 
         if (connectedEdge) {
-          // Buscamos el nodo destino de esa flecha
           const targetNode = nodes.find(n => n.id === connectedEdge.target);
           if (targetNode && targetNode.type === "linkNode") {
-            // Extraemos la configuración del mensaje que hiciste
             linkConfig = targetNode.data.config;
           }
         }
 
-        // Guardamos en tu JSON interno (para el backend)
         screenConfigMap.__SCREEN_CONFIG__.SCREENS[jsonScreenID] = {
           type: "confirmationNode",
-          // Si encontró un linkNode conectado, guarda la info. Si no, queda vacío.
           postFlowAction: linkConfig ? {
             type: 'send_whatsapp_link',
             wpMessage: linkConfig.wpMessage,
@@ -773,7 +756,6 @@ export const generateMetaFlowJson = (nodes, edges) => {
       if (screenConfigMap.__SCREEN_CONFIG__.SCREENS[jsonScreenID]) {
           screenConfigMap.__SCREEN_CONFIG__.SCREENS[jsonScreenID].position = node.position;
       }
-
 
       metaFlow.routing_model[jsonScreenID] = Array.from(allDestinations);
       if (node.type === "confirmationNode" || node.type === "linkNode") {
